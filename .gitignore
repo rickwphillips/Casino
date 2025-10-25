@@ -1,0 +1,80 @@
+# Unity generated
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# Unity Project Settings (keep only essential ones)
+/ProjectSettings/*
+!/ProjectSettings/ProjectSettings.asset
+!/ProjectSettings/EditorBuildSettings.asset
+
+# Unity Packages
+/Packages/
+
+# Unity Assets (exclude defaults, keep only game content)
+/Assets/Settings/
+/Assets/Settings.meta
+/Assets/Scenes/Sample*
+/Assets/Scenes.meta
+
+# Meta files (we want to keep these for scripts only)
+*.meta
+!/Assets/Scripts/*.meta
+
+# Asset Store Tools
+/[Aa]ssets/AssetStoreTools*
+/[Aa]ssets/Plugins/Editor/JetBrains*
+
+# IDE
+.vs/
+.vscode/
+.gradle/
+.idea/
+ExportedObj/
+.consulo/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Unity3D Generated
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+sysinfo.txt
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# Crashlytics
+crashlytics-build.properties
+
+# Addressables
+/[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
+
+# OS Generated
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+ehthumbs.db
+Thumbs.db
