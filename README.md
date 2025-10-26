@@ -40,8 +40,34 @@ On your turn, you must play one card from your hand. When you play a card, one o
 - When multiple valid captures exist, the game automatically selects the best combination (prioritizing direct matches, then most cards, then high-value cards)
 - You capture ALL cards in the selected combination
 
+#### Advanced: Building
+**Builds** allow you to set up future captures by combining cards on the table with a card from your hand.
+
+**How to Create a Build:**
+1. Play a card from your hand onto one or more cards on the table
+2. Announce the total value (e.g., "Building Sevens")
+3. You **MUST** have a card in your hand that can capture that value
+4. The build is now "owned" by you
+
+**Example:**
+- You have a 3, 7, and King in your hand
+- There's a 4 on the table
+- You play your 3 onto the 4 and say "Building Sevens"
+- On your next turn, you can capture the build with your 7
+
+**Build Rules:**
+- You **MUST** capture your own build on your next turn (unless you can make a different capture or create another build)
+- You **CANNOT** trail (play a card to the table without capturing) if you have a pending build
+- Your opponent can capture your build if they have the appropriate card
+- The build value must equal the sum of all cards in the build (no cheating!)
+
+**Strategic Advantage:**
+- Builds protect valuable combinations from your opponent
+- Builds can help you capture more cards at once
+- Creating builds when you don't have the capture card is illegal and will be rejected
+
 #### Special: Sweeps
-- If you capture ALL cards from the table (leaving it empty), you score a **Sweep**
+- If you capture ALL cards from the table AND all builds (leaving everything empty), you score a **Sweep**
 - Sweeps are worth bonus points at the end of the round
 
 #### Dealing Additional Cards

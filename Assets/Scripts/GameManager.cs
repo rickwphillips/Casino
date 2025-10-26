@@ -16,10 +16,11 @@ public class GameManager : MonoBehaviour
     private GamePlayer dealer;
     private GamePlayer nonDealer;
     private List<PlayingCard> tableCards = new();
-    
+    private List<Build> activeBuilds = new();
+
     private AIPlayer dealerAI;
     private AIPlayer nonDealerAI;
-    
+
     private GamePhase currentPhase;
     private GamePlayer currentPlayer;
     private GamePlayer lastPlayerToCaptureThisRound;
@@ -78,27 +79,53 @@ public class GameManager : MonoBehaviour
             Debug.LogWarning($"It's not {player.Name}'s turn!");
             return;
         }
-        
+
         if (player.HandSize() == 0)
         {
             Debug.LogWarning($"{player.Name} has no cards to play!");
             return;
         }
-        
+
         PlayingCard playedCard = player.PlayCard(cardIndex);
         if (playedCard != null)
         {
             GameLogger.Instance.LogPlayerTurn(player, playedCard);
-            
-            // Check for valid captures
+
+            int playedValue = CaptureChecker.GetCardValue(playedCard);
+
+            // Check if player can capture their own builds
+            var playerBuilds = activeBuilds.Where(b => b.Owner == player && b.DeclaredValue == playedValue).ToList();
+
+            // Check for valid table card captures
             List<PlayingCard> captures = CaptureChecker.GetValidCaptures(playedCard, tableCards);
-            
-            if (captures.Count > 0)
+
+            // Check if player can capture opponent builds
+            var opponentBuildsToCapture = activeBuilds.Where(b => b.Owner != player && b.DeclaredValue == playedValue).ToList();
+
+            bool hasPendingBuild = PlayerHasPendingBuild(player);
+            bool canCapture = captures.Count > 0 || playerBuilds.Count > 0 || opponentBuildsToCapture.Count > 0;
+
+            // If player has a pending build, they MUST capture if possible
+            if (hasPendingBuild && !canCapture)
             {
-                // Capture cards from table
+                Debug.LogWarning($"{player.Name} has a pending build and must capture it! Cannot trail.");
+                player.AddCard(playedCard); // Return card to hand
+                return;
+            }
+
+            if (canCapture)
+            {
+                // Capture table cards
                 foreach (PlayingCard capturedCard in captures)
                 {
                     tableCards.Remove(capturedCard);
+                }
+
+                // Capture all matching builds
+                var allBuildsToCapture = playerBuilds.Concat(opponentBuildsToCapture).ToList();
+                foreach (var build in allBuildsToCapture)
+                {
+                    CaptureBuild(player, build);
                 }
 
                 // Add captured cards AND the played card to player's captured pile
@@ -110,8 +137,14 @@ public class GameManager : MonoBehaviour
 
                 GameLogger.Instance.LogCapture(player, playedCard, captures);
 
-                // Check for sweep
-                if (tableCards.Count == 0)
+                // Log build captures
+                foreach (var build in allBuildsToCapture)
+                {
+                    GameLogger.Instance.LogBuildCaptured(player, build);
+                }
+
+                // Check for sweep (table cards empty AND no active builds)
+                if (tableCards.Count == 0 && activeBuilds.Count == 0)
                 {
                     player.IncrementSweepCount();
                     GameLogger.Instance.LogSweep(player);
@@ -119,7 +152,7 @@ public class GameManager : MonoBehaviour
             }
             else
             {
-                // Trail - add to table
+                // Trail - add to table (only if no pending builds)
                 tableCards.Add(playedCard);
                 GameLogger.Instance.LogTrail(player, playedCard, tableCards);
             }
@@ -148,6 +181,14 @@ public class GameManager : MonoBehaviour
             lastPlayerToCaptureThisRound.AddCapturedCards(new List<PlayingCard>(tableCards));
             tableCards.Clear();
         }
+
+        // Any remaining builds go to the build owner
+        foreach (var build in activeBuilds.ToList())
+        {
+            build.Owner.AddCapturedCards(build.Cards.ToList());
+            GameLogger.Instance.LogRemainingBuild(build);
+        }
+        activeBuilds.Clear();
 
         cardsPlayedThisRound = 0;
         
@@ -290,8 +331,72 @@ public class GameManager : MonoBehaviour
     public GamePlayer GetDealer() => dealer;
     public GamePlayer GetNonDealer() => nonDealer;
     public List<PlayingCard> GetTableCards() => tableCards;
+    public List<Build> GetActiveBuilds() => activeBuilds;
     public GameDeck GetDeck() => deck;
     public GamePhase GetCurrentPhase() => currentPhase;
+
+    // Build management methods
+    private bool PlayerHasPendingBuild(GamePlayer player)
+    {
+        return activeBuilds.Any(b => b.Owner == player);
+    }
+
+    private bool PlayerCanCaptureValue(GamePlayer player, int value)
+    {
+        return player.Hand.Any(card => CaptureChecker.GetCardValue(card) == value);
+    }
+
+    private bool CanCreateBuild(GamePlayer player, List<PlayingCard> cards, int declaredValue)
+    {
+        // Must have the capture card in hand
+        if (!PlayerCanCaptureValue(player, declaredValue))
+        {
+            Debug.LogWarning($"{player.Name} does not have a card with value {declaredValue} to capture this build!");
+            return false;
+        }
+
+        // Calculate actual sum of cards
+        int actualSum = cards.Sum(card => CaptureChecker.GetCardValue(card));
+        if (actualSum != declaredValue)
+        {
+            Debug.LogWarning($"Build sum {actualSum} does not match declared value {declaredValue}!");
+            return false;
+        }
+
+        return true;
+    }
+
+    public bool CreateBuild(GamePlayer player, PlayingCard handCard, List<PlayingCard> tableCardsForBuild, int declaredValue)
+    {
+        var buildCards = new List<PlayingCard>(tableCardsForBuild) { handCard };
+
+        if (!CanCreateBuild(player, buildCards, declaredValue))
+        {
+            return false;
+        }
+
+        // Remove cards from table
+        foreach (var card in tableCardsForBuild)
+        {
+            tableCards.Remove(card);
+        }
+
+        // Create the build
+        var build = new Build(buildCards, declaredValue, player);
+        activeBuilds.Add(build);
+
+        GameLogger.Instance.LogBuildCreated(player, build);
+        return true;
+    }
+
+    private void CaptureBuild(GamePlayer player, Build build)
+    {
+        // Add all build cards to captured pile
+        player.AddCapturedCards(build.Cards.ToList());
+
+        // Remove build from active builds
+        activeBuilds.Remove(build);
+    }
     
     public void AIPlayTurn() {
         if (!useAI || currentPhase == GamePhase.GameOver) return;

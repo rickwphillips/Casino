@@ -100,9 +100,21 @@ public class GameLogger : MonoBehaviour
     }.ToList()
      .ForEach(Debug.Log);
     
+    public void LogBuildCreated(GamePlayer player, Build build) => new[] {
+        $"    ⚒ BUILD CREATED: {player.Name} builds for {build.DeclaredValue}",
+        $"    Cards in build: {string.Join(" + ", build.Cards.Select(c => c.ToString()))}"
+    }.ToList()
+     .ForEach(Debug.Log);
+
+    public void LogBuildCaptured(GamePlayer player, Build build) =>
+        Debug.Log($"    ✓ CAPTURED BUILD of {build.DeclaredValue}: {string.Join(" + ", build.Cards.Select(c => c.ToString()))}");
+
+    public void LogRemainingBuild(Build build) =>
+        Debug.Log($"Remaining build of {build.DeclaredValue} goes to {build.Owner.Name}: {string.Join(" + ", build.Cards.Select(c => c.ToString()))}");
+
     public void LogDealerSwap(GamePlayer newDealer) =>
         Debug.Log($"\nDEALER SWAP: {newDealer.Name} is now the dealer");
-    
+
     public void LogGameOver(GamePlayer winner, int winScore) => new[] {
         $"\n{new string('=', 80)}",
         "GAME OVER!",
