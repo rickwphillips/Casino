@@ -15,8 +15,8 @@ public class GameLogger : MonoBehaviour
     public void LogGameStart() => new[] {
         "\n" + new string('=', 80),
         "CASINO GAME STARTED",
-        ScoringManager.Instance != null ? $"Variant: {ScoringManager.Instance.GetCurrentVariant()}" : null,
-        ScoringManager.Instance != null ? $"Win Score: {ScoringManager.Instance.GetWinScore()}" : null,
+        ScoringManager.Instance != null ? $"Variant: {ScoringManager.Instance.CurrentVariant}" : null,
+        ScoringManager.Instance != null ? $"Win Score: {ScoringManager.Instance.WinScore}" : null,
         new string('=', 80) + "\n"
     }.Where(msg => msg != null)
      .ToList()

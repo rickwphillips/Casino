@@ -146,8 +146,8 @@ public class GameManager : MonoBehaviour
             ScoreRound();
             SwapDealer();
             
-            if (dealer.Score >= ScoringManager.Instance.GetWinScore() || 
-                nonDealer.Score >= ScoringManager.Instance.GetWinScore())
+            if (dealer.Score >= ScoringManager.Instance.WinScore || 
+                nonDealer.Score >= ScoringManager.Instance.WinScore)
             {
                 EndGame();
                 return;
@@ -183,70 +183,70 @@ public class GameManager : MonoBehaviour
         // Most cards
         if (nonDealerCardCount > dealerCardCount)
         {
-            nonDealer.AddScore(sm.GetPointsForMostCards());
-            GameLogger.Instance.LogScoreAward(nonDealer.Name, "Most cards (" + nonDealerCardCount + ")", sm.GetPointsForMostCards());
+            nonDealer.AddScore(sm.PointsForMostCards);
+            GameLogger.Instance.LogScoreAward(nonDealer.Name, "Most cards (" + nonDealerCardCount + ")", sm.PointsForMostCards);
         }
         else if (dealerCardCount > nonDealerCardCount)
         {
-            dealer.AddScore(sm.GetPointsForMostCards());
-            GameLogger.Instance.LogScoreAward(dealer.Name, "Most cards (" + dealerCardCount + ")", sm.GetPointsForMostCards());
+            dealer.AddScore(sm.PointsForMostCards);
+            GameLogger.Instance.LogScoreAward(dealer.Name, "Most cards (" + dealerCardCount + ")", sm.PointsForMostCards);
         }
         
         // Most spades
-        if (nonDealerSpades > dealerSpades && sm.GetPointsForMostSpades() > 0)
+        if (nonDealerSpades > dealerSpades && sm.PointsForMostSpades > 0)
         {
-            nonDealer.AddScore(sm.GetPointsForMostSpades());
-            GameLogger.Instance.LogScoreAward(nonDealer.Name, "Most spades (" + nonDealerSpades + ")", sm.GetPointsForMostSpades());
+            nonDealer.AddScore(sm.PointsForMostSpades);
+            GameLogger.Instance.LogScoreAward(nonDealer.Name, "Most spades (" + nonDealerSpades + ")", sm.PointsForMostSpades);
         }
-        else if (dealerSpades > nonDealerSpades && sm.GetPointsForMostSpades() > 0)
+        else if (dealerSpades > nonDealerSpades && sm.PointsForMostSpades > 0)
         {
-            dealer.AddScore(sm.GetPointsForMostSpades());
-            GameLogger.Instance.LogScoreAward(dealer.Name, "Most spades (" + dealerSpades + ")", sm.GetPointsForMostSpades());
+            dealer.AddScore(sm.PointsForMostSpades);
+            GameLogger.Instance.LogScoreAward(dealer.Name, "Most spades (" + dealerSpades + ")", sm.PointsForMostSpades);
         }
         
         // Big Casino (10 of Diamonds)
         if (HasCard(dealer.CapturedCards.ToList(), PlayingCard.Suit.Diamonds, PlayingCard.Rank.Ten))
         {
-            dealer.AddScore(sm.GetPointsForBigCasino());
-            GameLogger.Instance.LogScoreAward(dealer.Name, "Big Casino (10 of Diamonds)", sm.GetPointsForBigCasino());
+            dealer.AddScore(sm.PointsForBigCasino);
+            GameLogger.Instance.LogScoreAward(dealer.Name, "Big Casino (10 of Diamonds)", sm.PointsForBigCasino);
         }
         else if (HasCard(nonDealer.CapturedCards.ToList(), PlayingCard.Suit.Diamonds, PlayingCard.Rank.Ten))
         {
-            nonDealer.AddScore(sm.GetPointsForBigCasino());
-            GameLogger.Instance.LogScoreAward(nonDealer.Name, "Big Casino (10 of Diamonds)", sm.GetPointsForBigCasino());
+            nonDealer.AddScore(sm.PointsForBigCasino);
+            GameLogger.Instance.LogScoreAward(nonDealer.Name, "Big Casino (10 of Diamonds)", sm.PointsForBigCasino);
         }
         
         // Little Casino (2 of Spades)
         if (HasCard(dealer.CapturedCards.ToList(), PlayingCard.Suit.Spades, PlayingCard.Rank.Two))
         {
-            dealer.AddScore(sm.GetPointsForLittleCasino());
-            GameLogger.Instance.LogScoreAward(dealer.Name, "Little Casino (2 of Spades)", sm.GetPointsForLittleCasino());
+            dealer.AddScore(sm.PointsForLittleCasino);
+            GameLogger.Instance.LogScoreAward(dealer.Name, "Little Casino (2 of Spades)", sm.PointsForLittleCasino);
         }
         else if (HasCard(nonDealer.CapturedCards.ToList(), PlayingCard.Suit.Spades, PlayingCard.Rank.Two))
         {
-            nonDealer.AddScore(sm.GetPointsForLittleCasino());
-            GameLogger.Instance.LogScoreAward(nonDealer.Name, "Little Casino (2 of Spades)", sm.GetPointsForLittleCasino());
+            nonDealer.AddScore(sm.PointsForLittleCasino);
+            GameLogger.Instance.LogScoreAward(nonDealer.Name, "Little Casino (2 of Spades)", sm.PointsForLittleCasino);
         }
         
         // Aces
         int dealerAces = CountAces(dealer.CapturedCards.ToList());
         int nonDealerAces = CountAces(nonDealer.CapturedCards.ToList());
-        dealer.AddScore(dealerAces * sm.GetPointsPerAce());
-        nonDealer.AddScore(nonDealerAces * sm.GetPointsPerAce());
+        dealer.AddScore(dealerAces * sm.PointsPerAce);
+        nonDealer.AddScore(nonDealerAces * sm.PointsPerAce);
         
         if (dealerAces > 0)
-            GameLogger.Instance.LogScoreAward(dealer.Name, dealerAces + " Ace(s)", dealerAces * sm.GetPointsPerAce());
+            GameLogger.Instance.LogScoreAward(dealer.Name, dealerAces + " Ace(s)", dealerAces * sm.PointsPerAce);
         if (nonDealerAces > 0)
-            GameLogger.Instance.LogScoreAward(nonDealer.Name, nonDealerAces + " Ace(s)", nonDealerAces * sm.GetPointsPerAce());
+            GameLogger.Instance.LogScoreAward(nonDealer.Name, nonDealerAces + " Ace(s)", nonDealerAces * sm.PointsPerAce);
         
         // Sweeps
-        dealer.AddScore(dealer.SweepCount * sm.GetPointsPerSweep());
-        nonDealer.AddScore(nonDealer.SweepCount * sm.GetPointsPerSweep());
+        dealer.AddScore(dealer.SweepCount * sm.PointsPerSweep);
+        nonDealer.AddScore(nonDealer.SweepCount * sm.PointsPerSweep);
         
         if (dealer.SweepCount > 0)
-            GameLogger.Instance.LogScoreAward(dealer.Name, dealer.SweepCount + " Sweep(s)", dealer.SweepCount * sm.GetPointsPerSweep());
+            GameLogger.Instance.LogScoreAward(dealer.Name, dealer.SweepCount + " Sweep(s)", dealer.SweepCount * sm.PointsPerSweep);
         if (nonDealer.SweepCount > 0)
-            GameLogger.Instance.LogScoreAward(nonDealer.Name, nonDealer.SweepCount + " Sweep(s)", nonDealer.SweepCount * sm.GetPointsPerSweep());
+            GameLogger.Instance.LogScoreAward(nonDealer.Name, nonDealer.SweepCount + " Sweep(s)", nonDealer.SweepCount * sm.PointsPerSweep);
         
         GameLogger.Instance.LogCumulativeScores(dealer, nonDealer);
         
@@ -271,8 +271,8 @@ public class GameManager : MonoBehaviour
     
     private void EndGame() {
         currentPhase = GamePhase.GameOver;
-        var winner = dealer.Score >= ScoringManager.Instance.GetWinScore() ? dealer : nonDealer;
-        GameLogger.Instance.LogGameOver(winner, ScoringManager.Instance.GetWinScore());
+        var winner = dealer.Score >= ScoringManager.Instance.WinScore ? dealer : nonDealer;
+        GameLogger.Instance.LogGameOver(winner, ScoringManager.Instance.WinScore);
     }
     
     public GamePlayer GetCurrentPlayer() => currentPlayer;

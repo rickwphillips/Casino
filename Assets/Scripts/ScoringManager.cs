@@ -1,81 +1,89 @@
 using UnityEngine;
+using System.Collections.Generic;
+using System.Linq;
 
+[DisallowMultipleComponent]
 public class ScoringManager : MonoBehaviour
 {
-    public static ScoringManager Instance { get; private set; }
-    
-    private ScoringConfig currentConfig;
-    
-    private ScoringConfig standardConfig;
-    private ScoringConfig connecticutConfig;
-    
+    // Singleton pattern
+    private static ScoringManager _instance;
+    public static ScoringManager Instance 
+    { 
+        get => _instance;
+        private set => _instance = value;
+    }
+
+    [Header("Scoring Presets")]
+    [SerializeField] private ScoreVariables standardVariant;
+    [SerializeField] private ScoreVariables connecticutVariant;
+    [SerializeField] private ScoreVariables customVariant;
+
+    // Configuration storage
+    private readonly Dictionary<string, ScoringConfig> _variants = new();
+    private ScoringConfig _currentConfig;
+
     private void Awake()
     {
         if (Instance == null)
+        {
             Instance = this;
+            InitializeConfigs();
+        }
         else
+        {
             Destroy(gameObject);
-    }
-    
-    private void Start()
-    {
-        InitializeConfigs();
-    }
-    
-    private void InitializeConfigs()
-    {
-        standardConfig = new ScoringConfig
-        {
-            variantName = "Standard",
-            pointsForMostCards = 3,
-            pointsForMostSpades = 1,
-            pointsForBigCasino = 2,
-            pointsForLittleCasino = 1,
-            pointsPerAce = 1,
-            pointsPerSweep = 1,
-            winScore = 21
-        };
-        
-        connecticutConfig = new ScoringConfig
-        {
-            variantName = "Connecticut",
-            pointsForMostCards = 1,
-            pointsForMostSpades = 0,
-            pointsForBigCasino = 3,
-            pointsForLittleCasino = 2,
-            pointsPerAce = 0,
-            pointsPerSweep = 1,
-            winScore = 21
-        };
-        
-        SetVariant("Connecticut");
-    }
-    
-    public void SetVariant(string variantName)
-    {
-        switch (variantName.ToLower())
-        {
-            case "standard":
-                currentConfig = standardConfig;
-                Debug.Log("Switched to Standard variant");
-                break;
-            case "connecticut":
-                currentConfig = connecticutConfig;
-                Debug.Log("Switched to Connecticut variant");
-                break;
-            default:
-                Debug.LogWarning("Unknown variant: " + variantName);
-                break;
         }
     }
-    
-    public ScoringConfig GetConfig() => currentConfig;
-    public int GetPointsForMostCards() => currentConfig.pointsForMostCards;
-    public int GetPointsForMostSpades() => currentConfig.pointsForMostSpades;
-    public int GetPointsForBigCasino() => currentConfig.pointsForBigCasino;
-    public int GetPointsForLittleCasino() => currentConfig.pointsForLittleCasino;
-    public int GetPointsPerAce() => currentConfig.pointsPerAce;
-    public int GetPointsPerSweep() => currentConfig.pointsPerSweep;
-    public int GetWinScore() => currentConfig.winScore;
-    public string GetCurrentVariant() => currentConfig.variantName;
+
+    private void InitializeConfigs()
+    {
+        if (standardVariant == null || connecticutVariant == null)
+        {
+            Debug.LogError("Scoring variants not assigned in inspector!");
+            return;
+        }
+
+        // Register variants
+        _variants.Add(standardVariant.VariantName.ToLower(), standardVariant.CreateConfig());
+        _variants.Add(connecticutVariant.VariantName.ToLower(), connecticutVariant.CreateConfig());
+        
+        if (customVariant != null)
+        {
+            _variants.Add(customVariant.VariantName.ToLower(), customVariant.CreateConfig());
+        }
+
+        // Set default variant
+        SetVariant(connecticutVariant.VariantName);
+    }
+
+    public void SetVariant(string variantName)
+    {
+        var normalizedName = variantName.ToLower();
+        
+        if (_variants.TryGetValue(normalizedName, out var config))
+        {
+            _currentConfig = config;
+            Debug.Log($"Switched to {config.VariantName} variant");
+        }
+        else
+        {
+            Debug.LogWarning($"Unknown variant: {variantName}");
+        }
+    }
+
+    // Declarative accessors
+    public ScoringConfig CurrentConfig => _currentConfig;
+    public int PointsForMostCards => _currentConfig.PointsForMostCards;
+    public int PointsForMostSpades => _currentConfig.PointsForMostSpades;
+    public int PointsForBigCasino => _currentConfig.PointsForBigCasino;
+    public int PointsForLittleCasino => _currentConfig.PointsForLittleCasino;
+    public int PointsPerAce => _currentConfig.PointsPerAce;
+    public int PointsPerSweep => _currentConfig.PointsPerSweep;
+    public int WinScore => _currentConfig.WinScore;
+    public string CurrentVariant => _currentConfig.VariantName;
+
+    // Variant queries
+    public IEnumerable<string> AvailableVariants => _variants.Keys;
+    public bool HasVariant(string variantName) => 
+        _variants.ContainsKey(variantName.ToLower());
 }
