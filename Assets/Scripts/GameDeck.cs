@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 public class GameDeck
 {
@@ -9,64 +10,37 @@ public class GameDeck
         Initialize();
     }
     
-    private void Initialize()
-    {
-        cards.Clear();
-        foreach (PlayingCard.Suit suit in System.Enum.GetValues(typeof(PlayingCard.Suit)))
-        {
-            foreach (PlayingCard.Rank rank in System.Enum.GetValues(typeof(PlayingCard.Rank)))
-            {
-                cards.Add(new PlayingCard(suit, rank));
-            }
-        }
-    }
+    private void Initialize() => cards = System.Enum.GetValues(typeof(PlayingCard.Suit))
+        .Cast<PlayingCard.Suit>()
+        .SelectMany(suit => System.Enum.GetValues(typeof(PlayingCard.Rank))
+            .Cast<PlayingCard.Rank>()
+            .Select(rank => new PlayingCard(suit, rank)))
+        .ToList();
     
-    public void Shuffle()
-    {
-        // Fisher-Yates shuffle
-        for (int i = cards.Count - 1; i > 0; i--)
-        {
-            int randomIndex = Random.Range(0, i + 1);
-            
-            // Swap
-            PlayingCard temp = cards[i];
-            cards[i] = cards[randomIndex];
-            cards[randomIndex] = temp;
-        }
-    }
+    public void Shuffle() => cards = cards
+        .Select(card => new { card, random = Random.value })
+        .OrderBy(x => x.random)
+        .Select(x => x.card)
+        .ToList();
     
-    public PlayingCard DrawCard()
-    {
-        if (cards.Count == 0)
-        {
+    public PlayingCard DrawCard() {
+        if (!cards.Any()) {
             Debug.LogWarning("Deck is empty!");
             return null;
         }
         
-        PlayingCard drawnCard = cards[cards.Count - 1];
-        cards.RemoveAt(cards.Count - 1);
-        return drawnCard;
+        var card = cards.Last();
+        cards = cards.SkipLast(1).ToList();
+        return card;
     }
     
-    public List<PlayingCard> DrawCards(int count)
-    {
-        List<PlayingCard> drawnCards = new List<PlayingCard>();
-        for (int i = 0; i < count; i++)
-        {
-            PlayingCard card = DrawCard();
-            if (card != null)
-                drawnCards.Add(card);
-        }
-        return drawnCards;
-    }
+    public List<PlayingCard> DrawCards(int count) => 
+        Enumerable.Range(0, count)
+            .Select(_ => DrawCard())
+            .Where(card => card != null)
+            .ToList();
     
-    public int CardsRemaining()
-    {
-        return cards.Count;
-    }
+    public int CardsRemaining() => cards.Count;
     
-    public void Reset()
-    {
-        Initialize();
-    }
+    public void Reset() => Initialize();
 }
