@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -10,6 +11,8 @@ public class CardUI : MonoBehaviour
     private TextMeshProUGUI rankSuitText;
     private Image cardImage;
     private bool isSelectable = false;
+
+    public PlayingCard Card => card;
     private bool isSelected = false;
     
     private Vector3 originalScale;
@@ -170,13 +173,13 @@ public class UIManager : MonoBehaviour
         GamePlayer nonDealer = GameManager.Instance.GetNonDealer();
         
         // Only update if hands changed
-        if (dealerCardUIs.Count != dealer.hand.Count)
+        if (dealerCardUIs.Count != dealer.Hand.Count)
             UpdateHandDisplay(dealer, dealerHandContainer, dealerCardUIs, false);
         else
             UpdateHandSelectability(dealer, dealerHandContainer, dealerCardUIs, false);
         
         bool nonDealerCanPlay = GameManager.Instance.GetCurrentPlayer() == nonDealer && nonDealer.HandSize() > 0;
-        if (nonDealerCardUIs.Count != nonDealer.hand.Count)
+        if (nonDealerCardUIs.Count != nonDealer.Hand.Count)
             UpdateHandDisplay(nonDealer, nonDealerHandContainer, nonDealerCardUIs, nonDealerCanPlay);
         else
             UpdateHandSelectability(nonDealer, nonDealerHandContainer, nonDealerCardUIs, nonDealerCanPlay);
@@ -184,15 +187,15 @@ public class UIManager : MonoBehaviour
     
     private void UpdateHandSelectability(GamePlayer player, Transform container, List<CardUI> cardUIs, bool selectable)
     {
-        for (int i = 0; i < cardUIs.Count && i < player.hand.Count; i++)
+        for (int i = 0; i < cardUIs.Count && i < player.Hand.Count; i++)
         {
-            cardUIs[i].Initialize(player.hand[i], selectable);
+            cardUIs[i].Initialize(player.Hand[i], selectable);
         }
     }
     
     private void UpdateHandDisplay(GamePlayer player, Transform container, List<CardUI> cardUIs, bool selectable)
     {
-        Debug.Log("UpdateHandDisplay: player=" + (player != null ? player.playerName : "null") + ", hand count=" + (player != null ? player.hand.Count : 0));
+        Debug.Log("UpdateHandDisplay: player=" + (player != null ? player.Name : "null") + ", hand count=" + (player != null ? player.Hand.Count : 0));
         
         if (player == null || container == null || cardPrefab == null)
         {
@@ -206,17 +209,17 @@ public class UIManager : MonoBehaviour
             Destroy(child.gameObject);
         }
         cardUIs.Clear();
-        
-        Debug.Log("Creating " + player.hand.Count + " cards");
-        
+
+        Debug.Log("Creating " + player.Hand.Count + " cards");
+
         // Create new cards
-        for (int i = 0; i < player.hand.Count; i++)
+        for (int i = 0; i < player.Hand.Count; i++)
         {
             GameObject cardObj = Instantiate(cardPrefab, container);
             Debug.Log("Created card object " + i);
             CardUI cardUI = cardObj.AddComponent<CardUI>();
             Debug.Log("Added CardUI component");
-            cardUI.Initialize(player.hand[i], selectable);
+            cardUI.Initialize(player.Hand[i], selectable);
             cardUIs.Add(cardUI);
             
             Debug.Log("Card " + i + " parent: " + (cardObj.transform.parent != null ? cardObj.transform.parent.name : "NULL"));
@@ -258,24 +261,24 @@ public class UIManager : MonoBehaviour
         GameDeck deck = GameManager.Instance.GetDeck();
         
         if (currentPlayerText != null)
-            currentPlayerText.text = $"Current Turn: {currentPlayer.playerName}";
+            currentPlayerText.text = $"Current Turn: {currentPlayer.Name}";
         
         if (deckCountText != null)
             deckCountText.text = $"Cards in Deck: {deck.CardsRemaining()}";
         
         if (dealerScoreText != null)
-            dealerScoreText.text = $"Dealer: {dealer.playerName}\nScore: {dealer.score}";
+            dealerScoreText.text = $"Dealer: {dealer.Name}\nScore: {dealer.Score}";
         
         if (nonDealerScoreText != null)
-            nonDealerScoreText.text = $"Non-Dealer: {nonDealer.playerName}\nScore: {nonDealer.score}";
+            nonDealerScoreText.text = $"Non-Dealer: {nonDealer.Name}\nScore: {nonDealer.Score}";
         
         if (gameStatusText != null)
         {
             GameManager.GamePhase phase = GameManager.Instance.GetCurrentPhase();
             if (phase == GameManager.GamePhase.GameOver)
             {
-                GamePlayer winner = (dealer.score >= 21) ? dealer : nonDealer;
-                gameStatusText.text = $"Game Over!\n{winner.playerName} Wins!";
+                GamePlayer winner = (dealer.Score >= 21) ? dealer : nonDealer;
+                gameStatusText.text = $"Game Over!\n{winner.Name} Wins!";
                 playCardButton.interactable = false;
                 if (restartButton != null)
                     restartButton.gameObject.SetActive(true);
@@ -304,10 +307,11 @@ public class UIManager : MonoBehaviour
         }
         
         GamePlayer currentPlayer = GameManager.Instance.GetCurrentPlayer();
-        
-        int cardIndex = currentPlayer.hand.IndexOf(selectedCard.GetCard());
-        
-        if (cardIndex >= 0)
+
+        int cardIndex = Enumerable.Range(0, currentPlayer.Hand.Count)
+            .FirstOrDefault(i => currentPlayer.Hand[i] == selectedCard.Card);
+
+        if (cardIndex != 0 || (cardIndex == 0 && currentPlayer.Hand[0] == selectedCard.Card))
         {
             StartCoroutine(AnimateCardToTable(selectedCard));
             GameManager.Instance.PlayCard(currentPlayer, cardIndex);

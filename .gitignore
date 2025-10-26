@@ -16,12 +16,22 @@
 
 # Unity Packages
 /Packages/
+!/Packages/manifest.json
+!/Packages/packages-lock.json
+
+# Package Cache
+/Library/PackageCache/
+/Library/ScriptAssemblies/
 
 # Unity Assets (exclude defaults, keep only game content)
 /Assets/Settings/
 /Assets/Settings.meta
 /Assets/Scenes/Sample*
 /Assets/Scenes.meta
+/Assets/TextMesh Pro/
+/Assets/TextMesh Pro.meta
+/Assets/UI/
+/Assets/UI.meta
 
 # Meta files (we want to keep these for scripts only)
 *.meta

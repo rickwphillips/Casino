@@ -24,28 +24,28 @@ public class GameLogger : MonoBehaviour
     
     public void LogInitialDeal(GamePlayer dealer, GamePlayer nonDealer, List<PlayingCard> tableCards) => new[] {
         "\n--- INITIAL DEAL ---",
-        $"Dealer: {dealer.playerName}",
-        $"Non-Dealer: {nonDealer.playerName}",
+        $"Dealer: {dealer.Name}",
+        $"Non-Dealer: {nonDealer.Name}",
         "\nCards dealt to each player: 4",
         $"Cards on table: {string.Join(", ", tableCards.Select(card => card.ToString()))}"
     }.ToList()
      .ForEach(Debug.Log);
     
     public void LogPlayerTurn(GamePlayer player, PlayingCard playedCard) => new[] {
-        $"\n>>> {player.playerName.ToUpper()}'S TURN",
+        $"\n>>> {player.Name.ToUpper()}'S TURN",
         $"    Card played: {playedCard}"
     }.ToList()
      .ForEach(Debug.Log);
     
     public void LogCapture(GamePlayer player, List<PlayingCard> capturedCards) => new[] {
         $"    ✓ CAPTURED {capturedCards.Count} card(s): {string.Join(", ", capturedCards.Select(card => card.ToString()))}",
-        $"    Total captured this round: {player.capturedCards.Count}"
+        $"    Total captured this round: {player.CapturedCards.Count}"
     }.ToList()
      .ForEach(Debug.Log);
     
     public void LogSweep(GamePlayer player) => new[] {
         "    ★ SWEEP! Captured ALL cards on the table!",
-        $"    Sweep count: {player.sweepCount}"
+        $"    Sweep count: {player.SweepCount}"
     }.ToList()
      .ForEach(Debug.Log);
     
@@ -63,7 +63,7 @@ public class GameLogger : MonoBehaviour
      .ForEach(Debug.Log);
     
     public void LogRemainingTableCards(GamePlayer player, List<PlayingCard> remainingCards) =>
-        Debug.Log($"{player.playerName} gets remaining table cards: {string.Join(", ", remainingCards.Select(card => card.ToString()))}");
+        Debug.Log($"{player.Name} gets remaining table cards: {string.Join(", ", remainingCards.Select(card => card.ToString()))}");
     
     public void LogDeckStatus(int cardsRemaining) =>
         Debug.Log($"\nCards remaining in deck: {cardsRemaining}");
@@ -86,29 +86,29 @@ public class GameLogger : MonoBehaviour
     
     public void LogHandTotals(GamePlayer player1, GamePlayer player2, int player1Cards, int player2Cards, int player1Spades, int player2Spades) => new[] {
         "\n  Stats:",
-        $"    {player1.playerName}: {player1Cards} cards, {player1Spades} spades",
-        $"    {player2.playerName}: {player2Cards} cards, {player2Spades} spades"
+        $"    {player1.Name}: {player1Cards} cards, {player1Spades} spades",
+        $"    {player2.Name}: {player2Cards} cards, {player2Spades} spades"
     }.ToList()
      .ForEach(Debug.Log);
     
     public void LogCumulativeScores(GamePlayer player1, GamePlayer player2) => new[] {
         $"\n{new string('-', 80)}",
         "CUMULATIVE SCORES:",
-        $"  {player1.playerName}: {player1.score} points",
-        $"  {player2.playerName}: {player2.score} points",
+        $"  {player1.Name}: {player1.Score} points",
+        $"  {player2.Name}: {player2.Score} points",
         $"{new string('-', 80)}\n"
     }.ToList()
      .ForEach(Debug.Log);
     
     public void LogDealerSwap(GamePlayer newDealer) =>
-        Debug.Log($"\nDEALER SWAP: {newDealer.playerName} is now the dealer");
+        Debug.Log($"\nDEALER SWAP: {newDealer.Name} is now the dealer");
     
     public void LogGameOver(GamePlayer winner, int winScore) => new[] {
         $"\n{new string('=', 80)}",
         "GAME OVER!",
         new string('=', 80),
-        $"\nWINNER: {winner.playerName}",
-        $"Final Score: {winner.score} points (needed {winScore} to win)",
+        $"\nWINNER: {winner.Name}",
+        $"Final Score: {winner.Score} points (needed {winScore} to win)",
         $"{new string('=', 80)}\n"
     }.ToList()
      .ForEach(Debug.Log);

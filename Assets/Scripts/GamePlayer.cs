@@ -1,48 +1,77 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class GamePlayer
 {
-    public string playerName;
-    public List<PlayingCard> hand = new();
-    public List<PlayingCard> capturedCards = new();
-    public int sweepCount = 0;
-    public int score = 0;
-    
+    private readonly string _name;
+    private readonly List<PlayingCard> _hand = new();
+    private readonly List<PlayingCard> _capturedCards = new();
+    private int _sweepCount;
+    private int _score;
+
+    public string Name => _name;
+    public IReadOnlyList<PlayingCard> Hand => _hand;
+    public IReadOnlyList<PlayingCard> CapturedCards => _capturedCards;
+    public int SweepCount => _sweepCount;
+    public int Score => _score;
+
     public GamePlayer(string name)
     {
-        playerName = name;
+        _name = name;
     }
-    
-    public void AddCard(PlayingCard card) => hand.Add(card);
-    
-    public void AddCards(List<PlayingCard> cards) => hand.AddRange(cards);
-    
+
+    public void AddCard(PlayingCard card)
+    {
+        _hand.Add(card);
+    }
+
+    public void AddCards(List<PlayingCard> cards)
+    {
+        _hand.AddRange(cards);
+    }
+
     public PlayingCard PlayCard(int index)
     {
-        if (index >= 0 && index < hand.Count)
+        if (!IsValidCardIndex(index))
         {
-            PlayingCard card = hand[index];
-            hand.RemoveAt(index);
-            return card;
+            Debug.LogWarning("Invalid card index!");
+            return null;
         }
-        Debug.LogWarning("Invalid card index!");
-        return null;
+
+        var card = _hand[index];
+        _hand.RemoveAt(index);
+        return card;
     }
-    
-    public int HandSize() => hand.Count;
-    
-    public void ClearHand() => hand.Clear();
-    
-    public void AddScore(int points) => score += points;
-    
+
+    public int HandSize()
+    {
+        return _hand.Count;
+    }
+
+    public void ClearHand()
+    {
+        _hand.Clear();
+    }
+
+    public void AddScore(int points)
+    {
+        _score += points;
+    }
+
+    public void IncrementSweepCount()
+    {
+        _sweepCount++;
+    }
+
+    private bool IsValidCardIndex(int index)
+    {
+        return index >= 0 && index < _hand.Count;
+    }
+
     public override string ToString()
     {
-        string handStr = "";
-        for (int i = 0; i < hand.Count; i++)
-        {
-            handStr += $"[{i}] {hand[i]} | ";
-        }
-        return $"{playerName} - Hand: {(hand.Count > 0 ? handStr : "Empty")} | Captured: {capturedCards.Count} | Score: {score}";
+        var handStr = string.Join(" | ", _hand.Select((card, i) => $"[{i}] {card}"));
+        return $"{_name} - Hand: {(_hand.Count > 0 ? handStr : "Empty")} | Captured: {_capturedCards.Count} | Score: {_score}";
     }
 }

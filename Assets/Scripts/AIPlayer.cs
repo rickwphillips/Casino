@@ -15,7 +15,7 @@ public class AIPlayer {
     
     public void SetDifficulty(Difficulty newDifficulty) {
         difficulty = newDifficulty;
-        Debug.Log(player.playerName + " AI difficulty set to: " + difficulty);
+        Debug.Log(player.Name + " AI difficulty set to: " + difficulty);
     }
     
     public int GetBestMove(List<PlayingCard> tableCards) {
@@ -29,17 +29,17 @@ public class AIPlayer {
     
     // Easy: Random valid move
     private int GetEasyMove() {
-        int randomIndex = Random.Range(0, player.hand.Count);
-        Debug.Log(player.playerName + " (Easy AI) plays random card at index " + randomIndex);
+        int randomIndex = Random.Range(0, player.HandSize());
+        Debug.Log(player.Name + " (Easy AI) plays random card at index " + randomIndex);
         return randomIndex;
     }
 
   // Medium: Prioritize captures, prefer high-value cards
   private int GetMediumMove(List<PlayingCard> tableCards) {
-    var moveAnalysis = Enumerable.Range(0, player.hand.Count)
+    var moveAnalysis = Enumerable.Range(0, player.HandSize())
         .Select(i => new {
           Index = i,
-          Captures = CaptureChecker.GetValidCaptures(player.hand[i], tableCards),
+          Captures = CaptureChecker.GetValidCaptures(player.Hand[i], tableCards),
           HasHighValue = false
         })
         .Select(x => new {
@@ -61,32 +61,32 @@ public class AIPlayer {
 
     if (highValueMoves.Any()) {
       var chosen = highValueMoves[Random.Range(0, highValueMoves.Count)];
-      Debug.Log($"{player.playerName} (Medium AI) plays high-value capture at index {chosen}");
+      Debug.Log($"{player.Name} (Medium AI) plays high-value capture at index {chosen}");
       return chosen;
     }
 
     if (captureMoves.Any()) {
       var chosen = captureMoves[Random.Range(0, captureMoves.Count)];
-      Debug.Log($"{player.playerName} (Medium AI) plays capture at index {chosen}");
+      Debug.Log($"{player.Name} (Medium AI) plays capture at index {chosen}");
       return chosen;
     }
 
-    var randomIndex = Random.Range(0, player.hand.Count);
-    Debug.Log($"{player.playerName} (Medium AI) trails at index {randomIndex}");
+    var randomIndex = Random.Range(0, player.HandSize());
+    Debug.Log($"{player.Name} (Medium AI) trails at index {randomIndex}");
     return randomIndex;
   }
     
     // Hard: Strategic play with lookahead
     private int GetHardMove(List<PlayingCard> tableCards) {
-        var bestMove = Enumerable.Range(0, player.hand.Count)
+        var bestMove = Enumerable.Range(0, player.HandSize())
             .Select(i => new {
                 Index = i,
-                Score = EvaluateMove(player.hand[i], tableCards, i)
+                Score = EvaluateMove(player.Hand[i], tableCards, i)
             })
             .OrderByDescending(x => x.Score)
             .First();
             
-        Debug.Log($"{player.playerName} (Hard AI) plays strategic move at index {bestMove.Index} (score: {bestMove.Score})");
+        Debug.Log($"{player.Name} (Hard AI) plays strategic move at index {bestMove.Index} (score: {bestMove.Score})");
         return bestMove.Index;
     }
     
