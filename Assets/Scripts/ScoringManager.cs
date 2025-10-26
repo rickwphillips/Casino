@@ -43,17 +43,37 @@ public class ScoringManager : MonoBehaviour
             return;
         }
 
-        // Register variants
-        _variants.Add(standardVariant.VariantName.ToLower(), standardVariant.CreateConfig());
-        _variants.Add(connecticutVariant.VariantName.ToLower(), connecticutVariant.CreateConfig());
+        // Register variants - check for duplicates
+        RegisterVariant(standardVariant);
+        RegisterVariant(connecticutVariant);
         
         if (customVariant != null)
         {
-            _variants.Add(customVariant.VariantName.ToLower(), customVariant.CreateConfig());
+            RegisterVariant(customVariant);
         }
 
         // Set default variant
         SetVariant(connecticutVariant.VariantName);
+    }
+
+    private void RegisterVariant(ScoreVariables variant)
+    {
+        if (variant == null)
+        {
+            Debug.LogWarning("Attempted to register null variant!");
+            return;
+        }
+
+        string variantKey = variant.VariantName.ToLower();
+        
+        if (_variants.ContainsKey(variantKey))
+        {
+            Debug.LogWarning($"Variant '{variant.VariantName}' is already registered! Skipping duplicate.");
+            return;
+        }
+
+        _variants.Add(variantKey, variant.CreateConfig());
+        Debug.Log($"Registered variant: {variant.VariantName}");
     }
 
     public void SetVariant(string variantName)
@@ -76,8 +96,24 @@ public class ScoringManager : MonoBehaviour
     public int PointsForMostCards => _currentConfig.PointsForMostCards;
     public int PointsForMostSpades => _currentConfig.PointsForMostSpades;
     public int PointsForBigCasino => _currentConfig.PointsForBigCasino;
+    public PlayingCard.Suit BigCasinoSuit => _currentConfig.BigCasinoSuit;
+    public PlayingCard.Rank BigCasinoRank => _currentConfig.BigCasinoRank;
     public int PointsForLittleCasino => _currentConfig.PointsForLittleCasino;
+    public PlayingCard.Suit LittleCasinoSuit => _currentConfig.LittleCasinoSuit;
+    public PlayingCard.Rank LittleCasinoRank => _currentConfig.LittleCasinoRank;
     public int PointsPerAce => _currentConfig.PointsPerAce;
+    public int PointsPerTwo => _currentConfig.PointsPerTwo;
+    public int PointsPerThree => _currentConfig.PointsPerThree;
+    public int PointsPerFour => _currentConfig.PointsPerFour;
+    public int PointsPerFive => _currentConfig.PointsPerFive;
+    public int PointsPerSix => _currentConfig.PointsPerSix;
+    public int PointsPerSeven => _currentConfig.PointsPerSeven;
+    public int PointsPerEight => _currentConfig.PointsPerEight;
+    public int PointsPerNine => _currentConfig.PointsPerNine;
+    public int PointsPerTen => _currentConfig.PointsPerTen;
+    public int PointsPerJack => _currentConfig.PointsPerJack;
+    public int PointsPerQueen => _currentConfig.PointsPerQueen;
+    public int PointsPerKing => _currentConfig.PointsPerKing;
     public int PointsPerSweep => _currentConfig.PointsPerSweep;
     public int WinScore => _currentConfig.WinScore;
     public string CurrentVariant => _currentConfig.VariantName;

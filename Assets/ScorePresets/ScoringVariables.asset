@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4061345c1e1454f01981fc6370dd8663, type: 3}
+  m_Name: ScoringVariables
+  m_EditorClassIdentifier: Assembly-CSharp::ScoreVariables
+  variantName: Custom
+  pointsForMostCards: 3
+  pointsForMostSpades: 1
+  pointsForBigCasino: 2
+  pointsForLittleCasino: 1
+  pointsPerAce: 1
+  pointsPerSweep: 1
+  winScore: 21
