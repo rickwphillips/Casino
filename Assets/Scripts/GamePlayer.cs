@@ -64,6 +64,29 @@ public class GamePlayer
         _sweepCount++;
     }
 
+    public void AddCapturedCard(PlayingCard card)
+    {
+        _capturedCards.Add(card);
+    }
+
+    public void AddCapturedCards(List<PlayingCard> cards)
+    {
+        _capturedCards.AddRange(cards);
+    }
+
+    public void ClearCapturedCards()
+    {
+        _capturedCards.Clear();
+    }
+
+    public void ResetForNewGame()
+    {
+        _score = 0;
+        _sweepCount = 0;
+        _hand.Clear();
+        _capturedCards.Clear();
+    }
+
     private bool IsValidCardIndex(int index)
     {
         return index >= 0 && index < _hand.Count;

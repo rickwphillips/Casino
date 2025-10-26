@@ -24,13 +24,14 @@ public class GameDeck
         .ToList();
     
     public PlayingCard DrawCard() {
-        if (!cards.Any()) {
+        if (cards.Count == 0) {
             Debug.LogWarning("Deck is empty!");
             return null;
         }
-        
-        var card = cards.Last();
-        cards = cards.SkipLast(1).ToList();
+
+        int lastIndex = cards.Count - 1;
+        var card = cards[lastIndex];
+        cards.RemoveAt(lastIndex);
         return card;
     }
     

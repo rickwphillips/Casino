@@ -95,15 +95,21 @@ public class GameManager : MonoBehaviour
             
             if (captures.Count > 0)
             {
-                // Capture cards
+                // Capture cards from table
                 foreach (PlayingCard capturedCard in captures)
                 {
                     tableCards.Remove(capturedCard);
-                    ((List<PlayingCard>)player.CapturedCards).Add(capturedCard);
                 }
-                
-                GameLogger.Instance.LogCapture(player, captures);
-                
+
+                // Add captured cards AND the played card to player's captured pile
+                player.AddCapturedCard(playedCard);
+                player.AddCapturedCards(captures);
+
+                // Track last player to capture for end-of-round logic
+                lastPlayerToCaptureThisRound = player;
+
+                GameLogger.Instance.LogCapture(player, playedCard, captures);
+
                 // Check for sweep
                 if (tableCards.Count == 0)
                 {
@@ -134,10 +140,15 @@ public class GameManager : MonoBehaviour
     private void EndRound()
     {
         GameLogger.Instance.LogRoundEnd(1, cardsPlayedThisRound);
-        
-        // Any remaining table cards go to the last player who captured (dealer in this case)
-        // For now, just leave them on table - they'll stay until next round
-        
+
+        // Any remaining table cards go to the last player who captured
+        if (tableCards.Count > 0 && lastPlayerToCaptureThisRound != null)
+        {
+            GameLogger.Instance.LogRemainingTableCards(lastPlayerToCaptureThisRound, tableCards);
+            lastPlayerToCaptureThisRound.AddCapturedCards(new List<PlayingCard>(tableCards));
+            tableCards.Clear();
+        }
+
         cardsPlayedThisRound = 0;
         
         if (deck.CardsRemaining() == 0)
@@ -249,10 +260,10 @@ public class GameManager : MonoBehaviour
             GameLogger.Instance.LogScoreAward(nonDealer.Name, nonDealer.SweepCount + " Sweep(s)", nonDealer.SweepCount * sm.PointsPerSweep);
         
         GameLogger.Instance.LogCumulativeScores(dealer, nonDealer);
-        
+
         // Reset for next round
-        ((List<PlayingCard>)dealer.CapturedCards).Clear();
-        ((List<PlayingCard>)nonDealer.CapturedCards).Clear();
+        dealer.ClearCapturedCards();
+        nonDealer.ClearCapturedCards();
     }
     
     private int CountSpades(List<PlayingCard> cards) =>

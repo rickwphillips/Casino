@@ -37,8 +37,8 @@ public class GameLogger : MonoBehaviour
     }.ToList()
      .ForEach(Debug.Log);
     
-    public void LogCapture(GamePlayer player, List<PlayingCard> capturedCards) => new[] {
-        $"    ✓ CAPTURED {capturedCards.Count} card(s): {string.Join(", ", capturedCards.Select(card => card.ToString()))}",
+    public void LogCapture(GamePlayer player, PlayingCard playedCard, List<PlayingCard> capturedCards) => new[] {
+        $"    ✓ CAPTURED {capturedCards.Count + 1} card(s) with {playedCard}: {playedCard}, {string.Join(", ", capturedCards.Select(card => card.ToString()))}",
         $"    Total captured this round: {player.CapturedCards.Count}"
     }.ToList()
      .ForEach(Debug.Log);
