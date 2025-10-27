@@ -56,23 +56,22 @@ public class GameUISetup : MonoBehaviour
         var winScore = CreateText("WinScore", gameStatePanel.transform, "Win Score: 21", 12, TextAnchor.MiddleCenter, new Vector2(10, 10), new Vector2(-10, -50));
 
         // Assign references to GameUIManager
-        var managerType = typeof(GameUIManager);
-        managerType.GetField("player1NameText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(uiManager, p1Name);
-        managerType.GetField("player1ScoreText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(uiManager, p1Score);
-        managerType.GetField("player1HandText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(uiManager, p1Hand);
-        managerType.GetField("player1CapturedText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(uiManager, p1Captured);
+        uiManager.player1NameText = p1Name;
+        uiManager.player1ScoreText = p1Score;
+        uiManager.player1HandText = p1Hand;
+        uiManager.player1CapturedText = p1Captured;
 
-        managerType.GetField("player2NameText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(uiManager, p2Name);
-        managerType.GetField("player2ScoreText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(uiManager, p2Score);
-        managerType.GetField("player2HandText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(uiManager, p2Hand);
-        managerType.GetField("player2CapturedText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(uiManager, p2Captured);
+        uiManager.player2NameText = p2Name;
+        uiManager.player2ScoreText = p2Score;
+        uiManager.player2HandText = p2Hand;
+        uiManager.player2CapturedText = p2Captured;
 
-        managerType.GetField("tableCardsText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(uiManager, tableCards);
-        managerType.GetField("buildsText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(uiManager, builds);
+        uiManager.tableCardsText = tableCards;
+        uiManager.buildsText = builds;
 
-        managerType.GetField("currentTurnText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(uiManager, currentTurn);
-        managerType.GetField("gamePhaseText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(uiManager, winScore);
-        managerType.GetField("variantText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(uiManager, variant);
+        uiManager.currentTurnText = currentTurn;
+        uiManager.gamePhaseText = winScore;
+        uiManager.variantText = variant;
 
         Debug.Log("Game UI setup complete!");
     }

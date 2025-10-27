@@ -8,25 +8,25 @@ public class GameUIManager : MonoBehaviour
     public static GameUIManager Instance { get; private set; }
 
     [Header("Player 1 (Dealer) UI")]
-    [SerializeField] private Text player1NameText;
-    [SerializeField] private Text player1ScoreText;
-    [SerializeField] private Text player1HandText;
-    [SerializeField] private Text player1CapturedText;
+    public Text player1NameText;
+    public Text player1ScoreText;
+    public Text player1HandText;
+    public Text player1CapturedText;
 
     [Header("Player 2 (Non-Dealer) UI")]
-    [SerializeField] private Text player2NameText;
-    [SerializeField] private Text player2ScoreText;
-    [SerializeField] private Text player2HandText;
-    [SerializeField] private Text player2CapturedText;
+    public Text player2NameText;
+    public Text player2ScoreText;
+    public Text player2HandText;
+    public Text player2CapturedText;
 
     [Header("Table UI")]
-    [SerializeField] private Text tableCardsText;
-    [SerializeField] private Text buildsText;
+    public Text tableCardsText;
+    public Text buildsText;
 
     [Header("Game State UI")]
-    [SerializeField] private Text currentTurnText;
-    [SerializeField] private Text gamePhaseText;
-    [SerializeField] private Text variantText;
+    public Text currentTurnText;
+    public Text gamePhaseText;
+    public Text variantText;
 
     private void Awake()
     {

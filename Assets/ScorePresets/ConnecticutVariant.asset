@@ -36,4 +36,4 @@ MonoBehaviour:
   pointsPerKing: 0
   pointsPerSweep: 1
   winScore: 21
-  tableCardAwardTiming: 1
+  tableCardAwardTiming: 0

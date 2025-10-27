@@ -13,12 +13,12 @@ MonoBehaviour:
   m_Name: RicksNewEnglandVariant
   m_EditorClassIdentifier: Assembly-CSharp::ScoreVariables
   variantName: Rick's New England
-  pointsForMostCards: 3
+  pointsForMostCards: 1
   pointsForMostSpades: 1
-  pointsForBigCasino: 2
+  pointsForBigCasino: 3
   bigCasinoSuit: 1
   bigCasinoRank: 9
-  pointsForLittleCasino: 1
+  pointsForLittleCasino: 2
   littleCasinoSuit: 3
   littleCasinoRank: 1
   pointsPerAce: 1
@@ -34,6 +34,6 @@ MonoBehaviour:
   pointsPerJack: 0
   pointsPerQueen: 0
   pointsPerKing: 0
-  pointsPerSweep: 1
+  pointsPerSweep: 0
   winScore: 21
   tableCardAwardTiming: 1
