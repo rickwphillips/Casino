@@ -338,22 +338,19 @@ public class GameManager : MonoBehaviour
             GameLogger.Instance.LogScoreAward(nonDealer.Name, nonDealerAces + " Ace(s)", nonDealerAces * sm.PointsPerAce);
         }
 
-        // Sweeps - only score if points are configured
-        if (sm.PointsPerSweep > 0)
-        {
-            dealer.AddScore(dealer.SweepCount * sm.PointsPerSweep);
-            nonDealer.AddScore(nonDealer.SweepCount * sm.PointsPerSweep);
+        // Sweeps - award based on configured value
+        dealer.AddScore(dealer.SweepCount * sm.PointsPerSweep);
+        nonDealer.AddScore(nonDealer.SweepCount * sm.PointsPerSweep);
 
-            if (dealer.SweepCount > 0)
-            {
-                AddToScoreBreakdown(dealer, "Sweeps", dealer.SweepCount * sm.PointsPerSweep);
-                GameLogger.Instance.LogScoreAward(dealer.Name, dealer.SweepCount + " Sweep(s)", dealer.SweepCount * sm.PointsPerSweep);
-            }
-            if (nonDealer.SweepCount > 0)
-            {
-                AddToScoreBreakdown(nonDealer, "Sweeps", nonDealer.SweepCount * sm.PointsPerSweep);
-                GameLogger.Instance.LogScoreAward(nonDealer.Name, nonDealer.SweepCount + " Sweep(s)", nonDealer.SweepCount * sm.PointsPerSweep);
-            }
+        if (dealer.SweepCount > 0)
+        {
+            AddToScoreBreakdown(dealer, "Sweeps", dealer.SweepCount * sm.PointsPerSweep);
+            GameLogger.Instance.LogScoreAward(dealer.Name, dealer.SweepCount + " Sweep(s)", dealer.SweepCount * sm.PointsPerSweep);
+        }
+        if (nonDealer.SweepCount > 0)
+        {
+            AddToScoreBreakdown(nonDealer, "Sweeps", nonDealer.SweepCount * sm.PointsPerSweep);
+            GameLogger.Instance.LogScoreAward(nonDealer.Name, nonDealer.SweepCount + " Sweep(s)", nonDealer.SweepCount * sm.PointsPerSweep);
         }
         
         GameLogger.Instance.LogCumulativeScores(dealer, nonDealer);
