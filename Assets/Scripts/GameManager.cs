@@ -44,15 +44,19 @@ public class GameManager : MonoBehaviour
     public void InitializeGame() {
         deck = new GameDeck();
         deck.Shuffle();
-        
+
         dealer = new GamePlayer("GamePlayer1");
         nonDealer = new GamePlayer("GamePlayer2");
-        
+
         dealerAI = new AIPlayer(dealer, dealerAIDifficulty);
         nonDealerAI = new AIPlayer(nonDealer, nonDealerAIDifficulty);
-        
+
         tableCards.Clear();
         cardsPlayedThisRound = 0;
+
+        // Clear score breakdowns for new game
+        dealerScoreBreakdown.Clear();
+        nonDealerScoreBreakdown.Clear();
         
         DealInitialRound();
         

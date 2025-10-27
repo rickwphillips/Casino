@@ -91,15 +91,24 @@ public class ScoringManager : MonoBehaviour
         }
 
         string variantKey = variant.VariantName.ToLower();
-        
+
         if (_variants.ContainsKey(variantKey))
         {
-            Debug.LogWarning($"Variant '{variant.VariantName}' is already registered! Skipping duplicate.");
-            return;
-        }
+            // Update existing variant instead of skipping
+            _variants[variantKey] = variant.CreateConfig();
+            Debug.Log($"Reloaded variant: {variant.VariantName}");
 
-        _variants.Add(variantKey, variant.CreateConfig());
-        Debug.Log($"Registered variant: {variant.VariantName}");
+            // If this is the currently active variant, update the current config
+            if (_currentConfig != null && _currentConfig.VariantName.ToLower() == variantKey)
+            {
+                _currentConfig = _variants[variantKey];
+            }
+        }
+        else
+        {
+            _variants.Add(variantKey, variant.CreateConfig());
+            Debug.Log($"Registered variant: {variant.VariantName}");
+        }
     }
 
     public void SetVariant(string variantName)
