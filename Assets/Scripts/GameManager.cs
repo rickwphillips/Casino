@@ -569,7 +569,7 @@ public class GameManager : MonoBehaviour
         }
 
         var ai = currentPlayer == dealer ? dealerAI : nonDealerAI;
-        var bestMove = ai.GetBestMove(tableCards);
+        var bestMove = ai.GetBestMove(tableCards, activeBuilds);
         PlayCard(currentPlayer, bestMove);
 
         if (useAI && currentPhase == GamePhase.Playing) {
