@@ -18,6 +18,10 @@ public class ScoringManager : MonoBehaviour
     [SerializeField] private ScoreVariables connecticutVariant;
     [SerializeField] private ScoreVariables customVariant;
 
+    [Header("Active Variant")]
+    [Tooltip("Select which variant to use for scoring")]
+    [SerializeField] private string selectedVariant = "Connecticut";
+
     // Configuration storage
     private readonly Dictionary<string, ScoringConfig> _variants = new();
     private ScoringConfig _currentConfig;
@@ -52,8 +56,16 @@ public class ScoringManager : MonoBehaviour
             RegisterVariant(customVariant);
         }
 
-        // Set default variant
-        SetVariant(connecticutVariant.VariantName);
+        // Set variant based on inspector selection
+        if (!string.IsNullOrEmpty(selectedVariant))
+        {
+            SetVariant(selectedVariant);
+        }
+        else
+        {
+            // Fallback to Connecticut if no selection
+            SetVariant(connecticutVariant.VariantName);
+        }
     }
 
     private void RegisterVariant(ScoreVariables variant)
