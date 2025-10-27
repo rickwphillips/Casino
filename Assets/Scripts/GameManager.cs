@@ -321,21 +321,31 @@ public class GameManager : MonoBehaviour
             GameLogger.Instance.LogScoreAward(nonDealer.Name, $"Little Casino ({sm.LittleCasinoRank} of {sm.LittleCasinoSuit})", sm.PointsForLittleCasino);
         }
 
-        // Aces
-        int dealerAces = CountAces(dealer.CapturedCards.ToList());
-        int nonDealerAces = CountAces(nonDealer.CapturedCards.ToList());
-        dealer.AddScore(dealerAces * sm.PointsPerAce);
-        nonDealer.AddScore(nonDealerAces * sm.PointsPerAce);
+        // Individual card rank scoring - check all ranks for configured points
+        foreach (PlayingCard.Rank rank in System.Enum.GetValues(typeof(PlayingCard.Rank)))
+        {
+            int pointsPerCard = GetPointsForRank(sm, rank);
+            if (pointsPerCard > 0)
+            {
+                int dealerCount = CountCardsOfRank(dealer.CapturedCards.ToList(), rank);
+                int nonDealerCount = CountCardsOfRank(nonDealer.CapturedCards.ToList(), rank);
 
-        if (dealerAces > 0)
-        {
-            AddToScoreBreakdown(dealer, "Aces", dealerAces * sm.PointsPerAce);
-            GameLogger.Instance.LogScoreAward(dealer.Name, dealerAces + " Ace(s)", dealerAces * sm.PointsPerAce);
-        }
-        if (nonDealerAces > 0)
-        {
-            AddToScoreBreakdown(nonDealer, "Aces", nonDealerAces * sm.PointsPerAce);
-            GameLogger.Instance.LogScoreAward(nonDealer.Name, nonDealerAces + " Ace(s)", nonDealerAces * sm.PointsPerAce);
+                if (dealerCount > 0)
+                {
+                    int points = dealerCount * pointsPerCard;
+                    dealer.AddScore(points);
+                    AddToScoreBreakdown(dealer, GetRankName(rank), points);
+                    GameLogger.Instance.LogScoreAward(dealer.Name, $"{dealerCount} {GetRankName(rank)}", points);
+                }
+
+                if (nonDealerCount > 0)
+                {
+                    int points = nonDealerCount * pointsPerCard;
+                    nonDealer.AddScore(points);
+                    AddToScoreBreakdown(nonDealer, GetRankName(rank), points);
+                    GameLogger.Instance.LogScoreAward(nonDealer.Name, $"{nonDealerCount} {GetRankName(rank)}", points);
+                }
+            }
         }
 
         // Sweeps - award based on configured value
@@ -372,11 +382,47 @@ public class GameManager : MonoBehaviour
     private int CountSpades(List<PlayingCard> cards) =>
         cards.Count(card => card.suit == PlayingCard.Suit.Spades);
 
-    private int CountAces(List<PlayingCard> cards) =>
-        cards.Count(card => card.rank == PlayingCard.Rank.Ace);
+    private int CountCardsOfRank(List<PlayingCard> cards, PlayingCard.Rank rank) =>
+        cards.Count(card => card.rank == rank);
 
     private bool HasCard(List<PlayingCard> cards, PlayingCard.Suit suit, PlayingCard.Rank rank) =>
         cards.Any(card => card.suit == suit && card.rank == rank);
+
+    private int GetPointsForRank(ScoringManager sm, PlayingCard.Rank rank) => rank switch
+    {
+        PlayingCard.Rank.Ace => sm.PointsPerAce,
+        PlayingCard.Rank.Two => sm.PointsPerTwo,
+        PlayingCard.Rank.Three => sm.PointsPerThree,
+        PlayingCard.Rank.Four => sm.PointsPerFour,
+        PlayingCard.Rank.Five => sm.PointsPerFive,
+        PlayingCard.Rank.Six => sm.PointsPerSix,
+        PlayingCard.Rank.Seven => sm.PointsPerSeven,
+        PlayingCard.Rank.Eight => sm.PointsPerEight,
+        PlayingCard.Rank.Nine => sm.PointsPerNine,
+        PlayingCard.Rank.Ten => sm.PointsPerTen,
+        PlayingCard.Rank.Jack => sm.PointsPerJack,
+        PlayingCard.Rank.Queen => sm.PointsPerQueen,
+        PlayingCard.Rank.King => sm.PointsPerKing,
+        _ => 0
+    };
+
+    private string GetRankName(PlayingCard.Rank rank) => rank switch
+    {
+        PlayingCard.Rank.Ace => "Aces",
+        PlayingCard.Rank.Two => "Twos",
+        PlayingCard.Rank.Three => "Threes",
+        PlayingCard.Rank.Four => "Fours",
+        PlayingCard.Rank.Five => "Fives",
+        PlayingCard.Rank.Six => "Sixes",
+        PlayingCard.Rank.Seven => "Sevens",
+        PlayingCard.Rank.Eight => "Eights",
+        PlayingCard.Rank.Nine => "Nines",
+        PlayingCard.Rank.Ten => "Tens",
+        PlayingCard.Rank.Jack => "Jacks",
+        PlayingCard.Rank.Queen => "Queens",
+        PlayingCard.Rank.King => "Kings",
+        _ => rank.ToString()
+    };
     
     private void SwapDealer() {
         (dealer, nonDealer) = (nonDealer, dealer);
