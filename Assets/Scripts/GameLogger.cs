@@ -109,6 +109,13 @@ public class GameLogger : MonoBehaviour
     public void LogBuildCaptured(GamePlayer player, Build build) =>
         Debug.Log($"    ✓ CAPTURED BUILD of {build.DeclaredValue}: {string.Join(" + ", build.Cards.Select(c => c.ToString()))}");
 
+    public void LogBuildModified(GamePlayer player, Build build, PlayingCard addedCard, int newValue) => new[] {
+        $"    ⚒ BUILD MODIFIED: {player.Name} adds {addedCard} to build",
+        $"    New build value: {newValue} (was {build.DeclaredValue - CaptureChecker.GetCardValue(addedCard)})",
+        $"    Ownership transferred to {player.Name}"
+    }.ToList()
+     .ForEach(Debug.Log);
+
     public void LogRemainingBuild(Build build) =>
         Debug.Log($"Remaining build of {build.DeclaredValue} goes to {build.Owner.Name}: {string.Join(" + ", build.Cards.Select(c => c.ToString()))}");
 

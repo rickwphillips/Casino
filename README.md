@@ -61,10 +61,21 @@ On your turn, you must play one card from your hand. When you play a card, one o
 - Your opponent can capture your build if they have the appropriate card
 - The build value must equal the sum of all cards in the build (no cheating!)
 
+**Modifying Opponent Builds (Singular Builds Only):**
+Your opponent can **increase the value** of your build by adding a card from their hand:
+- **Example**: You create a build of 7 (3 + 4). Your opponent has a 2 and a 9 in hand
+  - They can add their 2 to your build, making it a build of 9 (3 + 4 + 2)
+  - They declare "Building Nines" and now **own** the build
+  - They must have the 9 in hand to capture it on their next turn
+- **Multi-Builds Cannot Be Modified**: If a build contains multiple separate combinations (e.g., a build of 7 with both "6 + A" AND "5 + 2"), it becomes a multi-build and **cannot** be modified by opponents
+- The new value must be **greater** than the original build value
+- Ownership transfers to the player who last modified the build
+
 **Strategic Advantage:**
 - Builds protect valuable combinations from your opponent
 - Builds can help you capture more cards at once
 - Creating builds when you don't have the capture card is illegal and will be rejected
+- Modifying opponent builds lets you steal their setup while increasing the capture value
 
 #### Special: Sweeps
 - If you capture ALL cards from the table AND all builds (leaving everything empty), you score a **Sweep**

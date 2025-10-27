@@ -389,6 +389,47 @@ public class GameManager : MonoBehaviour
         return true;
     }
 
+    public bool ModifyBuild(GamePlayer player, Build build, PlayingCard handCard, int newDeclaredValue)
+    {
+        // Cannot modify multi-builds
+        if (build.IsMultiBuild)
+        {
+            Debug.LogWarning($"Cannot modify a multi-build!");
+            return false;
+        }
+
+        // Must have the new capture card in hand
+        if (!PlayerCanCaptureValue(player, newDeclaredValue))
+        {
+            Debug.LogWarning($"{player.Name} does not have a card with value {newDeclaredValue} to capture this build!");
+            return false;
+        }
+
+        // Calculate new total: existing build + hand card
+        int currentBuildValue = build.Cards.Sum(card => CaptureChecker.GetCardValue(card));
+        int handCardValue = CaptureChecker.GetCardValue(handCard);
+        int actualNewValue = currentBuildValue + handCardValue;
+
+        if (actualNewValue != newDeclaredValue)
+        {
+            Debug.LogWarning($"Build sum {actualNewValue} does not match declared value {newDeclaredValue}!");
+            return false;
+        }
+
+        // New value must be greater than old value
+        if (newDeclaredValue <= build.DeclaredValue)
+        {
+            Debug.LogWarning($"New build value {newDeclaredValue} must be greater than current value {build.DeclaredValue}!");
+            return false;
+        }
+
+        // Modify the build (adds card, changes value, transfers ownership)
+        build.ModifyBuild(handCard, newDeclaredValue, player);
+
+        GameLogger.Instance.LogBuildModified(player, build, handCard, newDeclaredValue);
+        return true;
+    }
+
     private void CaptureBuild(GamePlayer player, Build build)
     {
         // Add all build cards to captured pile
