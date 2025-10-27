@@ -13,6 +13,13 @@ public class ScoringManager : MonoBehaviour
         private set => _instance = value;
     }
 
+    public enum VariantSelection
+    {
+        Standard,
+        Connecticut,
+        Custom
+    }
+
     [Header("Scoring Presets")]
     [SerializeField] private ScoreVariables standardVariant;
     [SerializeField] private ScoreVariables connecticutVariant;
@@ -20,7 +27,7 @@ public class ScoringManager : MonoBehaviour
 
     [Header("Active Variant")]
     [Tooltip("Select which variant to use for scoring")]
-    [SerializeField] private string selectedVariant = "Connecticut";
+    [SerializeField] private VariantSelection selectedVariant = VariantSelection.Connecticut;
 
     // Configuration storage
     private readonly Dictionary<string, ScoringConfig> _variants = new();
@@ -57,14 +64,21 @@ public class ScoringManager : MonoBehaviour
         }
 
         // Set variant based on inspector selection
-        if (!string.IsNullOrEmpty(selectedVariant))
+        string variantName = selectedVariant switch
         {
-            SetVariant(selectedVariant);
+            VariantSelection.Standard => standardVariant?.VariantName,
+            VariantSelection.Connecticut => connecticutVariant?.VariantName,
+            VariantSelection.Custom => customVariant?.VariantName,
+            _ => connecticutVariant?.VariantName
+        };
+
+        if (!string.IsNullOrEmpty(variantName))
+        {
+            SetVariant(variantName);
         }
         else
         {
-            // Fallback to Connecticut if no selection
-            SetVariant(connecticutVariant.VariantName);
+            Debug.LogError($"Selected variant {selectedVariant} has no assigned ScoreVariables asset!");
         }
     }
 
