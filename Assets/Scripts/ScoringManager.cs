@@ -116,6 +116,7 @@ public class ScoringManager : MonoBehaviour
     public int PointsPerKing => _currentConfig.PointsPerKing;
     public int PointsPerSweep => _currentConfig.PointsPerSweep;
     public int WinScore => _currentConfig.WinScore;
+    public ScoreVariables.TableCardAwardTiming TableCardTiming => _currentConfig.TableCardTiming;
     public string CurrentVariant => _currentConfig.VariantName;
 
     // Variant queries

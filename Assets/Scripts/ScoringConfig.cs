@@ -178,6 +178,13 @@ public class ScoringConfig
         set => _winScore = value;
     }
 
+    private ScoreVariables.TableCardAwardTiming _tableCardTiming;
+    public ScoreVariables.TableCardAwardTiming TableCardTiming
+    {
+        get => _tableCardTiming;
+        set => _tableCardTiming = value;
+    }
+
     // Constructor with default values
     public ScoringConfig()
     {
@@ -205,5 +212,6 @@ public class ScoringConfig
         _pointsPerKing = 0;
         _pointsPerSweep = 1;
         _winScore = 21;
+        _tableCardTiming = ScoreVariables.TableCardAwardTiming.AfterEachHand;
     }
 }

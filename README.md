@@ -86,10 +86,27 @@ Your opponent can **increase the value** of your build by adding a card from the
 - Play continues until the deck is empty
 - No additional cards are dealt to the table after the initial deal
 
-#### End of Round
-- When both players have played all cards and the deck is empty, the round ends
-- Any remaining cards on the table go to the **last player who made a capture**
-- Scoring then occurs
+#### End of Hand/Round Rules
+
+**Remaining Table Cards:**
+The game can be configured to award remaining table cards in two ways:
+
+1. **After Each Hand (Traditional)**:
+   - After each 4-card hand, remaining table cards go to the last player who made a capture
+   - This happens 6 times per full game (52 cards ÷ 4 cards per hand ÷ 2 players)
+   - Builds also awarded to their owners after each hand
+
+2. **Only at Game End (Variant)**:
+   - Table cards remain on the table throughout all hands
+   - Only when the entire deck is exhausted do remaining cards go to the last capturer
+   - Builds persist across hands until the game ends
+   - This creates a longer strategic game with persistent table state
+
+The timing is configurable via the scoring variant settings.
+
+**When Scoring Occurs:**
+- Scoring happens when the entire deck is exhausted (all 52 cards played)
+- After scoring, if no one has won, the dealer role swaps and a new game begins
 
 ### Scoring
 
@@ -171,6 +188,13 @@ The game supports multiple scoring variants configured via ScriptableObjects:
 - **Standard**: Traditional Casino scoring
 - **Connecticut**: Connecticut variant rules
 - **Custom**: Create your own variant
+
+Each variant can be configured with:
+- **Point values** for all scoring categories
+- **Win score** (default 21)
+- **Table Card Award Timing**:
+  - `AfterEachHand` (Traditional): Award remaining cards after each 4-card hand
+  - `OnlyAtGameEnd` (Variant): Keep cards on table until entire deck is played
 
 To change variants, modify the ScoringManager settings in the Unity inspector.
 

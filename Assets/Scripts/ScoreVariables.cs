@@ -78,6 +78,15 @@ public class ScoreVariables : ScriptableObject
     [Range(1, 50)]
     [SerializeField] private int winScore = 21;
 
+    [Tooltip("When to award remaining table cards to last capturer: AfterEachHand (traditional) or OnlyAtGameEnd")]
+    [SerializeField] private TableCardAwardTiming tableCardAwardTiming = TableCardAwardTiming.AfterEachHand;
+
+    public enum TableCardAwardTiming
+    {
+        AfterEachHand,      // Traditional: Award after each 4-card hand
+        OnlyAtGameEnd       // Variant: Only award when entire deck is exhausted
+    }
+
     // Public accessors with validation
     public string VariantName => variantName;
     public int PointsForMostCards => Mathf.Max(0, pointsForMostCards);
@@ -103,6 +112,7 @@ public class ScoreVariables : ScriptableObject
     public int PointsPerKing => Mathf.Max(0, pointsPerKing);
     public int PointsPerSweep => Mathf.Max(0, pointsPerSweep);
     public int WinScore => Mathf.Max(1, winScore);
+    public TableCardAwardTiming TableCardTiming => tableCardAwardTiming;
 
     // Method to create a ScoringConfig from these variables
     public ScoringConfig CreateConfig()
@@ -132,7 +142,8 @@ public class ScoreVariables : ScriptableObject
             PointsPerQueen = PointsPerQueen,
             PointsPerKing = PointsPerKing,
             PointsPerSweep = PointsPerSweep,
-            WinScore = WinScore
+            WinScore = WinScore,
+            TableCardTiming = TableCardTiming
         };
     }
 

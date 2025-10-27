@@ -174,25 +174,32 @@ public class GameManager : MonoBehaviour
     {
         GameLogger.Instance.LogRoundEnd(1, cardsPlayedThisRound);
 
-        // Any remaining table cards go to the last player who captured
-        if (tableCards.Count > 0 && lastPlayerToCaptureThisRound != null)
+        bool isDeckEmpty = deck.CardsRemaining() == 0;
+        bool awardNow = ScoringManager.Instance.TableCardTiming == ScoreVariables.TableCardAwardTiming.AfterEachHand ||
+                        (ScoringManager.Instance.TableCardTiming == ScoreVariables.TableCardAwardTiming.OnlyAtGameEnd && isDeckEmpty);
+
+        // Award remaining table cards based on configuration
+        if (awardNow && tableCards.Count > 0 && lastPlayerToCaptureThisRound != null)
         {
             GameLogger.Instance.LogRemainingTableCards(lastPlayerToCaptureThisRound, tableCards);
             lastPlayerToCaptureThisRound.AddCapturedCards(new List<PlayingCard>(tableCards));
             tableCards.Clear();
         }
 
-        // Any remaining builds go to the build owner
-        foreach (var build in activeBuilds.ToList())
+        // Award remaining builds based on configuration
+        if (awardNow)
         {
-            build.Owner.AddCapturedCards(build.Cards.ToList());
-            GameLogger.Instance.LogRemainingBuild(build);
+            foreach (var build in activeBuilds.ToList())
+            {
+                build.Owner.AddCapturedCards(build.Cards.ToList());
+                GameLogger.Instance.LogRemainingBuild(build);
+            }
+            activeBuilds.Clear();
         }
-        activeBuilds.Clear();
 
         cardsPlayedThisRound = 0;
-        
-        if (deck.CardsRemaining() == 0)
+
+        if (isDeckEmpty)
         {
             GameLogger.Instance.LogDeckStatus(0);
             ScoreRound();
