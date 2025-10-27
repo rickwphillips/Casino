@@ -131,6 +131,63 @@ public class GameLogger : MonoBehaviour
         $"{new string('=', 80)}\n"
     }.ToList()
      .ForEach(Debug.Log);
+
+    public void LogGameOverWithBreakdown(GamePlayer winner, GamePlayer loser, int winScore,
+        Dictionary<string, int> winnerBreakdown, Dictionary<string, int> loserBreakdown)
+    {
+        var logs = new List<string>
+        {
+            $"\n{new string('=', 80)}",
+            "GAME OVER!",
+            new string('=', 80),
+            $"\nWINNER: {winner.Name}",
+            $"Final Score: {winner.Score} points (needed {winScore} to win)",
+            "",
+            "DETAILED SCORE BREAKDOWN:",
+            new string('-', 80),
+            ""
+        };
+
+        // Winner breakdown
+        logs.Add($"{winner.Name}'s Scoring:");
+        if (winnerBreakdown.Count > 0)
+        {
+            foreach (var kvp in winnerBreakdown.OrderByDescending(x => x.Value))
+            {
+                logs.Add($"  {kvp.Key,-20} {kvp.Value,3} pts");
+            }
+            logs.Add($"  {new string('-', 28)}");
+            logs.Add($"  {"TOTAL",-20} {winner.Score,3} pts");
+        }
+        else
+        {
+            logs.Add($"  No points scored");
+        }
+
+        logs.Add("");
+
+        // Loser breakdown
+        logs.Add($"{loser.Name}'s Scoring:");
+        if (loserBreakdown.Count > 0)
+        {
+            foreach (var kvp in loserBreakdown.OrderByDescending(x => x.Value))
+            {
+                logs.Add($"  {kvp.Key,-20} {kvp.Value,3} pts");
+            }
+            logs.Add($"  {new string('-', 28)}");
+            logs.Add($"  {"TOTAL",-20} {loser.Score,3} pts");
+        }
+        else
+        {
+            logs.Add($"  No points scored");
+        }
+
+        logs.Add("");
+        logs.Add(new string('=', 80));
+        logs.Add("");
+
+        logs.ForEach(Debug.Log);
+    }
     
     private List<string> ConvertCardsToStrings(List<PlayingCard> cards) =>
         cards.Select(card => card.ToString()).ToList();
