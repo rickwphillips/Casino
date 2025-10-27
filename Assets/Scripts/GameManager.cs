@@ -223,8 +223,14 @@ public class GameManager : MonoBehaviour
         GameLogger.Instance.LogNewDeal(1);
         nonDealer.AddCards(deck.DrawCards(HAND_SIZE));
         dealer.AddCards(deck.DrawCards(HAND_SIZE));
-        
+
         currentPlayer = nonDealer;
+
+        // Restart AI turn loop if using AI
+        if (useAI && currentPhase == GamePhase.Playing)
+        {
+            Invoke(nameof(AIPlayTurn), 1f);
+        }
     }
     
     private void ScoreRound()
@@ -448,11 +454,18 @@ public class GameManager : MonoBehaviour
     
     public void AIPlayTurn() {
         if (!useAI || currentPhase == GamePhase.GameOver) return;
-        
+
+        // Check if current player has cards to play
+        if (currentPlayer.HandSize() == 0)
+        {
+            Debug.LogWarning($"AIPlayTurn called but {currentPlayer.Name} has no cards!");
+            return;
+        }
+
         var ai = currentPlayer == dealer ? dealerAI : nonDealerAI;
         var bestMove = ai.GetBestMove(tableCards);
         PlayCard(currentPlayer, bestMove);
-        
+
         if (useAI && currentPhase == GamePhase.Playing) {
             Invoke(nameof(AIPlayTurn), 1f);
         }
