@@ -10,17 +10,20 @@ public class GameUISetup : MonoBehaviour
     [ContextMenu("Setup UI")]
     public void SetupUI()
     {
-        // Create Canvas
-        Canvas canvas = GetComponentInChildren<Canvas>();
-        if (canvas == null)
+        // Clean up any existing UI first
+        Canvas existingCanvas = GetComponentInChildren<Canvas>();
+        if (existingCanvas != null)
         {
-            GameObject canvasObj = new GameObject("GameCanvas");
-            canvasObj.transform.SetParent(transform);
-            canvas = canvasObj.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvasObj.AddComponent<CanvasScaler>();
-            canvasObj.AddComponent<GraphicRaycaster>();
+            DestroyImmediate(existingCanvas.gameObject);
         }
+
+        // Create Canvas
+        GameObject canvasObj = new GameObject("GameCanvas");
+        canvasObj.transform.SetParent(transform);
+        Canvas canvas = canvasObj.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvasObj.AddComponent<CanvasScaler>();
+        canvasObj.AddComponent<GraphicRaycaster>();
 
         // Create GameUIManager GameObject
         GameObject uiManagerObj = new GameObject("GameUIManager");
