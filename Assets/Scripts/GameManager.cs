@@ -208,14 +208,14 @@ public class GameManager : MonoBehaviour
             GameLogger.Instance.LogDeckStatus(0);
             ScoreRound();
             SwapDealer();
-            
-            if (dealer.Score >= ScoringManager.Instance.WinScore || 
+
+            if (dealer.Score >= ScoringManager.Instance.WinScore ||
                 nonDealer.Score >= ScoringManager.Instance.WinScore)
             {
                 EndGame();
                 return;
             }
-            
+
             deck = new GameDeck();
             deck.Shuffle();
         }
@@ -223,17 +223,25 @@ public class GameManager : MonoBehaviour
         {
             GameLogger.Instance.LogDeckStatus(deck.CardsRemaining());
         }
-        
-        GameLogger.Instance.LogNewDeal(1);
-        nonDealer.AddCards(deck.DrawCards(HAND_SIZE));
-        dealer.AddCards(deck.DrawCards(HAND_SIZE));
 
-        currentPlayer = nonDealer;
-
-        // Restart AI turn loop if using AI
-        if (useAI && currentPhase == GamePhase.Playing)
+        // Only deal new cards if there are cards remaining
+        if (deck.CardsRemaining() >= HAND_SIZE * 2)
         {
-            Invoke(nameof(AIPlayTurn), 1f);
+            GameLogger.Instance.LogNewDeal(1);
+            nonDealer.AddCards(deck.DrawCards(HAND_SIZE));
+            dealer.AddCards(deck.DrawCards(HAND_SIZE));
+
+            currentPlayer = nonDealer;
+
+            // Restart AI turn loop if using AI
+            if (useAI && currentPhase == GamePhase.Playing)
+            {
+                Invoke(nameof(AIPlayTurn), 1f);
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"Not enough cards in deck to deal. Remaining: {deck.CardsRemaining()}");
         }
     }
     
