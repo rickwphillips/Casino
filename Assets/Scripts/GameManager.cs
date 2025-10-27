@@ -218,30 +218,38 @@ public class GameManager : MonoBehaviour
 
             deck = new GameDeck();
             deck.Shuffle();
+
+            // Deal initial table cards for new game
+            tableCards.Clear();
+            tableCards.AddRange(deck.DrawCards(TABLE_SIZE));
+            GameLogger.Instance.LogNewDeal(1);
+            nonDealer.AddCards(deck.DrawCards(HAND_SIZE));
+            dealer.AddCards(deck.DrawCards(HAND_SIZE));
         }
         else
         {
             GameLogger.Instance.LogDeckStatus(deck.CardsRemaining());
-        }
 
-        // Only deal new cards if there are cards remaining
-        if (deck.CardsRemaining() >= HAND_SIZE * 2)
-        {
-            GameLogger.Instance.LogNewDeal(1);
-            nonDealer.AddCards(deck.DrawCards(HAND_SIZE));
-            dealer.AddCards(deck.DrawCards(HAND_SIZE));
-
-            currentPlayer = nonDealer;
-
-            // Restart AI turn loop if using AI
-            if (useAI && currentPhase == GamePhase.Playing)
+            // Only deal new cards if there are cards remaining
+            if (deck.CardsRemaining() >= HAND_SIZE * 2)
             {
-                Invoke(nameof(AIPlayTurn), 1f);
+                GameLogger.Instance.LogNewDeal(1);
+                nonDealer.AddCards(deck.DrawCards(HAND_SIZE));
+                dealer.AddCards(deck.DrawCards(HAND_SIZE));
+            }
+            else
+            {
+                Debug.LogWarning($"Not enough cards in deck to deal. Remaining: {deck.CardsRemaining()}");
+                return;
             }
         }
-        else
+
+        currentPlayer = nonDealer;
+
+        // Restart AI turn loop if using AI
+        if (useAI && currentPhase == GamePhase.Playing)
         {
-            Debug.LogWarning($"Not enough cards in deck to deal. Remaining: {deck.CardsRemaining()}");
+            Invoke(nameof(AIPlayTurn), 1f);
         }
     }
     
