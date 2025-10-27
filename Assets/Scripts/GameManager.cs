@@ -569,8 +569,52 @@ public class GameManager : MonoBehaviour
         }
 
         var ai = currentPlayer == dealer ? dealerAI : nonDealerAI;
-        var bestMove = ai.GetBestMove(tableCards, activeBuilds);
-        PlayCard(currentPlayer, bestMove);
+        var action = ai.GetBestAction(tableCards, activeBuilds);
+
+        // Execute the AI's chosen action
+        switch (action.Type)
+        {
+            case AIPlayer.AIAction.ActionType.PlayCard:
+                PlayCard(currentPlayer, action.CardIndex);
+                break;
+
+            case AIPlayer.AIAction.ActionType.CreateBuild:
+                var handCard = currentPlayer.PlayCard(action.CardIndex);
+                if (handCard != null)
+                {
+                    bool buildCreated = CreateBuild(currentPlayer, handCard, action.BuildCards, action.DeclaredValue);
+                    if (buildCreated)
+                    {
+                        cardsPlayedThisRound++;
+
+                        // Switch turns
+                        if (cardsPlayedThisRound == HAND_SIZE * 2)
+                        {
+                            EndRound();
+                        }
+                        else
+                        {
+                            currentPlayer = (currentPlayer == dealer) ? nonDealer : dealer;
+                        }
+                    }
+                    else
+                    {
+                        // Build creation failed, put card on table as trail
+                        Debug.LogWarning($"AI build creation failed, trailing card instead");
+                        tableCards.Add(handCard);
+                        GameLogger.Instance.LogTrail(currentPlayer, handCard, tableCards);
+                        cardsPlayedThisRound++;
+                        currentPlayer = (currentPlayer == dealer) ? nonDealer : dealer;
+                    }
+                }
+                break;
+
+            case AIPlayer.AIAction.ActionType.ModifyBuild:
+                // TODO: Implement build modification
+                Debug.LogWarning("AI build modification not yet implemented");
+                PlayCard(currentPlayer, action.CardIndex);
+                break;
+        }
 
         if (useAI && currentPhase == GamePhase.Playing) {
             Invoke(nameof(AIPlayTurn), 1f);
