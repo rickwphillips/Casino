@@ -293,32 +293,32 @@ public class GameManager : MonoBehaviour
             GameLogger.Instance.LogScoreAward(dealer.Name, "Most spades (" + dealerSpades + ")", sm.PointsForMostSpades);
         }
 
-        // Big Casino (10 of Diamonds)
-        if (HasCard(dealer.CapturedCards.ToList(), PlayingCard.Suit.Diamonds, PlayingCard.Rank.Ten))
+        // Big Casino - use configured card
+        if (HasCard(dealer.CapturedCards.ToList(), sm.BigCasinoSuit, sm.BigCasinoRank))
         {
             dealer.AddScore(sm.PointsForBigCasino);
             AddToScoreBreakdown(dealer, "Big Casino", sm.PointsForBigCasino);
-            GameLogger.Instance.LogScoreAward(dealer.Name, "Big Casino (10 of Diamonds)", sm.PointsForBigCasino);
+            GameLogger.Instance.LogScoreAward(dealer.Name, $"Big Casino ({sm.BigCasinoRank} of {sm.BigCasinoSuit})", sm.PointsForBigCasino);
         }
-        else if (HasCard(nonDealer.CapturedCards.ToList(), PlayingCard.Suit.Diamonds, PlayingCard.Rank.Ten))
+        else if (HasCard(nonDealer.CapturedCards.ToList(), sm.BigCasinoSuit, sm.BigCasinoRank))
         {
             nonDealer.AddScore(sm.PointsForBigCasino);
             AddToScoreBreakdown(nonDealer, "Big Casino", sm.PointsForBigCasino);
-            GameLogger.Instance.LogScoreAward(nonDealer.Name, "Big Casino (10 of Diamonds)", sm.PointsForBigCasino);
+            GameLogger.Instance.LogScoreAward(nonDealer.Name, $"Big Casino ({sm.BigCasinoRank} of {sm.BigCasinoSuit})", sm.PointsForBigCasino);
         }
 
-        // Little Casino (2 of Spades)
-        if (HasCard(dealer.CapturedCards.ToList(), PlayingCard.Suit.Spades, PlayingCard.Rank.Two))
+        // Little Casino - use configured card
+        if (HasCard(dealer.CapturedCards.ToList(), sm.LittleCasinoSuit, sm.LittleCasinoRank))
         {
             dealer.AddScore(sm.PointsForLittleCasino);
             AddToScoreBreakdown(dealer, "Little Casino", sm.PointsForLittleCasino);
-            GameLogger.Instance.LogScoreAward(dealer.Name, "Little Casino (2 of Spades)", sm.PointsForLittleCasino);
+            GameLogger.Instance.LogScoreAward(dealer.Name, $"Little Casino ({sm.LittleCasinoRank} of {sm.LittleCasinoSuit})", sm.PointsForLittleCasino);
         }
-        else if (HasCard(nonDealer.CapturedCards.ToList(), PlayingCard.Suit.Spades, PlayingCard.Rank.Two))
+        else if (HasCard(nonDealer.CapturedCards.ToList(), sm.LittleCasinoSuit, sm.LittleCasinoRank))
         {
             nonDealer.AddScore(sm.PointsForLittleCasino);
             AddToScoreBreakdown(nonDealer, "Little Casino", sm.PointsForLittleCasino);
-            GameLogger.Instance.LogScoreAward(nonDealer.Name, "Little Casino (2 of Spades)", sm.PointsForLittleCasino);
+            GameLogger.Instance.LogScoreAward(nonDealer.Name, $"Little Casino ({sm.LittleCasinoRank} of {sm.LittleCasinoSuit})", sm.PointsForLittleCasino);
         }
 
         // Aces
