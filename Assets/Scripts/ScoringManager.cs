@@ -27,7 +27,7 @@ public class ScoringManager : MonoBehaviour
 
     [Header("Active Variant")]
     [Tooltip("Select which variant to use for scoring")]
-    [SerializeField] private VariantSelection selectedVariant = VariantSelection.Connecticut;
+    [SerializeField] private VariantSelection selectedVariant;
 
     // Configuration storage
     private readonly Dictionary<string, ScoringConfig> _variants = new();
