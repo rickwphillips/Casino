@@ -107,7 +107,7 @@ public class GameUISetup : MonoBehaviour
         text.fontSize = fontSize;
         text.alignment = alignment;
         text.color = Color.white;
-        text.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+        text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
         return text;
     }
