@@ -82,7 +82,7 @@ public class CaptureChecker {
                (card.suit == PlayingCard.Suit.Spades && card.rank == PlayingCard.Rank.Two);
     }
     
-    private static int GetCardValue(PlayingCard card) => card.rank switch {
+    public static int GetCardValue(PlayingCard card) => card.rank switch {
         PlayingCard.Rank.Ace => 1,
         PlayingCard.Rank.Two => 2,
         PlayingCard.Rank.Three => 3,

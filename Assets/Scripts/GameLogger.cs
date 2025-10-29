@@ -100,9 +100,28 @@ public class GameLogger : MonoBehaviour
     }.ToList()
      .ForEach(Debug.Log);
     
+    public void LogBuildCreated(GamePlayer player, Build build) => new[] {
+        $"    ⚒ BUILD CREATED: {player.Name} builds for {build.DeclaredValue}",
+        $"    Cards in build: {string.Join(" + ", build.Cards.Select(c => c.ToString()))}"
+    }.ToList()
+     .ForEach(Debug.Log);
+
+    public void LogBuildCaptured(GamePlayer player, Build build) =>
+        Debug.Log($"    ✓ CAPTURED BUILD of {build.DeclaredValue}: {string.Join(" + ", build.Cards.Select(c => c.ToString()))}");
+
+    public void LogBuildModified(GamePlayer player, Build build, PlayingCard addedCard, int newValue) => new[] {
+        $"    ⚒ BUILD MODIFIED: {player.Name} adds {addedCard} to build",
+        $"    New build value: {newValue} (was {build.DeclaredValue - CaptureChecker.GetCardValue(addedCard)})",
+        $"    Ownership transferred to {player.Name}"
+    }.ToList()
+     .ForEach(Debug.Log);
+
+    public void LogRemainingBuild(Build build) =>
+        Debug.Log($"Remaining build of {build.DeclaredValue} goes to {build.Owner.Name}: {string.Join(" + ", build.Cards.Select(c => c.ToString()))}");
+
     public void LogDealerSwap(GamePlayer newDealer) =>
         Debug.Log($"\nDEALER SWAP: {newDealer.Name} is now the dealer");
-    
+
     public void LogGameOver(GamePlayer winner, int winScore) => new[] {
         $"\n{new string('=', 80)}",
         "GAME OVER!",
@@ -112,6 +131,63 @@ public class GameLogger : MonoBehaviour
         $"{new string('=', 80)}\n"
     }.ToList()
      .ForEach(Debug.Log);
+
+    public void LogGameOverWithBreakdown(GamePlayer winner, GamePlayer loser, int winScore,
+        Dictionary<string, int> winnerBreakdown, Dictionary<string, int> loserBreakdown)
+    {
+        var logs = new List<string>
+        {
+            $"\n{new string('=', 80)}",
+            "GAME OVER!",
+            new string('=', 80),
+            $"\nWINNER: {winner.Name}",
+            $"Final Score: {winner.Score} points (needed {winScore} to win)",
+            "",
+            "DETAILED SCORE BREAKDOWN:",
+            new string('-', 80),
+            ""
+        };
+
+        // Winner breakdown
+        logs.Add($"{winner.Name}'s Scoring:");
+        if (winnerBreakdown.Count > 0)
+        {
+            foreach (var kvp in winnerBreakdown.OrderByDescending(x => x.Value))
+            {
+                logs.Add($"  {kvp.Key,-20} {kvp.Value,3} pts");
+            }
+            logs.Add($"  {new string('-', 28)}");
+            logs.Add($"  {"TOTAL",-20} {winner.Score,3} pts");
+        }
+        else
+        {
+            logs.Add($"  No points scored");
+        }
+
+        logs.Add("");
+
+        // Loser breakdown
+        logs.Add($"{loser.Name}'s Scoring:");
+        if (loserBreakdown.Count > 0)
+        {
+            foreach (var kvp in loserBreakdown.OrderByDescending(x => x.Value))
+            {
+                logs.Add($"  {kvp.Key,-20} {kvp.Value,3} pts");
+            }
+            logs.Add($"  {new string('-', 28)}");
+            logs.Add($"  {"TOTAL",-20} {loser.Score,3} pts");
+        }
+        else
+        {
+            logs.Add($"  No points scored");
+        }
+
+        logs.Add("");
+        logs.Add(new string('=', 80));
+        logs.Add("");
+
+        logs.ForEach(Debug.Log);
+    }
     
     private List<string> ConvertCardsToStrings(List<PlayingCard> cards) =>
         cards.Select(card => card.ToString()).ToList();

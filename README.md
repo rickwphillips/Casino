@@ -40,8 +40,45 @@ On your turn, you must play one card from your hand. When you play a card, one o
 - When multiple valid captures exist, the game automatically selects the best combination (prioritizing direct matches, then most cards, then high-value cards)
 - You capture ALL cards in the selected combination
 
+#### Advanced: Building
+**Builds** allow you to set up future captures by combining cards on the table with a card from your hand.
+
+**How to Create a Build:**
+1. Play a card from your hand onto one or more cards on the table
+2. Announce the total value (e.g., "Building Sevens")
+3. You **MUST** have a card in your hand that can capture that value
+4. The build is now "owned" by you
+
+**Example:**
+- You have a 3, 7, and King in your hand
+- There's a 4 on the table
+- You play your 3 onto the 4 and say "Building Sevens"
+- On your next turn, you can capture the build with your 7
+
+**Build Rules:**
+- You **MUST** capture your own build on your next turn (unless you can make a different capture or create another build)
+- You **CANNOT** trail (play a card to the table without capturing) if you have a pending build
+- Your opponent can capture your build if they have the appropriate card
+- The build value must equal the sum of all cards in the build (no cheating!)
+
+**Modifying Opponent Builds (Singular Builds Only):**
+Your opponent can **increase the value** of your build by adding a card from their hand:
+- **Example**: You create a build of 7 (3 + 4). Your opponent has a 2 and a 9 in hand
+  - They can add their 2 to your build, making it a build of 9 (3 + 4 + 2)
+  - They declare "Building Nines" and now **own** the build
+  - They must have the 9 in hand to capture it on their next turn
+- **Multi-Builds Cannot Be Modified**: If a build contains multiple separate combinations (e.g., a build of 7 with both "6 + A" AND "5 + 2"), it becomes a multi-build and **cannot** be modified by opponents
+- The new value must be **greater** than the original build value
+- Ownership transfers to the player who last modified the build
+
+**Strategic Advantage:**
+- Builds protect valuable combinations from your opponent
+- Builds can help you capture more cards at once
+- Creating builds when you don't have the capture card is illegal and will be rejected
+- Modifying opponent builds lets you steal their setup while increasing the capture value
+
 #### Special: Sweeps
-- If you capture ALL cards from the table (leaving it empty), you score a **Sweep**
+- If you capture ALL cards from the table AND all builds (leaving everything empty), you score a **Sweep**
 - Sweeps are worth bonus points at the end of the round
 
 #### Dealing Additional Cards
@@ -49,10 +86,27 @@ On your turn, you must play one card from your hand. When you play a card, one o
 - Play continues until the deck is empty
 - No additional cards are dealt to the table after the initial deal
 
-#### End of Round
-- When both players have played all cards and the deck is empty, the round ends
-- Any remaining cards on the table go to the **last player who made a capture**
-- Scoring then occurs
+#### End of Hand/Round Rules
+
+**Remaining Table Cards:**
+The game can be configured to award remaining table cards in two ways:
+
+1. **After Each Hand (Traditional)**:
+   - After each 4-card hand, remaining table cards go to the last player who made a capture
+   - This happens 6 times per full game (52 cards ÷ 4 cards per hand ÷ 2 players)
+   - Builds also awarded to their owners after each hand
+
+2. **Only at Game End (Variant)**:
+   - Table cards remain on the table throughout all hands
+   - Only when the entire deck is exhausted do remaining cards go to the last capturer
+   - Builds persist across hands until the game ends
+   - This creates a longer strategic game with persistent table state
+
+The timing is configurable via the scoring variant settings.
+
+**When Scoring Occurs:**
+- Scoring happens when the entire deck is exhausted (all 52 cards played)
+- After scoring, if no one has won, the dealer role swaps and a new game begins
 
 ### Scoring
 
@@ -134,6 +188,13 @@ The game supports multiple scoring variants configured via ScriptableObjects:
 - **Standard**: Traditional Casino scoring
 - **Connecticut**: Connecticut variant rules
 - **Custom**: Create your own variant
+
+Each variant can be configured with:
+- **Point values** for all scoring categories
+- **Win score** (default 21)
+- **Table Card Award Timing**:
+  - `AfterEachHand` (Traditional): Award remaining cards after each 4-card hand
+  - `OnlyAtGameEnd` (Variant): Keep cards on table until entire deck is played
 
 To change variants, modify the ScoringManager settings in the Unity inspector.
 

@@ -13,10 +13,21 @@ public class ScoringManager : MonoBehaviour
         private set => _instance = value;
     }
 
+    public enum VariantSelection
+    {
+        Standard,
+        Connecticut,
+        Custom
+    }
+
     [Header("Scoring Presets")]
     [SerializeField] private ScoreVariables standardVariant;
     [SerializeField] private ScoreVariables connecticutVariant;
     [SerializeField] private ScoreVariables customVariant;
+
+    [Header("Active Variant")]
+    [Tooltip("Select which variant to use for scoring")]
+    [SerializeField] private VariantSelection selectedVariant;
 
     // Configuration storage
     private readonly Dictionary<string, ScoringConfig> _variants = new();
@@ -52,8 +63,23 @@ public class ScoringManager : MonoBehaviour
             RegisterVariant(customVariant);
         }
 
-        // Set default variant
-        SetVariant(connecticutVariant.VariantName);
+        // Set variant based on inspector selection
+        string variantName = selectedVariant switch
+        {
+            VariantSelection.Standard => standardVariant?.VariantName,
+            VariantSelection.Connecticut => connecticutVariant?.VariantName,
+            VariantSelection.Custom => customVariant?.VariantName,
+            _ => connecticutVariant?.VariantName
+        };
+
+        if (!string.IsNullOrEmpty(variantName))
+        {
+            SetVariant(variantName);
+        }
+        else
+        {
+            Debug.LogError($"Selected variant {selectedVariant} has no assigned ScoreVariables asset!");
+        }
     }
 
     private void RegisterVariant(ScoreVariables variant)
@@ -65,15 +91,24 @@ public class ScoringManager : MonoBehaviour
         }
 
         string variantKey = variant.VariantName.ToLower();
-        
+
         if (_variants.ContainsKey(variantKey))
         {
-            Debug.LogWarning($"Variant '{variant.VariantName}' is already registered! Skipping duplicate.");
-            return;
-        }
+            // Update existing variant instead of skipping
+            _variants[variantKey] = variant.CreateConfig();
+            Debug.Log($"Reloaded variant: {variant.VariantName}");
 
-        _variants.Add(variantKey, variant.CreateConfig());
-        Debug.Log($"Registered variant: {variant.VariantName}");
+            // If this is the currently active variant, update the current config
+            if (_currentConfig != null && _currentConfig.VariantName.ToLower() == variantKey)
+            {
+                _currentConfig = _variants[variantKey];
+            }
+        }
+        else
+        {
+            _variants.Add(variantKey, variant.CreateConfig());
+            Debug.Log($"Registered variant: {variant.VariantName}");
+        }
     }
 
     public void SetVariant(string variantName)
@@ -116,6 +151,7 @@ public class ScoringManager : MonoBehaviour
     public int PointsPerKing => _currentConfig.PointsPerKing;
     public int PointsPerSweep => _currentConfig.PointsPerSweep;
     public int WinScore => _currentConfig.WinScore;
+    public ScoreVariables.TableCardAwardTiming TableCardTiming => _currentConfig.TableCardTiming;
     public string CurrentVariant => _currentConfig.VariantName;
 
     // Variant queries

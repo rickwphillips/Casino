@@ -10,13 +10,30 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4061345c1e1454f01981fc6370dd8663, type: 3}
-  m_Name: ScoringVariables
+  m_Name: ConnecticutVariant
   m_EditorClassIdentifier: Assembly-CSharp::ScoreVariables
-  variantName: Custom
+  variantName: Rick's New England
   pointsForMostCards: 3
   pointsForMostSpades: 1
   pointsForBigCasino: 2
+  bigCasinoSuit: 1
+  bigCasinoRank: 9
   pointsForLittleCasino: 1
+  littleCasinoSuit: 3
+  littleCasinoRank: 1
   pointsPerAce: 1
+  pointsPerTwo: 0
+  pointsPerThree: 0
+  pointsPerFour: 0
+  pointsPerFive: 0
+  pointsPerSix: 0
+  pointsPerSeven: 0
+  pointsPerEight: 0
+  pointsPerNine: 0
+  pointsPerTen: 0
+  pointsPerJack: 0
+  pointsPerQueen: 0
+  pointsPerKing: 0
   pointsPerSweep: 1
   winScore: 21
+  tableCardAwardTiming: 0
