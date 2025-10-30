@@ -6,10 +6,40 @@ using UnityEngine;
 public class GameLogger : MonoBehaviour
 {
     public static GameLogger Instance { get; private set; }
-    
+
+    [SerializeField] private int logCacheSize = 10;
+    private List<string> logCache = new List<string>();
+
     private void Awake() {
         if (Instance == null) { Instance = this; }
         else { Destroy(gameObject); }
+    }
+
+    /// <summary>
+    /// Add a log message to the cache. When cache size is reached, flush all logs to console.
+    /// </summary>
+    private void AddToCache(string message)
+    {
+        logCache.Add(message);
+        if (logCache.Count >= logCacheSize)
+        {
+            FlushCache();
+        }
+    }
+
+    /// <summary>
+    /// Flush all cached logs to the console immediately.
+    /// </summary>
+    public void FlushCache()
+    {
+        if (logCache.Count > 0)
+        {
+            foreach (var log in logCache)
+            {
+                Debug.Log(log);
+            }
+            logCache.Clear();
+        }
     }
 
     public void LogGameStart() => new[] {
@@ -20,7 +50,7 @@ public class GameLogger : MonoBehaviour
         new string('=', 80) + "\n"
     }.Where(msg => msg != null)
      .ToList()
-     .ForEach(Debug.Log);
+     .ForEach(AddToCache);
     
     public void LogInitialDeal(GamePlayer dealer, GamePlayer nonDealer, List<PlayingCard> tableCards) => new[] {
         "\n--- INITIAL DEAL ---",
@@ -29,67 +59,67 @@ public class GameLogger : MonoBehaviour
         "\nCards dealt to each player: 4",
         $"Cards on table: {string.Join(", ", tableCards.Select(card => card.ToString()))}"
     }.ToList()
-     .ForEach(Debug.Log);
+     .ForEach(AddToCache);
     
     public void LogPlayerTurn(GamePlayer player, PlayingCard playedCard) => new[] {
         $"\n>>> {player.Name.ToUpper()}'S TURN",
         $"    Card played: {playedCard}"
     }.ToList()
-     .ForEach(Debug.Log);
+     .ForEach(AddToCache);
     
     public void LogCapture(GamePlayer player, PlayingCard playedCard, List<PlayingCard> capturedCards) => new[] {
         $"    ✓ CAPTURED {capturedCards.Count + 1} card(s) with {playedCard}: {playedCard}, {string.Join(", ", capturedCards.Select(card => card.ToString()))}",
         $"    Total captured this round: {player.CapturedCards.Count}"
     }.ToList()
-     .ForEach(Debug.Log);
+     .ForEach(AddToCache);
     
     public void LogSweep(GamePlayer player) => new[] {
         "    ★ SWEEP! Captured ALL cards on the table!",
         $"    Sweep count: {player.SweepCount}"
     }.ToList()
-     .ForEach(Debug.Log);
+     .ForEach(AddToCache);
     
     public void LogTrail(GamePlayer player, PlayingCard trailedCard, List<PlayingCard> tableCards) => new[] {
         $"    → Trailed (no capture): {trailedCard}",
         $"    Table now has: {string.Join(", ", tableCards.Select(card => card.ToString()))}"
     }.ToList()
-     .ForEach(Debug.Log);
+     .ForEach(AddToCache);
     
     public void LogRoundEnd(int roundNumber, int cardsPlayedThisRound) => new[] {
         $"\n{new string('-', 80)}",
         $"ROUND {roundNumber} COMPLETE - Both players played all 4 cards",
         new string('-', 80)
     }.ToList()
-     .ForEach(Debug.Log);
+     .ForEach(AddToCache);
     
     public void LogRemainingTableCards(GamePlayer player, List<PlayingCard> remainingCards) =>
-        Debug.Log($"{player.Name} gets remaining table cards: {string.Join(", ", remainingCards.Select(card => card.ToString()))}");
+        AddToCache($"{player.Name} gets remaining table cards: {string.Join(", ", remainingCards.Select(card => card.ToString()))}");
     
     public void LogDeckStatus(int cardsRemaining) =>
-        Debug.Log($"\nCards remaining in deck: {cardsRemaining}");
+        AddToCache($"\nCards remaining in deck: {cardsRemaining}");
     
     public void LogNewDeal(int handNumber) => new[] {
         $"\n--- HAND {handNumber} DEALT ---",
         "Each player gets 4 more cards"
     }.ToList()
-     .ForEach(Debug.Log);
+     .ForEach(AddToCache);
     
     public void LogScoringStart() => new[] {
         $"\n{new string('=', 80)}",
         "SCORING THIS HAND",
         new string('=', 80)
     }.ToList()
-     .ForEach(Debug.Log);
+     .ForEach(AddToCache);
     
     public void LogScoreAward(string player, string reason, int points) =>
-        Debug.Log($"  {player} gets {points} point(s) for: {reason}");
+        AddToCache($"  {player} gets {points} point(s) for: {reason}");
     
     public void LogHandTotals(GamePlayer player1, GamePlayer player2, int player1Cards, int player2Cards, int player1Spades, int player2Spades) => new[] {
         "\n  Stats:",
         $"    {player1.Name}: {player1Cards} cards, {player1Spades} spades",
         $"    {player2.Name}: {player2Cards} cards, {player2Spades} spades"
     }.ToList()
-     .ForEach(Debug.Log);
+     .ForEach(AddToCache);
     
     public void LogCumulativeScores(GamePlayer player1, GamePlayer player2) => new[] {
         $"\n{new string('-', 80)}",
@@ -98,29 +128,29 @@ public class GameLogger : MonoBehaviour
         $"  {player2.Name}: {player2.Score} points",
         $"{new string('-', 80)}\n"
     }.ToList()
-     .ForEach(Debug.Log);
+     .ForEach(AddToCache);
     
     public void LogBuildCreated(GamePlayer player, Build build) => new[] {
         $"    ⚒ BUILD CREATED: {player.Name} builds for {build.DeclaredValue}",
         $"    Cards in build: {string.Join(" + ", build.Cards.Select(c => c.ToString()))}"
     }.ToList()
-     .ForEach(Debug.Log);
+     .ForEach(AddToCache);
 
     public void LogBuildCaptured(GamePlayer player, Build build) =>
-        Debug.Log($"    ✓ CAPTURED BUILD of {build.DeclaredValue}: {string.Join(" + ", build.Cards.Select(c => c.ToString()))}");
+        AddToCache($"    ✓ CAPTURED BUILD of {build.DeclaredValue}: {string.Join(" + ", build.Cards.Select(c => c.ToString()))}");
 
     public void LogBuildModified(GamePlayer player, Build build, PlayingCard addedCard, int newValue) => new[] {
         $"    ⚒ BUILD MODIFIED: {player.Name} adds {addedCard} to build",
         $"    New build value: {newValue} (was {build.DeclaredValue - CaptureChecker.GetCardValue(addedCard)})",
         $"    Ownership transferred to {player.Name}"
     }.ToList()
-     .ForEach(Debug.Log);
+     .ForEach(AddToCache);
 
     public void LogRemainingBuild(Build build) =>
-        Debug.Log($"Remaining build of {build.DeclaredValue} goes to {build.Owner.Name}: {string.Join(" + ", build.Cards.Select(c => c.ToString()))}");
+        AddToCache($"Remaining build of {build.DeclaredValue} goes to {build.Owner.Name}: {string.Join(" + ", build.Cards.Select(c => c.ToString()))}");
 
     public void LogDealerSwap(GamePlayer newDealer) =>
-        Debug.Log($"\nDEALER SWAP: {newDealer.Name} is now the dealer");
+        AddToCache($"\nDEALER SWAP: {newDealer.Name} is now the dealer");
 
     public void LogGameOver(GamePlayer winner, int winScore) => new[] {
         $"\n{new string('=', 80)}",
@@ -130,7 +160,7 @@ public class GameLogger : MonoBehaviour
         $"Final Score: {winner.Score} points (needed {winScore} to win)",
         $"{new string('=', 80)}\n"
     }.ToList()
-     .ForEach(Debug.Log);
+     .ForEach(AddToCache);
 
     public void LogGameOverWithBreakdown(GamePlayer winner, GamePlayer loser, int winScore,
         Dictionary<string, int> winnerBreakdown, Dictionary<string, int> loserBreakdown)
@@ -186,7 +216,7 @@ public class GameLogger : MonoBehaviour
         logs.Add(new string('=', 80));
         logs.Add("");
 
-        logs.ForEach(Debug.Log);
+        logs.ForEach(AddToCache);
     }
     
     private List<string> ConvertCardsToStrings(List<PlayingCard> cards) =>
