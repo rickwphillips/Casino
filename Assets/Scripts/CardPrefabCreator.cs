@@ -330,4 +330,4 @@ public class CardPrefabValidator : MonoBehaviour
             
         return report.ToString();
     }
-}ß
+}
