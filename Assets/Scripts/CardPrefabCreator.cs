@@ -236,8 +236,18 @@ public class CardPrefabValidator : MonoBehaviour
     [SerializeField] private TextMeshProUGUI textMeshProComponent;
     [SerializeField] private Text textComponent;
     
+    // Public property to check validation status
+    public bool IsValid => hasValidStructure;
+    public string ValidationMessage => validationMessage;
+    
     public bool Validate(GameObject cardPrefab)
     {
+        // Reset validation state
+        hasValidStructure = false;
+        hasModernButton = false;
+        hasTextChild = false;
+        validationMessage = "Not validated";
+        
         if (cardPrefab == null)
         {
             validationMessage = "No prefab to validate!";
@@ -283,17 +293,41 @@ public class CardPrefabValidator : MonoBehaviour
         if (cardPrefab.GetComponent<Text>() != null || cardPrefab.GetComponent<TextMeshProUGUI>() != null)
         {
             validationMessage = "Text component should be on a child GameObject, not the root!";
+            hasTextChild = false; // Override since it's in wrong place
             return false;
         }
         
+        // All checks passed
         hasValidStructure = true;
         validationMessage = "Card prefab is set up correctly!";
-        return true;
+        return hasValidStructure;
     }
     
     [ContextMenu("Validate This GameObject")]
     void ValidateThisGameObject()
     {
-        Validate(gameObject);
+        bool isValid = Validate(gameObject);
+        Debug.Log($"Validation Result: {(isValid ? "PASS" : "FAIL")} - {validationMessage}");
     }
-}
+    
+    // Helper method to get a validation report
+    public string GetValidationReport()
+    {
+        System.Text.StringBuilder report = new System.Text.StringBuilder();
+        report.AppendLine("=== Card Prefab Validation Report ===");
+        report.AppendLine($"Valid Structure: {(hasValidStructure ? "✓" : "✗")}");
+        report.AppendLine($"Modern Button: {(hasModernButton ? "✓" : "✗")}");
+        report.AppendLine($"Text Child: {(hasTextChild ? "✓" : "✗")}");
+        report.AppendLine($"Message: {validationMessage}");
+        
+        if (buttonComponent != null)
+            report.AppendLine($"Button Type: {buttonComponent.GetType().FullName}");
+        
+        if (textMeshProComponent != null)
+            report.AppendLine($"Text Type: TextMeshProUGUI on {textMeshProComponent.gameObject.name}");
+        else if (textComponent != null)
+            report.AppendLine($"Text Type: Text on {textComponent.gameObject.name}");
+            
+        return report.ToString();
+    }
+}ß
