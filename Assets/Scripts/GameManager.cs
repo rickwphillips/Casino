@@ -8,9 +8,14 @@ public class GameManager : MonoBehaviour
     
     public enum GamePhase { Playing, RoundEnd, GameOver }
     
+    [Header("Player Configuration")]
+    [SerializeField] private GamePlayer.PlayerType dealerPlayerType = GamePlayer.PlayerType.AI;
     [SerializeField] private AIPlayer.Difficulty dealerAIDifficulty = AIPlayer.Difficulty.Medium;
+    [SerializeField] private GamePlayer.PlayerType nonDealerPlayerType = GamePlayer.PlayerType.Human;
     [SerializeField] private AIPlayer.Difficulty nonDealerAIDifficulty = AIPlayer.Difficulty.Medium;
-    [SerializeField] private bool useAI = true;
+    
+    [Header("Game Settings")]
+    [SerializeField] private float aiMoveDelay = 1.5f;
     
     private GameDeck deck;
     private GamePlayer dealer;
@@ -27,6 +32,7 @@ public class GameManager : MonoBehaviour
     private int cardsPlayedThisRound = 0;
     private const int HAND_SIZE = 4;
     private const int TABLE_SIZE = 4;
+    private bool waitingForHumanInput = false;
 
     // Game statistics tracking
     private readonly Dictionary<string, int> dealerScoreBreakdown = new();
@@ -45,14 +51,18 @@ public class GameManager : MonoBehaviour
         deck = new GameDeck();
         deck.Shuffle();
 
-        dealer = new GamePlayer("GamePlayer1");
-        nonDealer = new GamePlayer("GamePlayer2");
+        dealer = new GamePlayer("Dealer", dealerPlayerType);
+        nonDealer = new GamePlayer("Non-Dealer", nonDealerPlayerType);
 
-        dealerAI = new AIPlayer(dealer, dealerAIDifficulty);
-        nonDealerAI = new AIPlayer(nonDealer, nonDealerAIDifficulty);
+        if (dealer.IsAI())
+            dealerAI = new AIPlayer(dealer, dealerAIDifficulty);
+        if (nonDealer.IsAI())
+            nonDealerAI = new AIPlayer(nonDealer, nonDealerAIDifficulty);
 
         tableCards.Clear();
+        activeBuilds.Clear();
         cardsPlayedThisRound = 0;
+        waitingForHumanInput = false;
 
         // Clear score breakdowns for new game
         dealerScoreBreakdown.Clear();
@@ -66,9 +76,29 @@ public class GameManager : MonoBehaviour
         GameLogger.Instance.LogGameStart();
         GameLogger.Instance.LogInitialDeal(dealer, nonDealer, tableCards);
         
-        // Start AI turns automatically
-        if (useAI) {
-            Invoke(nameof(AIPlayTurn), 1f);
+        // Notify UI to refresh
+        if (UIManager.Instance != null)
+            UIManager.Instance.RefreshUI();
+        
+        // Start turn sequence
+        ProcessNextTurn();
+    }
+
+    private void ProcessNextTurn()
+    {
+        if (currentPhase != GamePhase.Playing) return;
+
+        if (currentPlayer.IsHuman())
+        {
+            // Wait for human input - UI will call PlayCard when ready
+            waitingForHumanInput = true;
+            Debug.Log($"Waiting for {currentPlayer.Name} to play...");
+        }
+        else
+        {
+            // AI turn
+            waitingForHumanInput = false;
+            Invoke(nameof(AIPlayTurn), aiMoveDelay);
         }
     }
     
@@ -85,6 +115,12 @@ public class GameManager : MonoBehaviour
     public void PlayCard(GamePlayer player, int cardIndex) {
         if (player != currentPlayer) {
             Debug.LogWarning($"It's not {player.Name}'s turn!");
+            return;
+        }
+
+        // If it's a human player's turn, we should be waiting for input
+        if (player.IsHuman() && !waitingForHumanInput) {
+            Debug.LogWarning($"Not currently accepting human input!");
             return;
         }
 
@@ -167,6 +203,14 @@ public class GameManager : MonoBehaviour
             
             cardsPlayedThisRound++;
             
+            // Clear waiting flag if human just played
+            if (player.IsHuman())
+                waitingForHumanInput = false;
+
+            // Refresh UI after card played
+            if (UIManager.Instance != null)
+                UIManager.Instance.RefreshUI();
+            
             if (cardsPlayedThisRound == HAND_SIZE * 2)
             {
                 EndRound();
@@ -174,6 +218,7 @@ public class GameManager : MonoBehaviour
             else
             {
                 currentPlayer = (currentPlayer == dealer) ? nonDealer : dealer;
+                ProcessNextTurn();
             }
         }
     }
@@ -250,11 +295,12 @@ public class GameManager : MonoBehaviour
 
         currentPlayer = nonDealer;
 
-        // Restart AI turn loop if using AI
-        if (useAI && currentPhase == GamePhase.Playing)
-        {
-            Invoke(nameof(AIPlayTurn), 1f);
-        }
+        // Refresh UI after round end
+        if (UIManager.Instance != null)
+            UIManager.Instance.RefreshUI();
+
+        // Continue game flow
+        ProcessNextTurn();
     }
     
     private void ScoreRound()
@@ -430,6 +476,10 @@ public class GameManager : MonoBehaviour
     
     private void SwapDealer() {
         (dealer, nonDealer) = (nonDealer, dealer);
+        
+        // Swap AI instances too
+        (dealerAI, nonDealerAI) = (nonDealerAI, dealerAI);
+        
         GameLogger.Instance.LogDealerSwap(dealer);
     }
     
@@ -444,6 +494,10 @@ public class GameManager : MonoBehaviour
             winner == dealer ? dealerScoreBreakdown : nonDealerScoreBreakdown,
             loser == dealer ? dealerScoreBreakdown : nonDealerScoreBreakdown
         );
+
+        // Refresh UI to show game over state
+        if (UIManager.Instance != null)
+            UIManager.Instance.RefreshUI();
     }
     
     public GamePlayer GetCurrentPlayer() => currentPlayer;
@@ -453,6 +507,7 @@ public class GameManager : MonoBehaviour
     public List<Build> GetActiveBuilds() => activeBuilds;
     public GameDeck GetDeck() => deck;
     public GamePhase GetCurrentPhase() => currentPhase;
+    public bool IsWaitingForHumanInput() => waitingForHumanInput;
 
     // Build management methods
     private bool PlayerHasPendingBuild(GamePlayer player)
@@ -559,7 +614,8 @@ public class GameManager : MonoBehaviour
     }
     
     public void AIPlayTurn() {
-        if (!useAI || currentPhase == GamePhase.GameOver) return;
+        if (currentPhase == GamePhase.GameOver) return;
+        if (currentPlayer.IsHuman()) return; // Safety check
 
         // Check if current player has cards to play
         if (currentPlayer.HandSize() == 0)
@@ -587,6 +643,10 @@ public class GameManager : MonoBehaviour
                     {
                         cardsPlayedThisRound++;
 
+                        // Refresh UI
+                        if (UIManager.Instance != null)
+                            UIManager.Instance.RefreshUI();
+
                         // Switch turns
                         if (cardsPlayedThisRound == HAND_SIZE * 2)
                         {
@@ -595,6 +655,7 @@ public class GameManager : MonoBehaviour
                         else
                         {
                             currentPlayer = (currentPlayer == dealer) ? nonDealer : dealer;
+                            ProcessNextTurn();
                         }
                     }
                     else
@@ -605,6 +666,7 @@ public class GameManager : MonoBehaviour
                         GameLogger.Instance.LogTrail(currentPlayer, handCard, tableCards);
                         cardsPlayedThisRound++;
                         currentPlayer = (currentPlayer == dealer) ? nonDealer : dealer;
+                        ProcessNextTurn();
                     }
                 }
                 break;
@@ -615,30 +677,17 @@ public class GameManager : MonoBehaviour
                 PlayCard(currentPlayer, action.CardIndex);
                 break;
         }
-
-        if (useAI && currentPhase == GamePhase.Playing) {
-            Invoke(nameof(AIPlayTurn), 1f);
-        }
-    }
-    
-    public void SetAIDifficulty(AIPlayer.Difficulty diff) {
-        dealerAI.SetDifficulty(diff);
-        nonDealerAI.SetDifficulty(diff);
-        Debug.Log("AI difficulty set to: " + diff);
     }
     
     public void SetDealerAIDifficulty(AIPlayer.Difficulty diff) {
-        dealerAI.SetDifficulty(diff);
+        if (dealerAI != null)
+            dealerAI.SetDifficulty(diff);
         Debug.Log("Dealer AI difficulty set to: " + diff);
     }
     
     public void SetNonDealerAIDifficulty(AIPlayer.Difficulty diff) {
-        nonDealerAI.SetDifficulty(diff);
+        if (nonDealerAI != null)
+            nonDealerAI.SetDifficulty(diff);
         Debug.Log("Non-Dealer AI difficulty set to: " + diff);
-    }
-    
-    public void SetUseAI(bool enabled) {
-        useAI = enabled;
-        Debug.Log("AI enabled: " + useAI);
     }
 }
