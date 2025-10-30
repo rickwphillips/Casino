@@ -106,7 +106,9 @@ public class CardUI : MonoBehaviour
 
 public class UIManager : MonoBehaviour
 {
-    public static UIManager Instance { get; private set; }
+  private static WaitForSeconds _waitForSeconds0_1 = new WaitForSeconds(0.1f);
+
+  public static UIManager Instance { get; private set; }
     
     [SerializeField] private Transform dealerHandContainer;
     [SerializeField] private Transform nonDealerHandContainer;
@@ -146,7 +148,7 @@ public class UIManager : MonoBehaviour
     
     private System.Collections.IEnumerator WaitAndRefresh()
     {
-        yield return new WaitForSeconds(0.1f);
+        yield return _waitForSeconds0_1;
         Debug.Log("WaitAndRefresh: Calling RefreshUI");
         RefreshUI();
     }
