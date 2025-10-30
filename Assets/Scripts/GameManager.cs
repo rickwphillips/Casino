@@ -84,23 +84,35 @@ public class GameManager : MonoBehaviour
         ProcessNextTurn();
     }
 
-    private void ProcessNextTurn()
-    {
-        if (currentPhase != GamePhase.Playing) return;
+   // Add this method to GameManager.cs to help debug
 
-        if (currentPlayer.IsHuman())
-        {
-            // Wait for human input - UI will call PlayCard when ready
-            waitingForHumanInput = true;
-            Debug.Log($"Waiting for {currentPlayer.Name} to play...");
-        }
-        else
-        {
-            // AI turn
-            waitingForHumanInput = false;
-            Invoke(nameof(AIPlayTurn), aiMoveDelay);
-        }
+private void ProcessNextTurn()
+{
+    if (currentPhase != GamePhase.Playing) return;
+
+    // === DEBUG LOGGING START ===
+    Debug.Log("╔══════════════════════════════════════╗");
+    Debug.Log($"║ TURN START");
+    Debug.Log($"║ Player: {currentPlayer.Name}");
+    Debug.Log($"║ Player Type: {currentPlayer.Type}");
+    Debug.Log($"║ Is Human: {currentPlayer.IsHuman()}");
+    Debug.Log($"║ Hand Size: {currentPlayer.HandSize()}");
+    Debug.Log($"║ Current Phase: {currentPhase}");
+    Debug.Log("╚══════════════════════════════════════╝");
+    // === DEBUG LOGGING END ===
+
+    if (currentPlayer.IsHuman())
+    {
+        waitingForHumanInput = true;
+        Debug.Log(">>> WAITING FOR HUMAN INPUT <<<");
     }
+    else
+    {
+        waitingForHumanInput = false;
+        Debug.Log($">>> AI TURN - Scheduling in {aiMoveDelay}s <<<");
+        Invoke(nameof(AIPlayTurn), aiMoveDelay);
+    }
+}
     
     private void DealInitialRound() => new[] {
         (nonDealer, HAND_SIZE),
@@ -684,10 +696,13 @@ public class GameManager : MonoBehaviour
             dealerAI.SetDifficulty(diff);
         Debug.Log("Dealer AI difficulty set to: " + diff);
     }
-    
-    public void SetNonDealerAIDifficulty(AIPlayer.Difficulty diff) {
+
+    public void SetNonDealerAIDifficulty(AIPlayer.Difficulty diff)
+    {
         if (nonDealerAI != null)
             nonDealerAI.SetDifficulty(diff);
         Debug.Log("Non-Dealer AI difficulty set to: " + diff);
     }
+    
+    
 }
