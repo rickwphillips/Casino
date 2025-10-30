@@ -4,22 +4,30 @@ using UnityEngine;
 
 public class GamePlayer
 {
+    public enum PlayerType { Human, AI }
+
     private readonly string _name;
     private readonly List<PlayingCard> _hand = new();
     private readonly List<PlayingCard> _capturedCards = new();
     private int _sweepCount;
     private int _score;
+    private PlayerType _playerType;
 
     public string Name => _name;
     public IReadOnlyList<PlayingCard> Hand => _hand;
     public IReadOnlyList<PlayingCard> CapturedCards => _capturedCards;
     public int SweepCount => _sweepCount;
     public int Score => _score;
+    public PlayerType Type => _playerType;
 
-    public GamePlayer(string name)
+    public GamePlayer(string name, PlayerType playerType = PlayerType.AI)
     {
         _name = name;
+        _playerType = playerType;
     }
+
+    public bool IsHuman() => _playerType == PlayerType.Human;
+    public bool IsAI() => _playerType == PlayerType.AI;
 
     public void AddCard(PlayingCard card)
     {
@@ -95,6 +103,7 @@ public class GamePlayer
     public override string ToString()
     {
         var handStr = string.Join(" | ", _hand.Select((card, i) => $"[{i}] {card}"));
-        return $"{_name} - Hand: {(_hand.Count > 0 ? handStr : "Empty")} | Captured: {_capturedCards.Count} | Score: {_score}";
+        string typeStr = _playerType == PlayerType.Human ? "(Human)" : "(AI)";
+        return $"{_name} {typeStr} - Hand: {(_hand.Count > 0 ? handStr : "Empty")} | Captured: {_capturedCards.Count} | Score: {_score}";
     }
 }
