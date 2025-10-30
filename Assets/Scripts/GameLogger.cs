@@ -28,16 +28,14 @@ public class GameLogger : MonoBehaviour
     }
 
     /// <summary>
-    /// Flush all cached logs to the console immediately.
+    /// Flush all cached logs to the console immediately as a single concatenated message.
     /// </summary>
     public void FlushCache()
     {
         if (logCache.Count > 0)
         {
-            foreach (var log in logCache)
-            {
-                Debug.Log(log);
-            }
+            string concatenatedLogs = string.Join("\n", logCache);
+            Debug.Log(concatenatedLogs);
             logCache.Clear();
         }
     }
