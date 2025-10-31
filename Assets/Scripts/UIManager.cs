@@ -392,6 +392,34 @@ public class UIManager : MonoBehaviour
             cardRect.localScale = Vector3.one;
     }
     
+    /// <summary>
+    /// Highlights table cards that will be captured by the AI, then waits for a delay before continuing.
+    /// </summary>
+    public System.Collections.IEnumerator HighlightTableCardsForCapture(List<PlayingCard> cardsToHighlight, float delay = 0.5f)
+    {
+        // Find and highlight the matching table card UIs
+        var highlightedCardUIs = new List<CardUI>();
+        foreach (var cardToHighlight in cardsToHighlight)
+        {
+            var matchingCardUI = tableCardUIs.FirstOrDefault(ui => ui.Card == cardToHighlight);
+            if (matchingCardUI != null)
+            {
+                matchingCardUI.SetSelected(true);
+                highlightedCardUIs.Add(matchingCardUI);
+            }
+        }
+
+        // Wait for the delay so player can see the selection
+        yield return new WaitForSeconds(delay);
+
+        // Deselect the cards (though they'll likely be removed from table after this)
+        foreach (var cardUI in highlightedCardUIs)
+        {
+            if (cardUI != null && cardUI.gameObject != null)
+                cardUI.SetSelected(false);
+        }
+    }
+
     private void OnRestartClicked()
     {
         GameManager.Instance.InitializeGame();
