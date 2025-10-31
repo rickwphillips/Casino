@@ -110,7 +110,7 @@ private void ProcessNextTurn()
     {
         waitingForHumanInput = false;
         Debug.Log($">>> AI TURN - Scheduling in {aiMoveDelay}s <<<");
-        Invoke(nameof(AIPlayTurn), aiMoveDelay);
+        StartCoroutine(AIPlayTurnCoroutine());
     }
 }
     
@@ -625,19 +625,36 @@ private void ProcessNextTurn()
         activeBuilds.Remove(build);
     }
     
-    public void AIPlayTurn() {
-        if (currentPhase == GamePhase.GameOver) return;
-        if (currentPlayer.IsHuman()) return; // Safety check
+    private System.Collections.IEnumerator AIPlayTurnCoroutine()
+    {
+        // Wait for the AI move delay
+        yield return new WaitForSeconds(aiMoveDelay);
+
+        if (currentPhase == GamePhase.GameOver) yield break;
+        if (currentPlayer.IsHuman()) yield break; // Safety check
 
         // Check if current player has cards to play
         if (currentPlayer.HandSize() == 0)
         {
             Debug.LogWarning($"AIPlayTurn called but {currentPlayer.Name} has no cards!");
-            return;
+            yield break;
         }
 
         var ai = currentPlayer == dealer ? dealerAI : nonDealerAI;
         var action = ai.GetBestAction(tableCards, activeBuilds);
+
+        // If it's a PlayCard action, check if there will be captures and highlight them
+        if (action.Type == AIPlayer.AIAction.ActionType.PlayCard && UIManager.Instance != null)
+        {
+            var handCard = currentPlayer.Hand[action.CardIndex];
+            List<PlayingCard> captures = CaptureChecker.GetValidCaptures(handCard, tableCards);
+
+            if (captures.Count > 0)
+            {
+                // Highlight the cards that will be captured
+                yield return StartCoroutine(UIManager.Instance.HighlightTableCardsForCapture(captures, 0.8f));
+            }
+        }
 
         // Execute the AI's chosen action
         switch (action.Type)
