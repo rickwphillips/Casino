@@ -18,6 +18,8 @@ public class CardPrefabCreator : MonoBehaviour
     {
         // Ensure we have a Canvas - using newer Unity API (2023.1+)
         Canvas canvas = GameObject.FindFirstObjectByType<Canvas>();
+        GameLogger Logger = new();
+
         if (canvas == null)
         {
             // Create UI Canvas with EventSystem
@@ -96,7 +98,7 @@ public class CardPrefabCreator : MonoBehaviour
         // Ensure the Assets folder exists
         if (!AssetDatabase.IsValidFolder("Assets"))
         {
-            Debug.LogError("Assets folder not found!");
+            Logger.LogMessage("Assets folder not found!");
             return;
         }
         
@@ -110,8 +112,8 @@ public class CardPrefabCreator : MonoBehaviour
         Selection.activeObject = prefab;
         EditorGUIUtility.PingObject(prefab);
         
-        Debug.Log($"Card Prefab created at: {prefabPath}");
-        Debug.Log("Structure: CardPrefab (Image, Button) -> CardText (TextMeshProUGUI)");
+        Logger.LogMessage($"Card Prefab created at: {prefabPath}");
+        Logger.LogMessage("Structure: CardPrefab (Image, Button) -> CardText (TextMeshProUGUI)");
     }
     
     [MenuItem("GameObject/UI/Create Card Prefab (Simple Text)", false, 11)]
@@ -119,6 +121,7 @@ public class CardPrefabCreator : MonoBehaviour
     {
         // Ensure we have a Canvas - using newer Unity API
         Canvas canvas = GameObject.FindFirstObjectByType<Canvas>();
+        GameLogger Logger = new();
         if (canvas == null)
         {
             // Create UI Canvas with EventSystem
@@ -203,8 +206,8 @@ public class CardPrefabCreator : MonoBehaviour
         Selection.activeObject = prefab;
         EditorGUIUtility.PingObject(prefab);
         
-        Debug.Log($"Card Prefab (Simple Text) created at: {prefabPath}");
-        Debug.Log("Structure: CardPrefab_SimpleText (Image, Button) -> CardText (Text)");
+        Logger.LogMessage($"Card Prefab (Simple Text) created at: {prefabPath}");
+        Logger.LogMessage("Structure: CardPrefab_SimpleText (Image, Button) -> CardText (Text)");
     }
     
     // Alternative for older Unity versions (pre-2023.1)
@@ -307,7 +310,8 @@ public class CardPrefabValidator : MonoBehaviour
     void ValidateThisGameObject()
     {
         bool isValid = Validate(gameObject);
-        Debug.Log($"Validation Result: {(isValid ? "PASS" : "FAIL")} - {validationMessage}");
+        GameLogger Logger = new();
+        Logger.LogMessage($"Validation Result: {(isValid ? "PASS" : "FAIL")} - {validationMessage}");
     }
     
     // Helper method to get a validation report

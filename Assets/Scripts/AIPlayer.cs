@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class AIPlayer {
     public enum Difficulty { Easy, Medium, Hard }
+    public GameLogger Logger = new ();
+
 
     public class AIAction {
         public enum ActionType { PlayCard, CreateBuild, ModifyBuild }
@@ -12,6 +14,7 @@ public class AIPlayer {
         public List<PlayingCard> BuildCards { get; set; }
         public int DeclaredValue { get; set; }
         public Build TargetBuild { get; set; }
+
     }
 
     private Difficulty difficulty;
@@ -24,7 +27,7 @@ public class AIPlayer {
 
     public void SetDifficulty(Difficulty newDifficulty) {
         difficulty = newDifficulty;
-        Debug.Log(player.Name + " AI difficulty set to: " + difficulty);
+        Logger.LogMessage(player.Name + " AI difficulty set to: " + difficulty);
     }
     
     public AIAction GetBestAction(List<PlayingCard> tableCards, List<Build> activeBuilds) {
@@ -45,7 +48,7 @@ public class AIPlayer {
     // Easy: Random valid move
     private AIAction GetEasyAction() {
         int randomIndex = Random.Range(0, player.HandSize());
-        Debug.Log(player.Name + " (Easy AI) plays random card at index " + randomIndex);
+        Logger.LogMessage(player.Name + " (Easy AI) plays random card at index " + randomIndex);
         return new AIAction { Type = AIAction.ActionType.PlayCard, CardIndex = randomIndex };
     }
 
@@ -61,7 +64,7 @@ public class AIPlayer {
 
     if (buildCaptureMoves.Any()) {
       var chosen = buildCaptureMoves[Random.Range(0, buildCaptureMoves.Count)];
-      Debug.Log($"{player.Name} (Medium AI) plays build capture at index {chosen}");
+      Logger.LogMessage($"{player.Name} (Medium AI) plays build capture at index {chosen}");
       return new AIAction { Type = AIAction.ActionType.PlayCard, CardIndex = chosen };
     }
 
@@ -91,13 +94,13 @@ public class AIPlayer {
 
     if (highValueMoves.Any()) {
       var chosen = highValueMoves[Random.Range(0, highValueMoves.Count)];
-      Debug.Log($"{player.Name} (Medium AI) plays high-value capture at index {chosen}");
+      Logger.LogMessage($"{player.Name} (Medium AI) plays high-value capture at index {chosen}");
       return new AIAction { Type = AIAction.ActionType.PlayCard, CardIndex = chosen };
     }
 
     if (captureMoves.Any()) {
       var chosen = captureMoves[Random.Range(0, captureMoves.Count)];
-      Debug.Log($"{player.Name} (Medium AI) plays capture at index {chosen}");
+      Logger.LogMessage($"{player.Name} (Medium AI) plays capture at index {chosen}");
       return new AIAction { Type = AIAction.ActionType.PlayCard, CardIndex = chosen };
     }
 
@@ -110,14 +113,14 @@ public class AIPlayer {
 
       if (allPossibleBuilds.Any()) {
         var chosenBuild = allPossibleBuilds[Random.Range(0, allPossibleBuilds.Count)];
-        Debug.Log($"{player.Name} (Medium AI) creates build for value {chosenBuild.DeclaredValue}");
+        Logger.LogMessage($"{player.Name} (Medium AI) creates build for value {chosenBuild.DeclaredValue}");
         return chosenBuild;
       }
     }
 
     // No captures or builds available - trail
     var randomIndex = Random.Range(0, player.HandSize());
-    Debug.Log($"{player.Name} (Medium AI) trails at index {randomIndex}");
+    Logger.LogMessage($"{player.Name} (Medium AI) trails at index {randomIndex}");
     return new AIAction { Type = AIAction.ActionType.PlayCard, CardIndex = randomIndex };
   }
     
@@ -145,9 +148,9 @@ public class AIPlayer {
         var bestAction = allActions.OrderByDescending(x => x.score).First();
 
         if (bestAction.action.Type == AIAction.ActionType.CreateBuild) {
-            Debug.Log($"{player.Name} (Hard AI) creates strategic build for value {bestAction.action.DeclaredValue} (score: {bestAction.score})");
+            Logger.LogMessage($"{player.Name} (Hard AI) creates strategic build for value {bestAction.action.DeclaredValue} (score: {bestAction.score})");
         } else {
-            Debug.Log($"{player.Name} (Hard AI) plays strategic move at index {bestAction.action.CardIndex} (score: {bestAction.score})");
+            Logger.LogMessage($"{player.Name} (Hard AI) plays strategic move at index {bestAction.action.CardIndex} (score: {bestAction.score})");
         }
 
         return bestAction.action;

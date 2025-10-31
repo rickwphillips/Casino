@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor.VersionControl;
 using UnityEngine;
 
 public class GameLogger : MonoBehaviour
@@ -39,6 +40,11 @@ public class GameLogger : MonoBehaviour
             logCache.Clear();
         }
     }
+
+    public void LogMessage(string message)
+  {
+        AddToCache(message);
+  } 
 
     public void LogGameStart() => new[] {
         "\n" + new string('=', 80),
