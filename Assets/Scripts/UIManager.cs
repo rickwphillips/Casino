@@ -35,19 +35,28 @@ public class CardUI : MonoBehaviour
         card = c;
         isSelectable = selectable;
         isSelected = false;
+
+        // Ensure button component is available immediately
+        if (button == null)
+            button = GetComponent<Button>();
+
         UpdateDisplay();
     }
-    
+
     private void UpdateDisplay()
     {
         if (rankSuitText != null && card != null)
         {
             rankSuitText.text = $"{card.rank}\n{card.suit}";
         }
-        
+
+        // Ensure button exists and set interactable state
+        if (button == null)
+            button = GetComponent<Button>();
+
         if (button != null)
             button.interactable = isSelectable;
-        
+
         UpdateVisuals();
     }
     
