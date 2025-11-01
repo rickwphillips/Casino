@@ -9,19 +9,11 @@ public class GameLogger : MonoBehaviour
     public static GameLogger Instance { get; private set; }
 
     [SerializeField] private int logCacheSize = 10;
-    private List<string> logCache = new List<string>();
+    private List<string> logCache = new ();
 
-    private void Awake()
-    {
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
+    private void Awake() {
+        if (Instance == null) { Instance = this; }
+        else { Destroy(gameObject); }
     }
 
     /// <summary>
