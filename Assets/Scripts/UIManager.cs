@@ -45,9 +45,15 @@ public class CardUI : MonoBehaviour
 
     private void UpdateDisplay()
     {
+        // Ensure rankSuitText is initialized before using it
+        if (rankSuitText == null)
+            rankSuitText = GetComponentInChildren<TextMeshProUGUI>();
+
         if (rankSuitText != null && card != null)
         {
-            rankSuitText.text = $"{card.rank}\n{card.suit}";
+            string rankDisplay = GetRankDisplay(card.rank);
+            string suitEmoji = GetSuitEmoji(card.suit);
+            rankSuitText.text = $"{rankDisplay}{suitEmoji}";
         }
 
         // Ensure button exists and set interactable state
@@ -58,6 +64,39 @@ public class CardUI : MonoBehaviour
             button.interactable = isSelectable;
 
         UpdateVisuals();
+    }
+
+    private string GetRankDisplay(PlayingCard.Rank rank)
+    {
+        return rank switch
+        {
+            PlayingCard.Rank.Ace => "A",
+            PlayingCard.Rank.Two => "2",
+            PlayingCard.Rank.Three => "3",
+            PlayingCard.Rank.Four => "4",
+            PlayingCard.Rank.Five => "5",
+            PlayingCard.Rank.Six => "6",
+            PlayingCard.Rank.Seven => "7",
+            PlayingCard.Rank.Eight => "8",
+            PlayingCard.Rank.Nine => "9",
+            PlayingCard.Rank.Ten => "10",
+            PlayingCard.Rank.Jack => "J",
+            PlayingCard.Rank.Queen => "Q",
+            PlayingCard.Rank.King => "K",
+            _ => rank.ToString()
+        };
+    }
+
+    private string GetSuitEmoji(PlayingCard.Suit suit)
+    {
+        return suit switch
+        {
+            PlayingCard.Suit.Hearts => "♥",
+            PlayingCard.Suit.Diamonds => "♦",
+            PlayingCard.Suit.Clubs => "♣",
+            PlayingCard.Suit.Spades => "♠",
+            _ => suit.ToString()
+        };
     }
     
     private void UpdateVisuals()

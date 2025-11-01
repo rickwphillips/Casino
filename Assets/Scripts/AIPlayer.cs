@@ -52,7 +52,7 @@ public class AIPlayer {
         return new AIAction { Type = AIAction.ActionType.PlayCard, CardIndex = randomIndex };
     }
 
-  // Medium: Prioritize build captures, regular captures, consider build creation, prefer high-value cards
+  // Medium: Prioritize build captures, then builds over captures (unless scorable cards), prefer high-value cards
   private AIAction GetMediumAction(List<PlayingCard> tableCards, List<Build> activeBuilds) {
     // Check for build captures first (highest priority)
     var buildCaptureMoves = Enumerable.Range(0, player.HandSize())
@@ -68,7 +68,7 @@ public class AIPlayer {
       return new AIAction { Type = AIAction.ActionType.PlayCard, CardIndex = chosen };
     }
 
-    // Check for regular captures
+    // Analyze regular capture moves for scorable cards
     var moveAnalysis = Enumerable.Range(0, player.HandSize())
         .Select(i => new {
           Index = i,
@@ -78,34 +78,24 @@ public class AIPlayer {
         .Select(x => new {
           x.Index,
           x.Captures,
-          HasHighValue = x.Captures.Any(IsHighValueCard)
+          HasHighValue = x.Captures.Any(IsScorableCard)
         })
         .ToList();
 
-    var highValueMoves = moveAnalysis
+    var scorableCardMoves = moveAnalysis
         .Where(x => x.Captures.Any() && x.HasHighValue)
         .Select(x => x.Index)
         .ToList();
 
-    var captureMoves = moveAnalysis
-        .Where(x => x.Captures.Any())
-        .Select(x => x.Index)
-        .ToList();
-
-    if (highValueMoves.Any()) {
-      var chosen = highValueMoves[Random.Range(0, highValueMoves.Count)];
-      Logger.LogMessage($"{player.Name} (Medium AI) plays high-value capture at index {chosen}");
+    // If there are scorable cards (Aces, Big/Little Casino) available to capture, take them
+    if (scorableCardMoves.Any()) {
+      var chosen = scorableCardMoves[Random.Range(0, scorableCardMoves.Count)];
+      Logger.LogMessage($"{player.Name} (Medium AI) plays scorable card capture at index {chosen}");
       return new AIAction { Type = AIAction.ActionType.PlayCard, CardIndex = chosen };
     }
 
-    if (captureMoves.Any()) {
-      var chosen = captureMoves[Random.Range(0, captureMoves.Count)];
-      Logger.LogMessage($"{player.Name} (Medium AI) plays capture at index {chosen}");
-      return new AIAction { Type = AIAction.ActionType.PlayCard, CardIndex = chosen };
-    }
-
-    // Consider creating a build (simple approach for medium AI)
-    if (tableCards.Count > 0 && Random.value > 0.5f) { // 50% chance to try building
+    // Consider creating a build (higher priority than simple matches for medium AI)
+    if (tableCards.Count > 0) {
       var allPossibleBuilds = new List<AIAction>();
       foreach (var handCard in player.Hand) {
         allPossibleBuilds.AddRange(FindPossibleBuilds(handCard, tableCards));
@@ -118,10 +108,30 @@ public class AIPlayer {
       }
     }
 
+    // Check for regular captures (lower priority than builds)
+    var captureMoves = moveAnalysis
+        .Where(x => x.Captures.Any())
+        .Select(x => x.Index)
+        .ToList();
+
+    if (captureMoves.Any()) {
+      var chosen = captureMoves[Random.Range(0, captureMoves.Count)];
+      Logger.LogMessage($"{player.Name} (Medium AI) plays regular capture at index {chosen}");
+      return new AIAction { Type = AIAction.ActionType.PlayCard, CardIndex = chosen };
+    }
+
     // No captures or builds available - trail
     var randomIndex = Random.Range(0, player.HandSize());
     Logger.LogMessage($"{player.Name} (Medium AI) trails at index {randomIndex}");
     return new AIAction { Type = AIAction.ActionType.PlayCard, CardIndex = randomIndex };
+  }
+
+  // Check if a card is scorable (Aces, Big Casino, Little Casino)
+  private bool IsScorableCard(PlayingCard card) {
+    var sm = ScoringManager.Instance;
+    return card.rank == PlayingCard.Rank.Ace ||
+           (card.suit == sm.BigCasinoSuit && card.rank == sm.BigCasinoRank) ||
+           (card.suit == sm.LittleCasinoSuit && card.rank == sm.LittleCasinoRank);
   }
     
     // Hard: Strategic play with lookahead and build evaluation
