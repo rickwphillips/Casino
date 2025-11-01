@@ -161,19 +161,22 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Transform dealerHandContainer;
     [SerializeField] private Transform nonDealerHandContainer;
     [SerializeField] private Transform tableCardsContainer;
+    [SerializeField] private Transform buildsContainer;
     [SerializeField] private TextMeshProUGUI currentPlayerText;
     [SerializeField] private TextMeshProUGUI deckCountText;
     [SerializeField] private TextMeshProUGUI gameStatusText;
     [SerializeField] private TextMeshProUGUI dealerScoreText;
     [SerializeField] private TextMeshProUGUI nonDealerScoreText;
     [SerializeField] private GameObject cardPrefab;
+    [SerializeField] private GameObject buildPrefab;
     [SerializeField] private Button playCardButton;
     [SerializeField] private Button restartButton;
-    
+
     private CardUI selectedCard = null;
     private List<CardUI> dealerCardUIs = new();
     private List<CardUI> nonDealerCardUIs = new();
     private List<CardUI> tableCardUIs = new();
+    private List<GameObject> buildUIs = new();
     
     private void Awake()
     {
@@ -214,6 +217,7 @@ public class UIManager : MonoBehaviour
     {
         UpdatePlayerHands();
         UpdateTableCards();
+        UpdateBuilds();
         UpdateGameInfo();
     }
     
@@ -221,18 +225,17 @@ public class UIManager : MonoBehaviour
     {
         GamePlayer dealer = GameManager.Instance.GetDealer();
         GamePlayer nonDealer = GameManager.Instance.GetNonDealer();
-        
-        // Only update if hands changed
+
+        // All cards are now selectable at all times
         if (dealerCardUIs.Count != dealer.Hand.Count)
-            UpdateHandDisplay(dealer, dealerHandContainer, dealerCardUIs, false);
+            UpdateHandDisplay(dealer, dealerHandContainer, dealerCardUIs, true);
         else
-            UpdateHandSelectability(dealer, dealerHandContainer, dealerCardUIs, false);
-        
-        bool nonDealerCanPlay = GameManager.Instance.GetCurrentPlayer() == nonDealer && nonDealer.HandSize() > 0;
+            UpdateHandSelectability(dealer, dealerHandContainer, dealerCardUIs, true);
+
         if (nonDealerCardUIs.Count != nonDealer.Hand.Count)
-            UpdateHandDisplay(nonDealer, nonDealerHandContainer, nonDealerCardUIs, nonDealerCanPlay);
+            UpdateHandDisplay(nonDealer, nonDealerHandContainer, nonDealerCardUIs, true);
         else
-            UpdateHandSelectability(nonDealer, nonDealerHandContainer, nonDealerCardUIs, nonDealerCanPlay);
+            UpdateHandSelectability(nonDealer, nonDealerHandContainer, nonDealerCardUIs, true);
     }
     
     private void UpdateHandSelectability(GamePlayer player, Transform container, List<CardUI> cardUIs, bool selectable)
@@ -282,7 +285,7 @@ public class UIManager : MonoBehaviour
     private void UpdateTableCards()
     {
         List<PlayingCard> tableCards = GameManager.Instance.GetTableCards();
-        
+
         if (tableCardUIs.Count != tableCards.Count)
         {
             foreach (Transform child in tableCardsContainer)
@@ -290,17 +293,113 @@ public class UIManager : MonoBehaviour
                 Destroy(child.gameObject);
             }
             tableCardUIs.Clear();
-            
+
             for (int i = 0; i < tableCards.Count; i++)
             {
                 GameObject cardObj = Instantiate(cardPrefab, tableCardsContainer);
                 CardUI cardUI = cardObj.AddComponent<CardUI>();
                 cardUI.Initialize(tableCards[i], false);
                 tableCardUIs.Add(cardUI);
-                
+
                 StartCoroutine(AnimateCardAppearance(cardUI, i * 0.05f));
             }
         }
+    }
+
+    private void UpdateBuilds()
+    {
+        if (buildsContainer == null)
+        {
+            Debug.LogWarning("BuildsContainer is not assigned in UIManager");
+            return;
+        }
+
+        List<Build> activeBuilds = GameManager.Instance.GetActiveBuilds();
+
+        // Always recreate build UI to show current state
+        foreach (var buildUI in buildUIs)
+        {
+            if (buildUI != null)
+                Destroy(buildUI);
+        }
+        buildUIs.Clear();
+
+        // Create UI for each build
+        for (int i = 0; i < activeBuilds.Count; i++)
+        {
+            Build build = activeBuilds[i];
+            GameObject buildObj = CreateBuildUI(build);
+            buildObj.transform.SetParent(buildsContainer, false);
+            buildUIs.Add(buildObj);
+        }
+    }
+
+    private GameObject CreateBuildUI(Build build)
+    {
+        // Create a container for this build
+        GameObject buildContainer = new GameObject($"Build_{build.DeclaredValue}");
+        RectTransform buildRect = buildContainer.AddComponent<RectTransform>();
+        buildRect.sizeDelta = new Vector2(200, 150);
+
+        // Add a background panel
+        Image bgImage = buildContainer.AddComponent<Image>();
+        bgImage.color = new Color(0.2f, 0.2f, 0.3f, 0.8f);
+
+        // Add a border based on owner
+        Outline outline = buildContainer.AddComponent<Outline>();
+        outline.effectColor = build.Owner == GameManager.Instance.GetDealer() ? Color.red : Color.blue;
+        outline.effectDistance = new Vector2(2, -2);
+
+        // Create header text showing owner and value
+        GameObject headerObj = new GameObject("Header");
+        headerObj.transform.SetParent(buildContainer.transform, false);
+        RectTransform headerRect = headerObj.AddComponent<RectTransform>();
+        headerRect.anchorMin = new Vector2(0, 0.8f);
+        headerRect.anchorMax = new Vector2(1, 1);
+        headerRect.offsetMin = Vector2.zero;
+        headerRect.offsetMax = Vector2.zero;
+
+        TextMeshProUGUI headerText = headerObj.AddComponent<TextMeshProUGUI>();
+        headerText.text = $"{build.Owner.Name}'s Build\nValue: {build.DeclaredValue}";
+        headerText.fontSize = 14;
+        headerText.fontStyle = FontStyles.Bold;
+        headerText.color = Color.white;
+        headerText.alignment = TextAlignmentOptions.Center;
+
+        // Create cards container
+        GameObject cardsObj = new GameObject("Cards");
+        cardsObj.transform.SetParent(buildContainer.transform, false);
+        RectTransform cardsRect = cardsObj.AddComponent<RectTransform>();
+        cardsRect.anchorMin = new Vector2(0, 0);
+        cardsRect.anchorMax = new Vector2(1, 0.8f);
+        cardsRect.offsetMin = new Vector2(5, 5);
+        cardsRect.offsetMax = new Vector2(-5, -5);
+
+        // Add horizontal layout for cards
+        UnityEngine.UI.HorizontalLayoutGroup layout = cardsObj.AddComponent<UnityEngine.UI.HorizontalLayoutGroup>();
+        layout.spacing = 5;
+        layout.childAlignment = TextAnchor.MiddleCenter;
+        layout.childControlWidth = false;
+        layout.childControlHeight = false;
+        layout.childForceExpandWidth = false;
+        layout.childForceExpandHeight = false;
+
+        // Add each card in the build
+        foreach (PlayingCard card in build.Cards)
+        {
+            GameObject miniCard = Instantiate(cardPrefab, cardsObj.transform);
+            CardUI cardUI = miniCard.AddComponent<CardUI>();
+            cardUI.Initialize(card, false);
+
+            // Make cards smaller in build display
+            RectTransform cardRect = miniCard.GetComponent<RectTransform>();
+            if (cardRect != null)
+            {
+                cardRect.sizeDelta = new Vector2(40, 60);
+            }
+        }
+
+        return buildContainer;
     }
     
     private void UpdateGameInfo()
@@ -431,6 +530,33 @@ public class UIManager : MonoBehaviour
             cardRect.localScale = Vector3.one;
     }
     
+    /// <summary>
+    /// Highlights the AI's selected hand card before they play it.
+    /// </summary>
+    public System.Collections.IEnumerator HighlightAICard(GamePlayer aiPlayer, int cardIndex, float delay = 0.8f)
+    {
+        // Determine which hand to use
+        var cardUIs = aiPlayer == GameManager.Instance.GetDealer() ? dealerCardUIs : nonDealerCardUIs;
+
+        // Validate card index
+        if (cardIndex < 0 || cardIndex >= cardUIs.Count)
+        {
+            Debug.LogWarning($"Invalid card index {cardIndex} for AI player {aiPlayer.Name}");
+            yield break;
+        }
+
+        // Highlight the selected card
+        var selectedCardUI = cardUIs[cardIndex];
+        selectedCardUI.SetSelected(true);
+
+        // Wait for the delay so player can see the selection
+        yield return new WaitForSeconds(delay);
+
+        // Deselect the card
+        if (selectedCardUI != null && selectedCardUI.gameObject != null)
+            selectedCardUI.SetSelected(false);
+    }
+
     /// <summary>
     /// Highlights table cards that will be captured by the AI, then waits for a delay before continuing.
     /// </summary>
