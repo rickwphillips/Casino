@@ -859,8 +859,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -38, y: 39}
-  m_SizeDelta: {x: 200, y: 30}
+  m_AnchoredPosition: {x: -1.2934, y: 40.665}
+  m_SizeDelta: {x: 204.0251, y: 26.669}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &536223543
 MonoBehaviour:
@@ -882,7 +882,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 
+  m_text: Non-Dealer Score
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -917,7 +917,7 @@ MonoBehaviour:
   m_fontSizeMax: 72
   m_fontStyle: 0
   m_HorizontalAlignment: 1
-  m_VerticalAlignment: 256
+  m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
   m_wordSpacing: 0
@@ -1574,8 +1574,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 199.57, y: 112.97}
-  m_SizeDelta: {x: -399.14, y: -225.94}
+  m_AnchoredPosition: {x: 125, y: 75}
+  m_SizeDelta: {x: -250, y: -150}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &774949427
 MonoBehaviour:
@@ -2209,8 +2209,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -195.88, y: 112.97}
-  m_SizeDelta: {x: -391.7684, y: -225.9406}
+  m_AnchoredPosition: {x: -125, y: 75}
+  m_SizeDelta: {x: -250, y: -150}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1281181286
 MonoBehaviour:
@@ -2863,7 +2863,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -46.8821, y: 64.0616}
+  m_AnchoredPosition: {x: -0, y: 35}
   m_SizeDelta: {x: 200, y: 30}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1562033790
@@ -2886,7 +2886,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 
+  m_text: 'Dealer Name
+
+    Score'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -3919,8 +3921,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 81.812, y: 64.062}
-  m_SizeDelta: {x: 127.624, y: 30}
+  m_AnchoredPosition: {x: 9, y: -1}
+  m_SizeDelta: {x: 218, y: 112}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1879056941
 CanvasRenderer:
@@ -3950,7 +3952,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 
+  m_text: 'Deckl Card Count
+
+'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -4626,6 +4630,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c5000db3e9515429e9afa3469f5e4bb4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameLogger
+  logCacheSize: 10
 --- !u!4 &2093942477
 Transform:
   m_ObjectHideFlags: 0
