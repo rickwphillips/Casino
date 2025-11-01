@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor.VersionControl;
 using UnityEngine;
 
 public class GameLogger : MonoBehaviour
@@ -8,7 +9,7 @@ public class GameLogger : MonoBehaviour
     public static GameLogger Instance { get; private set; }
 
     [SerializeField] private int logCacheSize = 10;
-    private List<string> logCache = new List<string>();
+    private List<string> logCache = new ();
 
     private void Awake() {
         if (Instance == null) { Instance = this; }
@@ -28,19 +29,22 @@ public class GameLogger : MonoBehaviour
     }
 
     /// <summary>
-    /// Flush all cached logs to the console immediately.
+    /// Flush all cached logs to the console immediately as a single concatenated message.
     /// </summary>
     public void FlushCache()
     {
         if (logCache.Count > 0)
         {
-            foreach (var log in logCache)
-            {
-                Debug.Log(log);
-            }
+            string concatenatedLogs = string.Join("\n", logCache);
+            Debug.Log(concatenatedLogs);
             logCache.Clear();
         }
     }
+
+    public void LogMessage(string message)
+  {
+        AddToCache(message);
+  } 
 
     public void LogGameStart() => new[] {
         "\n" + new string('=', 80),
