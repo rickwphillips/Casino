@@ -18,7 +18,7 @@ public class GameUISetup : MonoBehaviour
         }
 
         // Create Canvas
-        GameObject canvasObj = new GameObject("GameCanvas");
+        GameObject canvasObj = new("GameCanvas");
         canvasObj.transform.SetParent(transform);
         Canvas canvas = canvasObj.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -26,7 +26,7 @@ public class GameUISetup : MonoBehaviour
         canvasObj.AddComponent<GraphicRaycaster>();
 
         // Create GameUIManager GameObject
-        GameObject uiManagerObj = new GameObject("GameUIManager");
+        GameObject uiManagerObj = new("GameUIManager");
         uiManagerObj.transform.SetParent(canvas.transform);
         GameUIManager uiManager = uiManagerObj.AddComponent<GameUIManager>();
 
@@ -81,7 +81,7 @@ public class GameUISetup : MonoBehaviour
 
     private GameObject CreatePanel(string name, RectTransform parent, Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin, Vector2 offsetMax)
     {
-        GameObject panel = new GameObject(name);
+        GameObject panel = new(name);
         panel.transform.SetParent(parent);
         RectTransform rect = panel.AddComponent<RectTransform>();
         rect.anchorMin = anchorMin;
@@ -97,7 +97,7 @@ public class GameUISetup : MonoBehaviour
 
     private Text CreateText(string name, Transform parent, string defaultText, int fontSize, TextAnchor alignment, Vector2 offsetMin, Vector2 offsetMax)
     {
-        GameObject textObj = new GameObject(name);
+        GameObject textObj = new(name);
         textObj.transform.SetParent(parent);
         RectTransform rect = textObj.AddComponent<RectTransform>();
         rect.anchorMin = Vector2.zero;

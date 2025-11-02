@@ -173,12 +173,12 @@ public class GameLogger : MonoBehaviour
         {
             $"\n{new string('=', 80)}",
             "GAME OVER!",
-            new string('=', 80),
+            new('=', 80),
             $"\nWINNER: {winner.Name}",
             $"Final Score: {winner.Score} points (needed {winScore} to win)",
             "",
             "DETAILED SCORE BREAKDOWN:",
-            new string('-', 80),
+            new('-', 80),
             ""
         };
 

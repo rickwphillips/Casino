@@ -23,7 +23,7 @@ public class CardPrefabCreator : MonoBehaviour
         if (canvas == null)
         {
             // Create UI Canvas with EventSystem
-            GameObject canvasGO = new GameObject("Canvas");
+            GameObject canvasGO = new("Canvas");
             canvas = canvasGO.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvasGO.AddComponent<CanvasScaler>();
@@ -32,7 +32,7 @@ public class CardPrefabCreator : MonoBehaviour
             // Create EventSystem if needed - using newer Unity API
             if (GameObject.FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
             {
-                GameObject eventSystemGO = new GameObject("EventSystem");
+                GameObject eventSystemGO = new("EventSystem");
                 eventSystemGO.AddComponent<UnityEngine.EventSystems.EventSystem>();
                 
                 // Note: StandaloneInputModule is deprecated in newer Unity versions
@@ -46,7 +46,7 @@ public class CardPrefabCreator : MonoBehaviour
         }
         
         // Create the Card GameObject
-        GameObject cardPrefab = new GameObject("CardPrefab");
+        GameObject cardPrefab = new("CardPrefab");
         cardPrefab.transform.SetParent(canvas.transform, false);
         
         // Add RectTransform and set size
@@ -70,7 +70,7 @@ public class CardPrefabCreator : MonoBehaviour
         cardButton.colors = colors;
         
         // Create Text child with TextMeshPro
-        GameObject textGO = new GameObject("CardText");
+        GameObject textGO = new("CardText");
         textGO.transform.SetParent(cardPrefab.transform, false);
         
         // Add RectTransform to text
@@ -125,7 +125,7 @@ public class CardPrefabCreator : MonoBehaviour
         if (canvas == null)
         {
             // Create UI Canvas with EventSystem
-            GameObject canvasGO = new GameObject("Canvas");
+            GameObject canvasGO = new("Canvas");
             canvas = canvasGO.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvasGO.AddComponent<CanvasScaler>();
@@ -134,7 +134,7 @@ public class CardPrefabCreator : MonoBehaviour
             // Create EventSystem if needed
             if (GameObject.FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
             {
-                GameObject eventSystemGO = new GameObject("EventSystem");
+                GameObject eventSystemGO = new("EventSystem");
                 eventSystemGO.AddComponent<UnityEngine.EventSystems.EventSystem>();
                 
                 #if ENABLE_INPUT_SYSTEM
@@ -146,7 +146,7 @@ public class CardPrefabCreator : MonoBehaviour
         }
         
         // Create the Card GameObject
-        GameObject cardPrefab = new GameObject("CardPrefab_SimpleText");
+        GameObject cardPrefab = new("CardPrefab_SimpleText");
         cardPrefab.transform.SetParent(canvas.transform, false);
         
         // Add RectTransform and set size
@@ -170,7 +170,7 @@ public class CardPrefabCreator : MonoBehaviour
         cardButton.colors = colors;
         
         // Create Text child with regular Text component
-        GameObject textGO = new GameObject("CardText");
+        GameObject textGO = new("CardText");
         textGO.transform.SetParent(cardPrefab.transform, false);
         
         // Add RectTransform to text
@@ -317,7 +317,7 @@ public class CardPrefabValidator : MonoBehaviour
     // Helper method to get a validation report
     public string GetValidationReport()
     {
-        System.Text.StringBuilder report = new System.Text.StringBuilder();
+        System.Text.StringBuilder report = new();
         report.AppendLine("=== Card Prefab Validation Report ===");
         report.AppendLine($"Valid Structure: {(hasValidStructure ? "✓" : "✗")}");
         report.AppendLine($"Modern Button: {(hasModernButton ? "✓" : "✗")}");
