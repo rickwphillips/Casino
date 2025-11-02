@@ -66,10 +66,10 @@ public class ScoringManager : MonoBehaviour
         // Set variant based on inspector selection
         string variantName = selectedVariant switch
         {
-            VariantSelection.Standard => standardVariant?.VariantName,
-            VariantSelection.Connecticut => connecticutVariant?.VariantName,
-            VariantSelection.Custom => customVariant?.VariantName,
-            _ => connecticutVariant?.VariantName
+            VariantSelection.Standard => standardVariant != null ? standardVariant.VariantName : null,
+            VariantSelection.Connecticut => connecticutVariant != null ? connecticutVariant.VariantName : null,
+            VariantSelection.Custom => customVariant != null ? customVariant.VariantName : null,
+            _ => connecticutVariant != null ? connecticutVariant.VariantName : null
         };
 
         if (!string.IsNullOrEmpty(variantName))

@@ -225,9 +225,17 @@ public class AIPlayer {
         int handCardValue = CaptureChecker.GetCardValue(handCard);
         int handCardIndex = player.Hand.ToList().IndexOf(handCard);
 
+        // Face cards cannot be used in builds
+        if (IsFaceCard(handCard) || handCardValue == 0) {
+            return possibleBuilds;
+        }
+
+        // Filter out face cards from table cards
+        var eligibleTableCards = tableCards.Where(card => !IsFaceCard(card)).ToList();
+
         // Try combinations of 1 to 3 table cards
-        for (int size = 1; size <= Mathf.Min(3, tableCards.Count); size++) {
-            var combinations = GetCombinations(tableCards, size);
+        for (int size = 1; size <= Mathf.Min(3, eligibleTableCards.Count); size++) {
+            var combinations = GetCombinations(eligibleTableCards, size);
             foreach (var combo in combinations) {
                 int comboSum = combo.Sum(c => CaptureChecker.GetCardValue(c));
                 int totalValue = comboSum + handCardValue;
@@ -247,6 +255,12 @@ public class AIPlayer {
         }
 
         return possibleBuilds;
+    }
+
+    private bool IsFaceCard(PlayingCard card) {
+        return card.rank == PlayingCard.Rank.Jack ||
+               card.rank == PlayingCard.Rank.Queen ||
+               card.rank == PlayingCard.Rank.King;
     }
 
     // Get all combinations of specified size from a list

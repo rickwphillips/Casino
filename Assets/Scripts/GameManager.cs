@@ -534,6 +534,13 @@ private void ProcessNextTurn()
 
     private bool CanCreateBuild(GamePlayer player, List<PlayingCard> cards, int declaredValue)
     {
+        // Face cards cannot be used in builds (they have no numeric value)
+        if (cards.Any(card => IsFaceCard(card)))
+        {
+            Debug.LogWarning($"Cannot create build with face cards! Face cards have no numeric value.");
+            return false;
+        }
+
         // Must have the capture card in hand
         if (!PlayerCanCaptureValue(player, declaredValue))
         {
@@ -550,6 +557,13 @@ private void ProcessNextTurn()
         }
 
         return true;
+    }
+
+    private bool IsFaceCard(PlayingCard card)
+    {
+        return card.rank == PlayingCard.Rank.Jack ||
+               card.rank == PlayingCard.Rank.Queen ||
+               card.rank == PlayingCard.Rank.King;
     }
 
     public bool CreateBuild(GamePlayer player, PlayingCard handCard, List<PlayingCard> tableCardsForBuild, int declaredValue)

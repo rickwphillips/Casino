@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
+[RequireComponent(typeof(Button))]
 public class CardUI : MonoBehaviour
 {
     private PlayingCard card;
@@ -54,6 +55,9 @@ public class CardUI : MonoBehaviour
             string rankDisplay = GetRankDisplay(card.rank);
             string suitEmoji = GetSuitEmoji(card.suit);
             rankSuitText.text = $"{rankDisplay}{suitEmoji}";
+
+            // Set color based on suit - red for Hearts/Diamonds, black for Clubs/Spades
+            rankSuitText.color = GetSuitColor(card.suit);
         }
 
         // Ensure button exists and set interactable state
@@ -96,6 +100,18 @@ public class CardUI : MonoBehaviour
             PlayingCard.Suit.Clubs => "♣",
             PlayingCard.Suit.Spades => "♠",
             _ => suit.ToString()
+        };
+    }
+
+    private Color GetSuitColor(PlayingCard.Suit suit)
+    {
+        return suit switch
+        {
+            PlayingCard.Suit.Hearts => new Color(0.9f, 0.1f, 0.1f),      // Red
+            PlayingCard.Suit.Diamonds => new Color(0.9f, 0.1f, 0.1f),    // Red
+            PlayingCard.Suit.Clubs => Color.black,                        // Black
+            PlayingCard.Suit.Spades => Color.black,                       // Black
+            _ => Color.black
         };
     }
     
@@ -154,7 +170,7 @@ public class CardUI : MonoBehaviour
 
 public class UIManager : MonoBehaviour
 {
-  private static WaitForSeconds _waitForSeconds0_1 = new WaitForSeconds(0.1f);
+  private static WaitForSeconds _waitForSeconds0_1 = new(0.1f);
 
   public static UIManager Instance { get; private set; }
     
@@ -337,7 +353,7 @@ public class UIManager : MonoBehaviour
     private GameObject CreateBuildUI(Build build)
     {
         // Create a container for this build
-        GameObject buildContainer = new GameObject($"Build_{build.DeclaredValue}");
+        GameObject buildContainer = new($"Build_{build.DeclaredValue}");
         RectTransform buildRect = buildContainer.AddComponent<RectTransform>();
         buildRect.sizeDelta = new Vector2(200, 150);
 
@@ -351,7 +367,7 @@ public class UIManager : MonoBehaviour
         outline.effectDistance = new Vector2(2, -2);
 
         // Create header text showing owner and value
-        GameObject headerObj = new GameObject("Header");
+        GameObject headerObj = new("Header");
         headerObj.transform.SetParent(buildContainer.transform, false);
         RectTransform headerRect = headerObj.AddComponent<RectTransform>();
         headerRect.anchorMin = new Vector2(0, 0.8f);
@@ -367,7 +383,7 @@ public class UIManager : MonoBehaviour
         headerText.alignment = TextAlignmentOptions.Center;
 
         // Create cards container
-        GameObject cardsObj = new GameObject("Cards");
+        GameObject cardsObj = new("Cards");
         cardsObj.transform.SetParent(buildContainer.transform, false);
         RectTransform cardsRect = cardsObj.AddComponent<RectTransform>();
         cardsRect.anchorMin = new Vector2(0, 0);

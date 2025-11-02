@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4061345c1e1454f01981fc6370dd8663, type: 3}
   m_Name: StandardVariant
   m_EditorClassIdentifier: Assembly-CSharp::ScoreVariables
-  variantName: Rick's New England
+  variantName: Standard Varaint
   pointsForMostCards: 3
   pointsForMostSpades: 1
   pointsForBigCasino: 2
