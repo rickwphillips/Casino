@@ -24,11 +24,20 @@ public class CardUI : MonoBehaviour
         button = GetComponent<Button>();
         cardImage = GetComponent<Image>();
         rankSuitText = GetComponentInChildren<TextMeshProUGUI>();
-        
+
         originalScale = transform.localScale;
-        
+
+        Debug.Log($"CardUI Start - Button found: {button != null}, GameObject: {gameObject.name}");
+
         if (button != null)
+        {
             button.onClick.AddListener(OnCardClicked);
+            Debug.Log($"Click listener added to card button on {gameObject.name}");
+        }
+        else
+        {
+            Debug.LogWarning($"No Button component found on {gameObject.name}!");
+        }
     }
     
     public void Initialize(PlayingCard c, bool selectable = false)
@@ -37,9 +46,14 @@ public class CardUI : MonoBehaviour
         isSelectable = selectable;
         isSelected = false;
 
+        Debug.Log($"Initialize called on {gameObject.name} - Card: {(c != null ? c.ToString() : "null")}, selectable: {selectable}");
+
         // Ensure button component is available immediately
         if (button == null)
+        {
             button = GetComponent<Button>();
+            Debug.Log($"Button component retrieved in Initialize: {button != null}");
+        }
 
         UpdateDisplay();
     }
@@ -65,7 +79,14 @@ public class CardUI : MonoBehaviour
             button = GetComponent<Button>();
 
         if (button != null)
+        {
             button.interactable = isSelectable;
+            Debug.Log($"UpdateDisplay - {gameObject.name}: button.interactable set to {isSelectable}");
+        }
+        else
+        {
+            Debug.LogWarning($"UpdateDisplay - {gameObject.name}: button is null, cannot set interactable!");
+        }
 
         UpdateVisuals();
     }
@@ -128,14 +149,21 @@ public class CardUI : MonoBehaviour
     
     private void OnCardClicked()
     {
-        if (!isSelectable) return;
-        
+        Debug.Log($"OnCardClicked called! Card: {(card != null ? card.ToString() : "null")}, isSelectable: {isSelectable}");
+
+        if (!isSelectable)
+        {
+            Debug.Log("Card is not selectable, ignoring click");
+            return;
+        }
+
         isSelected = !isSelected;
+        Debug.Log($"Card selection toggled to: {isSelected}");
         UpdateVisuals();
-        
+
         StopAllCoroutines();
         StartCoroutine(AnimateCardScale(isSelected ? 1.15f : 1f));
-        
+
         UIManager.Instance.OnCardSelected(this, card);
     }
     
@@ -187,6 +215,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private GameObject buildPrefab;
     [SerializeField] private Button playCardButton;
     [SerializeField] private Button restartButton;
+    [SerializeField] private GameObject gameOverPanel;
 
     private CardUI selectedCard = null;
     private List<CardUI> dealerCardUIs = new();
@@ -206,10 +235,41 @@ public class UIManager : MonoBehaviour
     {
         if (playCardButton != null)
             playCardButton.onClick.AddListener(OnPlayCardClicked);
-        
+
+        // Setup GameOverPanel and find restart button before hiding it
+        if (gameOverPanel != null)
+        {
+            // Ensure panel is active first so we can find components
+            gameOverPanel.SetActive(true);
+
+            // Find restart button within GameOverPanel if not explicitly assigned
+            if (restartButton == null)
+            {
+                restartButton = gameOverPanel.GetComponentInChildren<Button>();
+                Debug.Log("Auto-detected restart button: " + (restartButton != null ? restartButton.name : "null"));
+            }
+
+            // Hide the panel after finding the button
+            gameOverPanel.SetActive(false);
+            Debug.Log("GameOverPanel hidden at start");
+        }
+
+        // Add listener to restart button after it's been found
         if (restartButton != null)
+        {
+            // Clear any existing listeners first to avoid duplicates
+            restartButton.onClick.RemoveAllListeners();
             restartButton.onClick.AddListener(OnRestartClicked);
-        
+            Debug.Log($"Restart button listener added to: {restartButton.name}, interactable: {restartButton.interactable}");
+
+            // Test log to verify button component
+            Debug.Log($"Restart button component details - GameObject: {restartButton.gameObject.name}, Active: {restartButton.gameObject.activeInHierarchy}");
+        }
+        else
+        {
+            Debug.LogWarning("Restart button is null - cannot add listener!");
+        }
+
         StartCoroutine(WaitAndRefresh());
     }
     
@@ -286,14 +346,25 @@ public class UIManager : MonoBehaviour
         {
             GameObject cardObj = Instantiate(cardPrefab, container);
             Debug.Log("Created card object " + i);
-            CardUI cardUI = cardObj.AddComponent<CardUI>();
-            Debug.Log("Added CardUI component");
+
+            // Get existing CardUI component or add one if it doesn't exist
+            CardUI cardUI = cardObj.GetComponent<CardUI>();
+            if (cardUI == null)
+            {
+                cardUI = cardObj.AddComponent<CardUI>();
+                Debug.Log("Added CardUI component");
+            }
+            else
+            {
+                Debug.Log("Using existing CardUI component");
+            }
+
             cardUI.Initialize(player.Hand[i], selectable);
             cardUIs.Add(cardUI);
-            
+
             Debug.Log("Card " + i + " parent: " + (cardObj.transform.parent != null ? cardObj.transform.parent.name : "NULL"));
             Debug.Log("Card " + i + " active: " + cardObj.activeInHierarchy);
-            
+
             StartCoroutine(AnimateCardAppearance(cardUI, i * 0.05f));
         }
     }
@@ -313,7 +384,12 @@ public class UIManager : MonoBehaviour
             for (int i = 0; i < tableCards.Count; i++)
             {
                 GameObject cardObj = Instantiate(cardPrefab, tableCardsContainer);
-                CardUI cardUI = cardObj.AddComponent<CardUI>();
+
+                // Get existing CardUI component or add one if it doesn't exist
+                CardUI cardUI = cardObj.GetComponent<CardUI>();
+                if (cardUI == null)
+                    cardUI = cardObj.AddComponent<CardUI>();
+
                 cardUI.Initialize(tableCards[i], false);
                 tableCardUIs.Add(cardUI);
 
@@ -404,7 +480,12 @@ public class UIManager : MonoBehaviour
         foreach (PlayingCard card in build.Cards)
         {
             GameObject miniCard = Instantiate(cardPrefab, cardsObj.transform);
-            CardUI cardUI = miniCard.AddComponent<CardUI>();
+
+            // Get existing CardUI component or add one if it doesn't exist
+            CardUI cardUI = miniCard.GetComponent<CardUI>();
+            if (cardUI == null)
+                cardUI = miniCard.AddComponent<CardUI>();
+
             cardUI.Initialize(card, false);
 
             // Make cards smaller in build display
@@ -445,12 +526,23 @@ public class UIManager : MonoBehaviour
                 GamePlayer winner = (dealer.Score >= 21) ? dealer : nonDealer;
                 gameStatusText.text = $"Game Over!\n{winner.Name} Wins!";
                 playCardButton.interactable = false;
-                if (restartButton != null)
-                    restartButton.gameObject.SetActive(true);
+                if (gameOverPanel != null && !gameOverPanel.activeSelf)
+                {
+                    gameOverPanel.SetActive(true);
+                    Debug.Log("Game Over - showing GameOverPanel");
+
+                    // Verify restart button state when panel is shown
+                    if (restartButton != null)
+                    {
+                        Debug.Log($"Restart button state: interactable={restartButton.interactable}, enabled={restartButton.enabled}, gameObject.active={restartButton.gameObject.activeInHierarchy}");
+                    }
+                }
             }
             else
             {
                 gameStatusText.text = "Playing...";
+                if (gameOverPanel != null)
+                    gameOverPanel.SetActive(false);
             }
         }
     }
@@ -601,12 +693,51 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Public test method to manually trigger restart from Inspector or debug
+    /// </summary>
+    [ContextMenu("Test Restart Button")]
+    public void TestRestartButton()
+    {
+        Debug.Log("TestRestartButton called manually!");
+        OnRestartClicked();
+    }
+
     private void OnRestartClicked()
     {
-        GameManager.Instance.InitializeGame();
-        playCardButton.interactable = true;
-        if (restartButton != null)
-            restartButton.gameObject.SetActive(false);
+        Debug.Log("════════════════════════════════════════");
+        Debug.Log("OnRestartClicked CALLED!");
+        Debug.Log("════════════════════════════════════════");
+
+        if (gameOverPanel != null)
+        {
+            Debug.Log($"Hiding game over panel (was active: {gameOverPanel.activeSelf})");
+            gameOverPanel.SetActive(false);
+        }
+        else
+        {
+            Debug.LogWarning("gameOverPanel is null!");
+        }
+
+        if (GameManager.Instance != null)
+        {
+            Debug.Log("Calling GameManager.Instance.InitializeGame()");
+            GameManager.Instance.InitializeGame();
+        }
+        else
+        {
+            Debug.LogError("GameManager.Instance is null!");
+        }
+
+        if (playCardButton != null)
+        {
+            playCardButton.interactable = true;
+            Debug.Log("Play card button set to interactable");
+        }
+
         RefreshUI();
+        Debug.Log("════════════════════════════════════════");
+        Debug.Log("OnRestartClicked COMPLETE!");
+        Debug.Log("════════════════════════════════════════");
     }
 }
