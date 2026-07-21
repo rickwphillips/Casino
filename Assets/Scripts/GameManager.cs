@@ -29,6 +29,7 @@ public class GameManager : MonoBehaviour
     private GamePhase currentPhase;
     private GamePlayer currentPlayer;
     private GamePlayer lastPlayerToCaptureThisRound;
+    private GamePlayer invadedSeat; // Seat currently held by an NPC invader, if any
     private int cardsPlayedThisRound = 0;
     private const int HAND_SIZE = 4;
     private const int TABLE_SIZE = 4;
@@ -58,6 +59,19 @@ public class GameManager : MonoBehaviour
             dealerAI = new AIPlayer(dealer, dealerAIDifficulty);
         if (nonDealer.IsAI())
             nonDealerAI = new AIPlayer(nonDealer, nonDealerAIDifficulty);
+
+        // Dark Souls-style NPC invasion: any location can be invaded. Purely
+        // additive and null-guarded, so scenes without an invasion manager are
+        // unaffected.
+        invadedSeat = null;
+        if (NpcInvasionManager.Instance != null)
+        {
+            NpcInvasionManager.Instance.ClearInvasion();
+            if (dealer.IsAI() && NpcInvasionManager.Instance.TryInvade(dealerAI, dealer) != null)
+                invadedSeat = dealer;
+            else if (nonDealer.IsAI() && NpcInvasionManager.Instance.TryInvade(nonDealerAI, nonDealer) != null)
+                invadedSeat = nonDealer;
+        }
 
         tableCards.Clear();
         activeBuilds.Clear();
@@ -507,11 +521,18 @@ private void ProcessNextTurn()
             loser == dealer ? dealerScoreBreakdown : nonDealerScoreBreakdown
         );
 
+        // Resolve any active NPC invasion based on whether the invader's seat won.
+        if (NpcInvasionManager.Instance != null && NpcInvasionManager.Instance.IsInvasionActive)
+        {
+            NpcInvasionManager.Instance.ResolveInvasion(invadedSeat != null && winner == invadedSeat);
+        }
+        invadedSeat = null;
+
         // Refresh UI to show game over state
         if (UIManager.Instance != null)
             UIManager.Instance.RefreshUI();
     }
-    
+
     public GamePlayer GetCurrentPlayer() => currentPlayer;
     public GamePlayer GetDealer() => dealer;
     public GamePlayer GetNonDealer() => nonDealer;

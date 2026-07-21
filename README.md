@@ -170,6 +170,30 @@ The game includes a Connecticut variant with different scoring. Check the Scorin
   - Card count (for "Most Cards")
 - Minimizes value lost when trailing
 
+## NPC Invasions (Dark Souls-style)
+
+Every location in the game — each scoring variant (Standard, Connecticut,
+Rick's New England) and, by fallback, the plain card table — can be invaded by
+a themed NPC "dark spirit." Invasions are a purely additive, cosmetic layer on
+top of the normal rules: the card game itself is never changed.
+
+**How it works**
+- Add an `NpcInvasionManager` component to a GameObject in the scene to enable
+  invasions. Without it, the base game runs unchanged.
+- At the start of a game, an eligible **AI seat** may be invaded (chance is
+  configurable via the manager's `invasionChance`, default 35%).
+- When an invasion succeeds, a themed invader (e.g. *Maldron, the Assassin*,
+  *Longfinger Kirk*, *Patches the Unbreakable*) takes over that AI seat, adopts
+  the invader's difficulty, and broadcasts flavor text through the game log:
+  an arrival taunt on entry, and a victory/defeat taunt when the game ends.
+- Each location has its own roster of invaders (see `NpcInvasion.cs`); any
+  un-rostered location is invaded by a wandering phantom, so **all** locations
+  can be invaded.
+
+**Configuration** (on the `NpcInvasionManager` component)
+- `invasionsEnabled` — master on/off switch.
+- `invasionChance` — probability (0–1) that an eligible AI seat is invaded.
+
 ## Controls
 
 - **Select a Card**: Click on a card in your hand
