@@ -1080,8 +1080,13 @@ public class UIManager : MonoBehaviour
         GamePlayer dealer = GameManager.Instance.GetDealer();
         GamePlayer nonDealer = GameManager.Instance.GetNonDealer();
 
-        UpdateOneHand(dealer, dealerHandContainer, dealerCardUIs);
-        UpdateOneHand(nonDealer, nonDealerHandContainer, nonDealerCardUIs);
+        // The human's hand stays at the bottom no matter who is dealing;
+        // the dealer swap must not flip the seats on screen.
+        GamePlayer top = dealer.IsHuman() ? nonDealer : dealer;
+        GamePlayer bottom = dealer.IsHuman() ? dealer : nonDealer;
+
+        UpdateOneHand(top, dealerHandContainer, dealerCardUIs);
+        UpdateOneHand(bottom, nonDealerHandContainer, nonDealerCardUIs);
     }
 
     // Human hand: face up, selectable only while input is expected.
@@ -1246,6 +1251,11 @@ public class UIManager : MonoBehaviour
             if (cardUI == null) cardUI = mini.AddComponent<CardUI>();
             cardUI.Initialize(build.Cards[i], false);
 
+            // The stack is one clickable unit: children must not swallow the
+            // click before it reaches the root's button
+            foreach (var g in mini.GetComponentsInChildren<Graphic>())
+                g.raycastTarget = false;
+
             var r = mini.GetComponent<RectTransform>();
             r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
             r.sizeDelta = new Vector2(56, 80);
@@ -1266,6 +1276,7 @@ public class UIManager : MonoBehaviour
         var bi = badge.AddComponent<Image>();
         bi.color = mine ? new Color(0.2f, 0.45f, 0.85f, 0.95f)
                         : new Color(0.75f, 0.25f, 0.2f, 0.95f);
+        bi.raycastTarget = false;
 
         var badgeText = CreateText("Value", badge.transform);
         var btr = badgeText.rectTransform;
@@ -1276,6 +1287,7 @@ public class UIManager : MonoBehaviour
         badgeText.fontStyle = FontStyles.Bold;
         badgeText.alignment = TextAlignmentOptions.Center;
         badgeText.color = Color.white;
+        badgeText.raycastTarget = false;
         badgeText.text = build.DeclaredValue switch
         {
             11 => "J", 12 => "Q", 13 => "K", _ => build.DeclaredValue.ToString()
@@ -1425,7 +1437,7 @@ public class UIManager : MonoBehaviour
         if (gm == null || !gm.IsWaitingForHumanInput()) return;
 
         var player = gm.GetCurrentPlayer();
-        var handUIs = player == gm.GetDealer() ? dealerCardUIs : nonDealerCardUIs;
+        var handUIs = player.IsHuman() ? nonDealerCardUIs : dealerCardUIs; // human = bottom row
         var chosen = buildSelection.Select(ui => ui.Card).ToList();
         bool anySelection = chosen.Count > 0 || selectedBuilds.Count > 0;
 
@@ -1738,7 +1750,7 @@ public class UIManager : MonoBehaviour
         ClearSelections();
         ClearSuggestionHighlights();
 
-        var handUIs = player == gm.GetDealer() ? dealerCardUIs : nonDealerCardUIs;
+        var handUIs = player.IsHuman() ? nonDealerCardUIs : dealerCardUIs; // human = bottom row
         if (action.CardIndex < 0 || action.CardIndex >= handUIs.Count) return;
 
         PlayingCard handCard = player.Hand[action.CardIndex];
