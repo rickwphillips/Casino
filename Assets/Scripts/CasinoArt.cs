@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 // Procedural art for the Parlor direction. This project ships no art assets, so
@@ -10,6 +11,75 @@ using UnityEngine;
 public static class CasinoArt
 {
     private static Sprite feltSprite, cardBackSprite, railSprite;
+    private static readonly Dictionary<string, Sprite> cache = new();
+
+    // ---------------------------------------------------------------
+    // Rounded surfaces.
+    //
+    // A Unity Image with no sprite is a hard rectangle: no radius, no border,
+    // no shadow. Parlor's panels, buttons and cards all have all three, so the
+    // whole surface treatment has to be generated and 9-sliced.
+    //
+    // Every sprite here is built with a signed-distance rounded rect, which
+    // gives clean antialiased edges at any size, and sliced with a border of
+    // radius + margin so corners never stretch.
+    // ---------------------------------------------------------------
+
+    private static float RoundedSdf(float x, float y, float w, float h, float r)
+    {
+        float qx = Mathf.Abs(x - w / 2f) - (w / 2f - r);
+        float qy = Mathf.Abs(y - h / 2f) - (h / 2f - r);
+        return Mathf.Sqrt(Mathf.Max(qx, 0) * Mathf.Max(qx, 0) + Mathf.Max(qy, 0) * Mathf.Max(qy, 0))
+             + Mathf.Min(Mathf.Max(qx, qy), 0) - r;
+    }
+
+    private static Sprite Build(string key, int radius, int margin,
+        System.Func<float, int, int, Color> shade)
+    {
+        if (cache.TryGetValue(key, out var hit) && hit != null) return hit;
+        int slice = radius + margin;
+        int n = slice * 2 + 4;
+        var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+        float w = n - margin * 2, h = n - margin * 2;
+
+        for (int y = 0; y < n; y++)
+            for (int x = 0; x < n; x++)
+                tex.SetPixel(x, y, shade(RoundedSdf(x - margin + 0.5f, y - margin + 0.5f, w, h, radius), x, y));
+        tex.Apply();
+
+        var sprite = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), 100f, 0,
+            SpriteMeshType.FullRect, new Vector4(slice, slice, slice, slice));
+        cache[key] = sprite;
+        return sprite;
+    }
+
+    // White rounded rect. Left untinted so Image.color still carries card state.
+    public static Sprite RoundedFill(int radius) =>
+        Build($"fill{radius}", radius, 1, (d, x, y) =>
+            new Color(1f, 1f, 1f, Mathf.Clamp01(0.5f - d)));
+
+    // Filled panel with a hairline border, baked because panels are not tinted.
+    public static Sprite Panel(int radius, Color fill, Color stroke, float strokeWidth = 1f)
+    {
+        string key = $"panel{radius}|{fill}|{stroke}|{strokeWidth}";
+        return Build(key, radius, 1, (d, x, y) =>
+        {
+            float inside = Mathf.Clamp01(0.5f - d);
+            float edge = Mathf.Clamp01(0.5f - Mathf.Abs(d + strokeWidth / 2f) + strokeWidth / 2f);
+            var c = Color.Lerp(fill, stroke, Mathf.Clamp01(edge * stroke.a));
+            return new Color(c.r, c.g, c.b, Mathf.Max(fill.a * inside, edge * stroke.a));
+        });
+    }
+
+    // Soft drop shadow, offset downward. Sits behind a card as its own Image so
+    // the card face above it can still be tinted by state without tinting this.
+    public static Sprite Shadow(int radius, int blur, int dy) =>
+        Build($"shadow{radius}|{blur}|{dy}", radius, blur + dy, (d, x, y) =>
+        {
+            float s = Mathf.Clamp01(1f - (d + dy * 0.5f) / Mathf.Max(blur, 1));
+            return new Color(0f, 0f, 0f, 0.38f * s * s * s);
+        });
+
 
     // Lit table: brightest above centre, falling off to the edges. Small and
     // bilinear-filtered, because the Image stretches it over the whole screen

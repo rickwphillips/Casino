@@ -20,6 +20,8 @@ public class CardUI : MonoBehaviour
     private bool isCapturable = false;   // the board makes this takeable
     private bool isOpponentTaking = false; // the AI is about to take this
     private Image backImage;
+    private Image faceImage;
+    private Image shadowImage;
     private TextMeshProUGUI cornerText;
 
     // Procedural card back, generated once and shared (no art assets yet).
@@ -52,8 +54,55 @@ public class CardUI : MonoBehaviour
         UpdateDisplay();
     }
 
+    // Cards are three layers, because one Image cannot be both a soft shadow and
+    // a state-tinted face: the shadow would take the tint. Root stays fully
+    // transparent and carries the click (UGUI raycasts the rect, not the alpha).
+    private void EnsureSurface()
+    {
+        if (cardImage == null) cardImage = GetComponent<Image>();
+        if (cardImage != null)
+        {
+            // Root is the click target only: fully transparent, no sprite. UGUI
+            // raycasts the rect rather than the alpha, so this still receives
+            // clicks. Leaving it opaque put a sharp-cornered rect under the
+            // rounded face and undid the radius.
+            cardImage.sprite = null;
+            cardImage.color = new Color(0, 0, 0, 0);
+        }
+
+        if (shadowImage == null)
+        {
+            GameObject sh = new("Shadow");
+            sh.transform.SetParent(transform, false);
+            sh.transform.SetSiblingIndex(0);
+            var r = sh.AddComponent<RectTransform>();
+            r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one;
+            r.offsetMin = new Vector2(-8, -11);   // room for the blur and the drop
+            r.offsetMax = new Vector2(8, 5);
+            shadowImage = sh.AddComponent<Image>();
+            shadowImage.sprite = CasinoArt.Shadow(6, 8, 3);
+            shadowImage.type = Image.Type.Sliced;
+            shadowImage.raycastTarget = false;
+        }
+
+        if (faceImage == null)
+        {
+            GameObject face = new("Face");
+            face.transform.SetParent(transform, false);
+            face.transform.SetSiblingIndex(1);
+            var r = face.AddComponent<RectTransform>();
+            r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one;
+            r.offsetMin = Vector2.zero; r.offsetMax = Vector2.zero;
+            faceImage = face.AddComponent<Image>();
+            faceImage.sprite = CasinoArt.RoundedFill(5);
+            faceImage.type = Image.Type.Sliced;
+            faceImage.raycastTarget = false;
+        }
+    }
+
     private void UpdateDisplay()
     {
+        EnsureSurface();
         // Ensure rankSuitText is initialized before using it
         if (rankSuitText == null)
             rankSuitText = GetComponentInChildren<TextMeshProUGUI>();
@@ -197,9 +246,10 @@ public class CardUI : MonoBehaviour
     // fact about the board.
     private void UpdateVisuals()
     {
-        if (cardImage == null) return;
+        EnsureSurface();
+        if (faceImage == null) return;
 
-        cardImage.color =
+        faceImage.color =
             isFaceDown        ? CasinoTheme.CardFace          // back child draws on top
           : isOpponentTaking  ? CasinoTheme.CardOpponentTaking
           : isSelected        ? CasinoTheme.CardSelected
@@ -446,7 +496,7 @@ public class UIManager : MonoBehaviour
 
         sweepButton = CreateActionButton("SweepButton", "Sweep",
             new Vector2(-16, 16), out sweepButtonLabel);
-        sweepButton.GetComponent<Image>().color = CasinoTheme.ButtonPrimary;
+        Surface(sweepButton.GetComponent<Image>(), 5, CasinoTheme.ButtonPrimary, CasinoTheme.ButtonPrimaryBorder);
         sweepButtonLabel.color = CasinoTheme.ButtonPrimaryLabel;
         sweepButton.onClick.AddListener(OnSweepClicked);
 
@@ -472,6 +522,7 @@ public class UIManager : MonoBehaviour
         hintText.fontSize = 15;
         hintText.alignment = TextAlignmentOptions.Center;
         CasinoType.ApplySerif(hintText);
+        hintText.fontStyle = FontStyles.Italic;
         hintText.color = CasinoTheme.HintText;
         hintText.text = "";
 
@@ -537,6 +588,11 @@ public class UIManager : MonoBehaviour
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         var scaler = canvas.GetComponent<CanvasScaler>();
         if (scaler == null) scaler = canvas.gameObject.AddComponent<CanvasScaler>();
+        // 9-sliced sprites divide their border by (sprite PPU / canvas reference
+        // PPU). CasinoArt builds sprites at 100 PPU, so if the canvas disagrees
+        // the borders collapse toward zero, sliced degenerates to the stretched
+        // centre, and every rounded corner renders square. That cost an afternoon.
+        scaler.referencePixelsPerUnit = 100f;
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
 
         // Every number below comes from the profile, so a new screen shape is a
@@ -584,7 +640,7 @@ public class UIManager : MonoBehaviour
         {
             keep.Add(Place(gameOverPanel.transform, L.GameOver));
             var img = gameOverPanel.GetComponent<Image>();
-            if (img != null) img.color = CasinoTheme.GameOverPanel;
+            if (img != null) Surface(img, 8, CasinoTheme.GameOverPanel, CasinoTheme.PanelBorder);
         }
 
         // Our runtime objects stay too
@@ -680,6 +736,16 @@ public class UIManager : MonoBehaviour
     // site has to be told the profile's size or portrait keeps desktop cards.
     // Build minis are 0.7 of a full card, which is the 56x80-to-80x120 ratio the
     // stack fan was originally drawn at.
+    // Give a flat Image the Parlor surface treatment: rounded, hairline brass
+    // border, colour baked into the sprite so the Image itself stays untinted.
+    private static void Surface(Image img, int radius, Color fill, Color stroke, float strokeWidth = 1f)
+    {
+        if (img == null) return;
+        img.sprite = CasinoArt.Panel(radius, fill, stroke, strokeWidth);
+        img.type = Image.Type.Sliced;
+        img.color = Color.white;
+    }
+
     private static Vector2 CardSize(float scale = 1f) => CasinoLayout.Active.CardSize * scale;
 
     private static void SizeCard(GameObject card, float scale = 1f)
@@ -745,7 +811,7 @@ public class UIManager : MonoBehaviour
         rect.sizeDelta = new Vector2(160, 48);
 
         var image = go.AddComponent<Image>();
-        image.color = CasinoTheme.ButtonSecondary;
+        Surface(image, 5, CasinoTheme.ButtonSecondary, CasinoTheme.ButtonBorder);
 
         var button = go.AddComponent<Button>();
 
@@ -790,7 +856,7 @@ public class UIManager : MonoBehaviour
         rect.anchoredPosition = new Vector2(10, 20);
         rect.sizeDelta = new Vector2(180, 500);
         var bg = capturedPanel.AddComponent<Image>();
-        bg.color = CasinoTheme.PileViewerPanel;
+        Surface(bg, 8, CasinoTheme.PileViewerPanel, CasinoTheme.PanelBorder);
 
         capturedTitle = CreateText("Title", capturedPanel.transform);
         var tr = capturedTitle.rectTransform;
@@ -909,7 +975,7 @@ public class UIManager : MonoBehaviour
         rect.anchoredPosition = pos;
         rect.sizeDelta = new Vector2(250, 36);
         var img = go.AddComponent<Image>();
-        img.color = CasinoTheme.PileButton;
+        Surface(img, 4, CasinoTheme.PileButton, CasinoTheme.PileBorder);
         var btn = go.AddComponent<Button>();
 
         label = CreateText("Label", go.transform);
@@ -1017,7 +1083,7 @@ public class UIManager : MonoBehaviour
         rect.anchoredPosition = Vector2.zero;
         rect.sizeDelta = new Vector2(520, 380);
         var bg = summaryPanel.AddComponent<Image>();
-        bg.color = CasinoTheme.RoundSummaryPanel;
+        Surface(bg, 8, CasinoTheme.RoundSummaryPanel, CasinoTheme.PanelBorder);
 
         summaryTitle = CreateText("Title", summaryPanel.transform);
         var tr = summaryTitle.rectTransform;
@@ -1059,7 +1125,7 @@ public class UIManager : MonoBehaviour
         br.anchoredPosition = new Vector2(0, 14);
         br.sizeDelta = new Vector2(190, 46);
         var img = go.AddComponent<Image>();
-        img.color = CasinoTheme.ButtonPrimary;
+        Surface(img, 5, CasinoTheme.ButtonPrimary, CasinoTheme.ButtonPrimaryBorder);
         var btn = go.AddComponent<Button>();
         btn.onClick.AddListener(() =>
         {
@@ -1159,7 +1225,7 @@ public class UIManager : MonoBehaviour
         rect.sizeDelta = new Vector2(250, 240);
 
         var bg = panel.AddComponent<Image>();
-        bg.color = CasinoTheme.ScorePanel;
+        Surface(bg, 6, CasinoTheme.ScorePanel, CasinoTheme.PanelBorder);
         bg.raycastTarget = false;
 
         scoreHeaderText = CreateText("Header", panel.transform);
@@ -1172,7 +1238,21 @@ public class UIManager : MonoBehaviour
         scoreHeaderText.fontStyle = FontStyles.Bold;
         scoreHeaderText.alignment = TextAlignmentOptions.Center;
         CasinoType.ApplySerif(scoreHeaderText);
-        scoreHeaderText.color = CasinoTheme.TextPrimary;
+        scoreHeaderText.color = CasinoTheme.Headline;
+
+        // Hairline rule under the title, as in the mockup: it separates the
+        // heading from the two stat blocks without needing a second panel.
+        GameObject rule = new("Rule");
+        rule.transform.SetParent(panel.transform, false);
+        var rr = rule.AddComponent<RectTransform>();
+        rr.anchorMin = new Vector2(0, 0.85f);
+        rr.anchorMax = new Vector2(1, 0.85f);
+        rr.pivot = new Vector2(0.5f, 1);
+        rr.offsetMin = new Vector2(12, -1);
+        rr.offsetMax = new Vector2(-12, 0);
+        var ruleImg = rule.AddComponent<Image>();
+        ruleImg.color = CasinoTheme.Divider;
+        ruleImg.raycastTarget = false;
 
         humanStatsText = CreateText("HumanStats", panel.transform);
         var hu = humanStatsText.rectTransform;

@@ -63,6 +63,14 @@ public static class CasinoTheme
     public static Color TableFelt => Palette.FeltMid;   // flat fallback if the sprite fails
     public static Color TableRail => Palette.Brass.WithAlpha(0.34f);
 
+    // Hairline brass edges. Parlor puts a border on every raised surface; without
+    // them the panels read as flat holes cut in the felt.
+    public static Color PanelBorder => Palette.Brass.WithAlpha(0.40f);
+    public static Color ButtonBorder => Palette.Brass.WithAlpha(0.50f);
+    public static Color ButtonPrimaryBorder => Palette.Brass.WithAlpha(0.90f);
+    public static Color PileBorder => Palette.Brass.WithAlpha(0.30f);
+    public static Color Divider => Palette.Brass.WithAlpha(0.35f);
+
     public static Color GameOverPanel => Palette.PanelDeep.WithAlpha(0.96f);
     public static Color PileViewerPanel => Palette.PanelDeep.WithAlpha(0.96f);
     public static Color RoundSummaryPanel => Palette.PanelDeep.WithAlpha(0.97f);
