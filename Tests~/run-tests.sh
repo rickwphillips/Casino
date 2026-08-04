@@ -22,7 +22,8 @@ for TEST in "$REPO/Tests~"/*Tests.cs; do
   NAME="$(basename "$TEST" .cs)"
   "$EDITOR_DIR/Tools/netcorerun/netcorerun" "$EDITOR_DIR/DotNetSdkRoslyn/csc.dll" \
     -nologo -t:exe -nowarn:0219 -out:"$WORK/$NAME.exe" "${REFS[@]}" \
-    "$REPO/Assets/Scripts/PlayingCard.cs" "$REPO/Assets/Scripts/CaptureChecker.cs" "$TEST"
+    "$REPO/Assets/Scripts/PlayingCard.cs" "$REPO/Assets/Scripts/CaptureChecker.cs" \
+    "$REPO/Assets/Scripts/Build.cs" "$REPO/Assets/Scripts/GamePlayer.cs" "$TEST"
   cp "$EDITOR_DIR/DotNetSdkRoslyn/csc.runtimeconfig.json" "$WORK/$NAME.runtimeconfig.json"
   echo "===== $NAME ====="
   "$EDITOR_DIR/Tools/netcorerun/netcorerun" "$WORK/$NAME.exe" || FAIL=1

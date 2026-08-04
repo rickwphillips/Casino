@@ -281,9 +281,10 @@ public class UIManager : MonoBehaviour
     private TextMeshProUGUI drawPileLabel;
     private int lastDeckCount = -1;
 
-    // Build selected for raising (single-group builds are malleable)
-    private Build selectedBuild;
-    private GameObject selectedBuildRoot;
+    // Builds selected as sweep material or (when exactly one) for raise/add
+    private readonly List<Build> selectedBuilds = new();
+    private readonly List<GameObject> selectedBuildRoots = new();
+    private Build selectedBuild => selectedBuilds.Count == 1 ? selectedBuilds[0] : null;
     
     private void Awake()
     {
@@ -1199,6 +1200,10 @@ public class UIManager : MonoBehaviour
 
         List<Build> activeBuilds = GameManager.Instance.GetActiveBuilds();
 
+        // Stacks are recreated below; stale selections would point at
+        // destroyed roots
+        DeselectBuild();
+
         // Always recreate build UI to show current state
         foreach (var buildUI in buildUIs)
         {
@@ -1422,17 +1427,19 @@ public class UIManager : MonoBehaviour
         var player = gm.GetCurrentPlayer();
         var handUIs = player == gm.GetDealer() ? dealerCardUIs : nonDealerCardUIs;
         var chosen = buildSelection.Select(ui => ui.Card).ToList();
+        bool anySelection = chosen.Count > 0 || selectedBuilds.Count > 0;
 
         int takers = 0;
         foreach (var ui in handUIs)
         {
             if (ui == null) continue;
-            bool canTake = chosen.Count > 0 && CaptureChecker.IsExactCaptureSet(ui.Card, chosen);
+            bool canTake = anySelection && CaptureChecker.IsExactCaptureSetWithBuilds(
+                ui.Card, player, chosen, selectedBuilds.ToList());
             ui.SetSuggested(canTake);
             if (canTake) takers++;
         }
 
-        if (chosen.Count > 0 && hintText != null && selectedCard == null)
+        if (anySelection && hintText != null && selectedCard == null)
         {
             hintText.text = takers > 0
                 ? $"{takers} card(s) in your hand can take this - they're highlighted."
@@ -1460,10 +1467,10 @@ public class UIManager : MonoBehaviour
 
     private void DeselectBuild()
     {
-        if (selectedBuildRoot != null)
-            selectedBuildRoot.transform.localScale = Vector3.one;
-        selectedBuild = null;
-        selectedBuildRoot = null;
+        foreach (var root in selectedBuildRoots)
+            if (root != null) root.transform.localScale = Vector3.one;
+        selectedBuilds.Clear();
+        selectedBuildRoots.Clear();
     }
 
     private void OnBuildStackClicked(Build build, GameObject root)
@@ -1471,23 +1478,30 @@ public class UIManager : MonoBehaviour
         var gm = GameManager.Instance;
         if (gm == null || !gm.IsWaitingForHumanInput()) return;
 
-        if (selectedBuild == build)
+        int i = selectedBuilds.IndexOf(build);
+        if (i >= 0)
         {
-            DeselectBuild();
-            UpdateActionButtons();
-            return;
+            if (selectedBuildRoots[i] != null)
+                selectedBuildRoots[i].transform.localScale = Vector3.one;
+            selectedBuilds.RemoveAt(i);
+            selectedBuildRoots.RemoveAt(i);
+        }
+        else
+        {
+            selectedBuilds.Add(build);
+            selectedBuildRoots.Add(root);
+            root.transform.localScale = Vector3.one * 1.1f;
+
+            bool mine = build.Owner == gm.GetCurrentPlayer();
+            if (build.IsMultiBuild)
+                hintText.text = "Multi-build: locked. Takeable only at its value.";
+            else if (mine)
+                hintText.text = $"Your build of {build.DeclaredValue}: take it at value, raise it, or add to it.";
+            else
+                hintText.text = $"Build of {build.DeclaredValue}: take it, steal it in a sweep, raise, or add.";
         }
 
-        DeselectBuild();
-        selectedBuild = build;
-        selectedBuildRoot = root;
-        root.transform.localScale = Vector3.one * 1.1f;
-
-        if (build.IsMultiBuild)
-            hintText.text = "Multi-build: the value is locked. It can only be taken.";
-        else
-            hintText.text = $"Build of {build.DeclaredValue}: select a hand card to raise it.";
-
+        HighlightCapturingHandCards();
         UpdateActionButtons();
     }
 
@@ -1515,15 +1529,17 @@ public class UIManager : MonoBehaviour
                                    && buildSelection.Count == 0;
         trailButtonLabel.text = ownsBuild ? "Trail (own build)" : "Trail";
 
-        // Sweep: takes the chosen table cards, or everything that applies
+        // Sweep: takes the chosen cards/builds, or everything that applies
         bool canSweep = false;
         if (humanTurn && selectedCard != null)
         {
             var gm = GameManager.Instance;
-            if (buildSelection.Count > 0)
+            if (buildSelection.Count > 0 || selectedBuilds.Count > 0)
             {
-                canSweep = CaptureChecker.IsExactCaptureSet(selectedCard.Card,
-                    buildSelection.Select(ui => ui.Card).ToList());
+                canSweep = CaptureChecker.IsExactCaptureSetWithBuilds(selectedCard.Card,
+                    gm.GetCurrentPlayer(),
+                    buildSelection.Select(ui => ui.Card).ToList(),
+                    selectedBuilds.ToList());
             }
             else
             {
@@ -1538,8 +1554,9 @@ public class UIManager : MonoBehaviour
 
         bool hasBuildSelection = humanTurn && selectedCard != null && buildSelection.Count > 0;
 
-        // A selected build stack turns the Build button into add or raise
-        if (humanTurn && selectedBuild != null)
+        // A single selected build (no cards) turns the Build button into add
+        // or raise; with cards alongside, the selection is sweep material
+        if (humanTurn && selectedBuild != null && buildSelection.Count == 0)
         {
             var gmr = GameManager.Instance;
             var raiser = gmr.GetCurrentPlayer();
@@ -1619,12 +1636,16 @@ public class UIManager : MonoBehaviour
     {
         if (hintText == null || !humanTurn) return;
 
-        // Hand card + table selection: preview the chosen sweep
-        if (selectedCard != null && buildSelection.Count > 0)
+        // Hand card + selection: preview the chosen sweep (cards and builds)
+        if (selectedCard != null && (buildSelection.Count > 0 || selectedBuilds.Count > 0))
         {
             var chosen = buildSelection.Select(ui => ui.Card).ToList();
-            hintText.text = CaptureChecker.IsExactCaptureSet(selectedCard.Card, chosen)
-                ? $"Play sweeps: {string.Join(" ", chosen.Select(CardName))}"
+            var parts = chosen.Select(CardName).ToList();
+            parts.AddRange(selectedBuilds.Select(b => $"build({b.DeclaredValue})"));
+            bool ok = CaptureChecker.IsExactCaptureSetWithBuilds(selectedCard.Card,
+                GameManager.Instance.GetCurrentPlayer(), chosen, selectedBuilds.ToList());
+            hintText.text = ok
+                ? $"Sweep takes: {string.Join(" ", parts)}"
                 : $"{CardName(selectedCard.Card)} can't take that selection.";
             return;
         }
@@ -1821,11 +1842,12 @@ public class UIManager : MonoBehaviour
         if (cardIndex < 0)
             return;
 
-        // Table cards selected: take exactly those (the player's chosen sweep)
-        if (buildSelection.Count > 0 && !forceTrail)
+        // Cards and/or builds selected: take exactly those (the chosen sweep)
+        bool hasSelection = buildSelection.Count > 0 || selectedBuilds.Count > 0;
+        if (hasSelection && !forceTrail)
         {
             var chosen = buildSelection.Select(ui => ui.Card).ToList();
-            if (GameManager.Instance.TryCaptureSelected(currentPlayer, cardIndex, chosen))
+            if (GameManager.Instance.TryCaptureSelected(currentPlayer, cardIndex, chosen, selectedBuilds.ToList()))
             {
                 ClearSuggestionHighlights();
                 hintText.text = "";
@@ -1838,7 +1860,7 @@ public class UIManager : MonoBehaviour
             return;
         }
 
-        if (buildSelection.Count > 0 && forceTrail)
+        if (hasSelection && forceTrail)
         {
             hintText.text = "Deselect the table cards to trail.";
             return;

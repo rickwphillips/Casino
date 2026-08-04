@@ -126,6 +126,25 @@ public class GameManager : MonoBehaviour
 
     public bool PlayerOwnsBuild(GamePlayer player) => PlayerHasPendingBuild(player);
 
+    // A builder must always hold true: after playing 'playedCard', every build
+    // the player still owns (not being captured right now) must remain
+    // capturable from their hand.
+    private bool KeepsOwnBuildsCapturable(GamePlayer player, PlayingCard playedCard,
+        IEnumerable<Build> beingCaptured = null)
+    {
+        var remaining = player.Hand.Where(c => c != playedCard).ToList();
+        foreach (var b in activeBuilds.Where(b => b.Owner == player))
+        {
+            if (beingCaptured != null && beingCaptured.Contains(b)) continue;
+            if (!remaining.Any(c => CaptureChecker.BuildCaptureValue(c) == b.DeclaredValue))
+            {
+                Debug.LogWarning($"{player.Name} must keep a card that takes their build of {b.DeclaredValue}!");
+                return false;
+            }
+        }
+        return true;
+    }
+
     // forceTrail: play the card to the table without capturing. Legal whenever
     // the player does not own a build, even if captures are available.
     public void PlayCard(GamePlayer player, int cardIndex, bool forceTrail = false) {
@@ -171,6 +190,14 @@ public class GameManager : MonoBehaviour
             {
                 Debug.LogWarning($"{player.Name} owns a build and must capture or build - cannot trail.");
                 player.AddCard(playedCard); // Return card to hand
+                return;
+            }
+
+            // The owner may never play away the last card that takes their build
+            if (hasPendingBuild &&
+                !KeepsOwnBuildsCapturable(player, playedCard, playerBuilds))
+            {
+                player.AddCard(playedCard);
                 return;
             }
 
@@ -283,6 +310,10 @@ public class GameManager : MonoBehaviour
             return false;
         }
 
+        if (handCardIndex >= 0 && handCardIndex < player.HandSize() &&
+            !KeepsOwnBuildsCapturable(player, player.Hand[handCardIndex]))
+            return false;
+
         PlayingCard handCard = player.PlayCard(handCardIndex);
         if (handCard == null)
             return false;
@@ -307,6 +338,12 @@ public class GameManager : MonoBehaviour
     // Capture exactly the chosen table cards with the chosen hand card.
     // The player picks what to sweep; partial captures are legal.
     public bool TryCaptureSelected(GamePlayer player, int handCardIndex, List<PlayingCard> chosenCards)
+        => TryCaptureSelected(player, handCardIndex, chosenCards, new List<Build>());
+
+    // Chosen sweep including builds: opponents' single builds combine with
+    // table cards (a steal); everything else must match the value exactly.
+    public bool TryCaptureSelected(GamePlayer player, int handCardIndex,
+        List<PlayingCard> chosenCards, List<Build> chosenBuilds)
     {
         if (player != currentPlayer)
         {
@@ -317,10 +354,20 @@ public class GameManager : MonoBehaviour
             return false;
 
         PlayingCard handCard = player.Hand[handCardIndex];
-        if (!CaptureChecker.IsExactCaptureSet(handCard, chosenCards))
+        if (!CaptureChecker.IsExactCaptureSetWithBuilds(handCard, player, chosenCards, chosenBuilds))
+            return false;
+
+        if (!KeepsOwnBuildsCapturable(player, handCard, chosenBuilds))
             return false;
 
         handCard = player.PlayCard(handCardIndex);
+
+        foreach (var build in chosenBuilds)
+        {
+            player.AddCapturedCards(build.Cards.ToList());
+            activeBuilds.Remove(build);
+            GameLogger.Instance.LogBuildCaptured(player, build);
+        }
 
         if (UIManager.Instance != null)
         {
@@ -374,6 +421,10 @@ public class GameManager : MonoBehaviour
             return false;
         }
 
+        // Other owned builds must stay capturable too
+        if (!KeepsOwnBuildsCapturable(player, handCard, new[] { build }))
+            return false;
+
         handCard = player.PlayCard(handCardIndex);
         build.AddToBuild(handCard, player);
 
@@ -402,6 +453,10 @@ public class GameManager : MonoBehaviour
         PlayingCard handCard = player.Hand[handCardIndex];
         int newValue = build.Cards.Sum(c => CaptureChecker.GetCardValue(c))
                        + CaptureChecker.GetCardValue(handCard);
+
+        // Other owned builds must stay capturable after this card leaves
+        if (!KeepsOwnBuildsCapturable(player, handCard, new[] { build }))
+            return false;
 
         handCard = player.PlayCard(handCardIndex);
         if (!ModifyBuild(player, build, handCard, newValue))

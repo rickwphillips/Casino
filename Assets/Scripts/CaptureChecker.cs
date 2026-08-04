@@ -107,6 +107,58 @@ public class CaptureChecker {
         return CanPartitionExact(new List<PlayingCard>(chosen), GetCardValue(playedCard));
     }
 
+    // Chosen-sweep validation including builds. An OPPONENT'S single-group
+    // build counts as one atomic card of its declared value and may combine
+    // with table cards (their build-of-6 + a table 2 falls to an 8) - a
+    // steal. The build's own owner, multi-builds, and face builds are only
+    // takeable as standalone exact matches.
+    public static bool IsExactCaptureSetWithBuilds(PlayingCard playedCard, GamePlayer capturer,
+        List<PlayingCard> chosenCards, List<Build> chosenBuilds) {
+        chosenCards ??= new List<PlayingCard>();
+        chosenBuilds ??= new List<Build>();
+        if (chosenCards.Count == 0 && chosenBuilds.Count == 0) return false;
+
+        int target = BuildCaptureValue(playedCard);
+
+        if (IsFaceCard(playedCard))
+            return chosenCards.All(c => c.rank == playedCard.rank) &&
+                   chosenBuilds.All(b => b.DeclaredValue == target);
+
+        if (chosenCards.Any(IsFaceCard)) return false;
+
+        // Standalone-only builds: multis, face builds, and your OWN builds
+        // (the owner takes their build at its declared value, never combined)
+        bool Combinable(Build b) => !b.IsMultiBuild && b.DeclaredValue <= 10 && b.Owner != capturer;
+        if (chosenBuilds.Any(b => !Combinable(b) && b.DeclaredValue != target)) return false;
+
+        var values = chosenCards.Select(GetCardValue).ToList();
+        values.AddRange(chosenBuilds.Where(Combinable).Select(b => b.DeclaredValue));
+        // Standalone builds are their own complete groups; nothing to solve for them
+        return values.Count == 0 || CanPartitionValues(values, target);
+    }
+
+    // Partition a multiset of values into groups each summing exactly to target
+    private static bool CanPartitionValues(List<int> values, int target) {
+        if (values.Count == 0) return true;
+        if (values.Any(v => v <= 0 || v > target)) return false;
+        if (values.Sum() % target != 0) return false;
+        return BuildGroup(values, target, target - values[0], new List<int> { 0 });
+    }
+
+    private static bool BuildGroup(List<int> values, int target, int need, List<int> usedIdx) {
+        if (need == 0) {
+            var remaining = values.Where((v, i) => !usedIdx.Contains(i)).ToList();
+            return CanPartitionValues(remaining, target);
+        }
+        for (int i = usedIdx[usedIdx.Count - 1] + 1; i < values.Count; i++) {
+            if (usedIdx.Contains(i) || values[i] > need) continue;
+            usedIdx.Add(i);
+            if (BuildGroup(values, target, need - values[i], usedIdx)) return true;
+            usedIdx.RemoveAt(usedIdx.Count - 1);
+        }
+        return false;
+    }
+
     // All values 1-10 this hand card + table cards can declare as a build:
     // the combined cards must partition into sets each summing to the value.
     // Multiple sets = a multi-build (e.g. three 10s built at once).
