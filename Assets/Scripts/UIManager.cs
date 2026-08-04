@@ -1213,6 +1213,10 @@ public class UIManager : MonoBehaviour
         if (ghost != null) Destroy(ghost.gameObject);
     }
 
+    // Six rows at 12.5pt plus the side header. The score panel must be at least
+    // 38 + 2*this + 8 tall, which is why every Profile's Score zone is >= 246.
+    private const float StatBlockHeight = 96f;
+
     private void CreateScorePanel()
     {
         GameObject panel = new("ScorePanel");
@@ -1230,10 +1234,11 @@ public class UIManager : MonoBehaviour
 
         scoreHeaderText = CreateText("Header", panel.transform);
         var hr = scoreHeaderText.rectTransform;
-        hr.anchorMin = new Vector2(0, 0.85f);
-        hr.anchorMax = Vector2.one;
-        hr.offsetMin = new Vector2(8, 0);
-        hr.offsetMax = new Vector2(-8, -4);
+        hr.anchorMin = new Vector2(0, 1);
+        hr.anchorMax = new Vector2(1, 1);
+        hr.pivot = new Vector2(0.5f, 1);
+        hr.anchoredPosition = new Vector2(0, -4);
+        hr.sizeDelta = new Vector2(-16, 26);
         scoreHeaderText.fontSize = 17;
         scoreHeaderText.fontStyle = FontStyles.Bold;
         scoreHeaderText.alignment = TextAlignmentOptions.Center;
@@ -1245,31 +1250,33 @@ public class UIManager : MonoBehaviour
         GameObject rule = new("Rule");
         rule.transform.SetParent(panel.transform, false);
         var rr = rule.AddComponent<RectTransform>();
-        rr.anchorMin = new Vector2(0, 0.85f);
-        rr.anchorMax = new Vector2(1, 0.85f);
+        rr.anchorMin = new Vector2(0, 1);
+        rr.anchorMax = new Vector2(1, 1);
         rr.pivot = new Vector2(0.5f, 1);
-        rr.offsetMin = new Vector2(12, -1);
-        rr.offsetMax = new Vector2(-12, 0);
+        rr.anchoredPosition = new Vector2(0, -32);
+        rr.sizeDelta = new Vector2(-24, 1);
         var ruleImg = rule.AddComponent<Image>();
         ruleImg.color = CasinoTheme.Divider;
         ruleImg.raycastTarget = false;
 
         humanStatsText = CreateText("HumanStats", panel.transform);
         var hu = humanStatsText.rectTransform;
-        hu.anchorMin = new Vector2(0, 0.45f);
-        hu.anchorMax = new Vector2(1, 0.85f);
-        hu.offsetMin = new Vector2(10, 0);
-        hu.offsetMax = new Vector2(-10, 0);
+        hu.anchorMin = new Vector2(0, 1);
+        hu.anchorMax = new Vector2(1, 1);
+        hu.pivot = new Vector2(0.5f, 1);
+        hu.anchoredPosition = new Vector2(0, -38);
+        hu.sizeDelta = new Vector2(-20, StatBlockHeight);
         humanStatsText.fontSize = 12.5f;
         humanStatsText.alignment = TextAlignmentOptions.TopLeft;
         humanStatsText.color = CasinoTheme.TextMuted;
 
         aiStatsText = CreateText("AIStats", panel.transform);
         var ai = aiStatsText.rectTransform;
-        ai.anchorMin = new Vector2(0, 0.03f);
-        ai.anchorMax = new Vector2(1, 0.43f);
-        ai.offsetMin = new Vector2(10, 0);
-        ai.offsetMax = new Vector2(-10, 0);
+        ai.anchorMin = new Vector2(0, 1);
+        ai.anchorMax = new Vector2(1, 1);
+        ai.pivot = new Vector2(0.5f, 1);
+        ai.anchoredPosition = new Vector2(0, -(38 + StatBlockHeight + 8));
+        ai.sizeDelta = new Vector2(-20, StatBlockHeight);
         aiStatsText.fontSize = 12.5f;
         aiStatsText.alignment = TextAlignmentOptions.TopLeft;
         aiStatsText.color = CasinoTheme.TextMuted;
@@ -1845,7 +1852,7 @@ public class UIManager : MonoBehaviour
             GameManager.Instance.PlayerOwnsBuild(GameManager.Instance.GetCurrentPlayer());
         trailButton.interactable = humanTurn && selectedCard != null && !ownsBuild
                                    && buildSelection.Count == 0;
-        trailButtonLabel.text = ownsBuild ? "Trail (you own a build)" : "Trail";
+        trailButtonLabel.text = ownsBuild ? "Trail (own build)" : "Trail";
 
         // Sweep: takes the chosen cards/builds, or everything that applies
         bool canSweep = false;

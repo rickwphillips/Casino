@@ -118,15 +118,15 @@ public static class CasinoLayout
         Hint         = new Zone(0.5f, 0f, -48, 152, 500, 44),
         PlayerHand   = new Zone(0.5f, 0f, -48, 12, 420, 140),
 
-        Score = new Zone(1f, 1f, -12, -12, 236, 220),
+        Score = new Zone(1f, 1f, -12, -12, 236, 246),
         ActionAnchor = new Vector2(1, 0),
         ActionFirst  = new Vector2(-12, 28),
         ActionStep   = new Vector2(0, 50),
         ActionSize   = new Vector2(236, 44),
 
         DrawPile   = new Zone(0f, 0f, 38, 416, 88, 120),
-        TurnText   = new Zone(0f, 0f, 12, 122, 150, 24),
-        StatusText = new Zone(0f, 0f, 12, 96, 150, 24),
+        TurnText   = new Zone(0f, 0f, 12, 122, 180, 24),
+        StatusText = new Zone(0f, 0f, 12, 96, 180, 24),
         PlayerPile = new Zone(0f, 0f, 12, 56, 140, 32),
         AiPile     = new Zone(0f, 0f, 12, 18, 140, 32),
 
@@ -151,10 +151,10 @@ public static class CasinoLayout
         // 220 tall, not 92: the score panel's internal layout is authored for a
         // column of eight stat lines and is not itself profile-aware, so a short
         // wide bar makes its children collide. Give it the height it needs.
-        Score        = new Zone(0.5f, 1f, 0, -10, 700, 220),
-        OpponentHand = new Zone(0.5f, 1f, 0, -240, 684, 120),
-        PlayerPile   = new Zone(0f, 1f, 14, -368, 336, 34),
-        AiPile       = new Zone(1f, 1f, -14, -368, 336, 34),
+        Score        = new Zone(0.5f, 1f, 0, -10, 700, 246),
+        OpponentHand = new Zone(0.5f, 1f, 0, -266, 684, 120),
+        PlayerPile   = new Zone(0f, 1f, 14, -394, 336, 34),
+        AiPile       = new Zone(1f, 1f, -14, -394, 336, 34),
 
         Table      = new Zone(0.5f, 0.5f, 0, 60, 684, 300),
         Hint       = new Zone(0.5f, 0f, 0, 470, 660, 56),

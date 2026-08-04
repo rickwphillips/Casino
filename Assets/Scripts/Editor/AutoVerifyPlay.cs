@@ -10,10 +10,27 @@ public static class AutoVerifyPlay
 {
     static string Marker => Path.Combine(Application.dataPath, "..", "auto-verify.flag");
 
+    // Poll rather than only checking at load. The flag used to be read once per
+    // domain reload, so `touch auto-verify.flag` on its own did nothing: Unity
+    // skips the reimport when a file's contents have not changed, so no reload
+    // happened and the flag sat there. That made unattended runs fail silently
+    // and intermittently, which is worse than failing outright.
+    private const double PollSeconds = 0.5;
+    private static double nextPoll;
+
     static AutoVerifyPlay()
     {
+        EditorApplication.update += Poll;
+        if (File.Exists(Marker)) EditorApplication.delayCall += Kick;
+    }
+
+    static void Poll()
+    {
+        if (EditorApplication.timeSinceStartup < nextPoll) return;
+        nextPoll = EditorApplication.timeSinceStartup + PollSeconds;
+        if (EditorApplication.isCompiling || EditorApplication.isUpdating) return;
         if (!File.Exists(Marker)) return;
-        EditorApplication.delayCall += Kick;
+        Kick();
     }
 
     static void Kick()
@@ -38,6 +55,9 @@ public static class AutoVerifyPlay
     static void StartFresh()
     {
         try { File.Delete(Marker); } catch { }
+        // Pin the Game view first: entering Play with the wrong size makes the
+        // whole run useless, and both used to race on delayCall.
+        GameViewSizePin.ApplyRequested();
         Debug.Log("AutoVerifyPlay: entering Play mode fresh");
         EditorApplication.EnterPlaymode();
     }

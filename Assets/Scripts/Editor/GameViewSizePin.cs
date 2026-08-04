@@ -34,7 +34,13 @@ public static class GameViewSizePin
     private static string RequestPath =>
         Path.GetFullPath(Path.Combine(Application.dataPath, "..", "gameview.txt"));
 
-    static GameViewSizePin() => EditorApplication.delayCall += () => Pin(Requested(), false);
+    static GameViewSizePin() => EditorApplication.delayCall += () => ApplyRequested();
+
+    // Called directly by AutoVerifyPlay before it enters Play mode. Both used to
+    // schedule themselves with delayCall, so whichever ran second decided whether
+    // the requested size was actually in effect for the run: a switch would be
+    // silently ignored roughly half the time. Explicit ordering removes the race.
+    public static void ApplyRequested() => Pin(Requested(), false);
 
     [MenuItem("Casino/Game View/Wide 1280x720")]
     private static void PinWide() => Pin(Wide, true);
