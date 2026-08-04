@@ -28,8 +28,8 @@ public class CardUI : MonoBehaviour
         {
             if (cardBackSprite != null) return cardBackSprite;
             var tex = new Texture2D(64, 96, TextureFormat.RGBA32, false);
-            var navy = new Color(0.10f, 0.16f, 0.38f);
-            var light = new Color(0.22f, 0.32f, 0.60f);
+            var navy = CasinoTheme.CardBackBase;
+            var light = CasinoTheme.CardBackLattice;
             for (int y = 0; y < 96; y++)
                 for (int x = 0; x < 64; x++)
                 {
@@ -162,11 +162,11 @@ public class CardUI : MonoBehaviour
     {
         return suit switch
         {
-            PlayingCard.Suit.Hearts => new Color(0.9f, 0.1f, 0.1f),      // Red
-            PlayingCard.Suit.Diamonds => new Color(0.9f, 0.1f, 0.1f),    // Red
-            PlayingCard.Suit.Clubs => Color.black,                        // Black
-            PlayingCard.Suit.Spades => Color.black,                       // Black
-            _ => Color.black
+            PlayingCard.Suit.Hearts => CasinoTheme.SuitRed,
+            PlayingCard.Suit.Diamonds => CasinoTheme.SuitRed,
+            PlayingCard.Suit.Clubs => CasinoTheme.SuitBlack,
+            PlayingCard.Suit.Spades => CasinoTheme.SuitBlack,
+            _ => CasinoTheme.SuitBlack
         };
     }
     
@@ -175,13 +175,13 @@ public class CardUI : MonoBehaviour
         if (cardImage == null) return;
 
         if (isFaceDown)
-            cardImage.color = Color.white;                   // white border, back child on top
+            cardImage.color = CasinoTheme.CardFace;          // white border, back child on top
         else if (isSelected)
-            cardImage.color = new(0.7f, 0.9f, 1f);          // selected: blue
+            cardImage.color = CasinoTheme.CardSelected;
         else if (isSuggested)
-            cardImage.color = new(0.7f, 1f, 0.7f);          // suggested: green
+            cardImage.color = CasinoTheme.CardSuggested;
         else
-            cardImage.color = Color.white;
+            cardImage.color = CasinoTheme.CardFace;
     }
 
     public void SetFaceDown(bool faceDown)
@@ -366,7 +366,7 @@ public class UIManager : MonoBehaviour
         feltRect.offsetMin = Vector2.zero;
         feltRect.offsetMax = Vector2.zero;
         var feltImage = felt.AddComponent<Image>();
-        feltImage.color = new Color(0.08f, 0.29f, 0.15f);
+        feltImage.color = CasinoTheme.TableFelt;
         feltImage.raycastTarget = false;
 
         // The runtime score panel replaces the two floating score texts
@@ -375,7 +375,7 @@ public class UIManager : MonoBehaviour
 
         sweepButton = CreateActionButton("SweepButton", "Sweep",
             new Vector2(-16, 16), out sweepButtonLabel);
-        sweepButton.GetComponent<Image>().color = new Color(0.72f, 0.6f, 0.25f, 0.95f);
+        sweepButton.GetComponent<Image>().color = CasinoTheme.ButtonPrimary;
         sweepButton.onClick.AddListener(OnSweepClicked);
 
         trailButton = CreateActionButton("TrailButton", "Trail",
@@ -399,7 +399,7 @@ public class UIManager : MonoBehaviour
         hintRect.sizeDelta = new Vector2(470, 54);
         hintText.fontSize = 15;
         hintText.alignment = TextAlignmentOptions.Center;
-        hintText.color = new Color(1f, 0.95f, 0.6f);
+        hintText.color = CasinoTheme.HintText;
         hintText.text = "";
 
         versionText = CreateText("VersionText", canvasTransform);
@@ -411,7 +411,7 @@ public class UIManager : MonoBehaviour
         verRect.sizeDelta = new Vector2(120, 18);
         versionText.fontSize = 10;
         versionText.alignment = TextAlignmentOptions.BottomRight;
-        versionText.color = new Color(1f, 1f, 1f, 0.35f);
+        versionText.color = CasinoTheme.TextFaint;
         versionText.text = $"v{Application.version}";
 
         CreateScorePanel();
@@ -465,7 +465,12 @@ public class UIManager : MonoBehaviour
         var scaler = canvas.GetComponent<CanvasScaler>();
         if (scaler == null) scaler = canvas.gameObject.AddComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(800, 600);
+        // 16:9, matching how the game is actually played and the resolution the
+        // design mockups are authored at. The old 800x600 was a 4:3 assumption
+        // from before there was any way to look at the game: on a widescreen
+        // view it left the canvas ~1180 units wide, so every edge-anchored
+        // element sat far outside where the numbers below intended.
+        scaler.referenceResolution = new Vector2(1280, 720);
         scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
         scaler.matchWidthOrHeight = 1f; // match height: vertical layout stays put
 
@@ -494,7 +499,7 @@ public class UIManager : MonoBehaviour
         {
             keep.Add(ReAnchor(gameOverPanel.transform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(420, 230)));
             var img = gameOverPanel.GetComponent<Image>();
-            if (img != null) img.color = new Color(0.05f, 0.08f, 0.12f, 0.96f);
+            if (img != null) img.color = CasinoTheme.GameOverPanel;
         }
 
         // Our runtime objects stay too
@@ -577,7 +582,7 @@ public class UIManager : MonoBehaviour
         var go = ReAnchor(text.transform, new Vector2(0, 0), pos, new Vector2(170, 26));
         text.fontSize = fontSize;
         text.alignment = TextAlignmentOptions.BottomLeft;
-        text.color = new Color(1f, 1f, 1f, 0.85f);
+        text.color = CasinoTheme.TextMuted;
         return go;
     }
 
@@ -616,7 +621,7 @@ public class UIManager : MonoBehaviour
         rect.sizeDelta = new Vector2(160, 48);
 
         var image = go.AddComponent<Image>();
-        image.color = new Color(0.18f, 0.42f, 0.3f, 0.95f);
+        image.color = CasinoTheme.ButtonSecondary;
 
         var button = go.AddComponent<Button>();
 
@@ -629,7 +634,7 @@ public class UIManager : MonoBehaviour
         labelText.text = label;
         labelText.fontSize = 20;
         labelText.alignment = TextAlignmentOptions.Center;
-        labelText.color = Color.white;
+        labelText.color = CasinoTheme.ButtonLabel;
 
         return button;
     }
@@ -660,7 +665,7 @@ public class UIManager : MonoBehaviour
         rect.anchoredPosition = new Vector2(10, 20);
         rect.sizeDelta = new Vector2(180, 500);
         var bg = capturedPanel.AddComponent<Image>();
-        bg.color = new Color(0.04f, 0.06f, 0.09f, 0.96f);
+        bg.color = CasinoTheme.PileViewerPanel;
 
         capturedTitle = CreateText("Title", capturedPanel.transform);
         var tr = capturedTitle.rectTransform;
@@ -671,7 +676,7 @@ public class UIManager : MonoBehaviour
         capturedTitle.fontSize = 16;
         capturedTitle.fontStyle = FontStyles.Bold;
         capturedTitle.alignment = TextAlignmentOptions.Center;
-        capturedTitle.color = Color.white;
+        capturedTitle.color = CasinoTheme.TextPrimary;
 
         GameObject grid = new("Grid");
         grid.transform.SetParent(capturedPanel.transform, false);
@@ -709,7 +714,7 @@ public class UIManager : MonoBehaviour
         lr.sizeDelta = new Vector2(96, 22);
         drawPileLabel.fontSize = 13;
         drawPileLabel.alignment = TextAlignmentOptions.Center;
-        drawPileLabel.color = new Color(1f, 1f, 1f, 0.85f);
+        drawPileLabel.color = CasinoTheme.TextMuted;
     }
 
     private void UpdateDrawPile(int remaining)
@@ -779,7 +784,7 @@ public class UIManager : MonoBehaviour
         rect.anchoredPosition = pos;
         rect.sizeDelta = new Vector2(250, 36);
         var img = go.AddComponent<Image>();
-        img.color = new Color(0.12f, 0.16f, 0.22f, 0.92f);
+        img.color = CasinoTheme.PileButton;
         var btn = go.AddComponent<Button>();
 
         label = CreateText("Label", go.transform);
@@ -790,7 +795,7 @@ public class UIManager : MonoBehaviour
         lr.offsetMax = new Vector2(-8, 0);
         label.fontSize = 14;
         label.alignment = TextAlignmentOptions.Left;
-        label.color = Color.white;
+        label.color = CasinoTheme.TextPrimary;
         return btn;
     }
 
@@ -887,7 +892,7 @@ public class UIManager : MonoBehaviour
         rect.anchoredPosition = Vector2.zero;
         rect.sizeDelta = new Vector2(520, 380);
         var bg = summaryPanel.AddComponent<Image>();
-        bg.color = new Color(0.04f, 0.06f, 0.09f, 0.97f);
+        bg.color = CasinoTheme.RoundSummaryPanel;
 
         summaryTitle = CreateText("Title", summaryPanel.transform);
         var tr = summaryTitle.rectTransform;
@@ -898,7 +903,7 @@ public class UIManager : MonoBehaviour
         summaryTitle.fontSize = 18;
         summaryTitle.fontStyle = FontStyles.Bold;
         summaryTitle.alignment = TextAlignmentOptions.Center;
-        summaryTitle.color = new Color(1f, 0.9f, 0.5f);
+        summaryTitle.color = CasinoTheme.Headline;
 
         summaryLeft = CreateText("Left", summaryPanel.transform);
         var lr = summaryLeft.rectTransform;
@@ -907,7 +912,7 @@ public class UIManager : MonoBehaviour
         lr.offsetMin = lr.offsetMax = Vector2.zero;
         summaryLeft.fontSize = 15;
         summaryLeft.alignment = TextAlignmentOptions.TopLeft;
-        summaryLeft.color = new Color(0.75f, 1f, 0.8f);
+        summaryLeft.color = CasinoTheme.PlayerAccent;
 
         summaryRight = CreateText("Right", summaryPanel.transform);
         var rr = summaryRight.rectTransform;
@@ -916,7 +921,7 @@ public class UIManager : MonoBehaviour
         rr.offsetMin = rr.offsetMax = Vector2.zero;
         summaryRight.fontSize = 15;
         summaryRight.alignment = TextAlignmentOptions.TopLeft;
-        summaryRight.color = new Color(1f, 0.8f, 0.75f);
+        summaryRight.color = CasinoTheme.OpponentAccent;
 
         // Continue button
         GameObject go = new("Continue");
@@ -928,7 +933,7 @@ public class UIManager : MonoBehaviour
         br.anchoredPosition = new Vector2(0, 14);
         br.sizeDelta = new Vector2(190, 46);
         var img = go.AddComponent<Image>();
-        img.color = new Color(0.72f, 0.6f, 0.25f, 0.95f);
+        img.color = CasinoTheme.ButtonPrimary;
         var btn = go.AddComponent<Button>();
         btn.onClick.AddListener(() =>
         {
@@ -946,7 +951,7 @@ public class UIManager : MonoBehaviour
         label.text = "Continue";
         label.fontSize = 20;
         label.alignment = TextAlignmentOptions.Center;
-        label.color = Color.white;
+        label.color = CasinoTheme.ButtonLabel;
 
         summaryPanel.SetActive(false);
     }
@@ -1028,7 +1033,7 @@ public class UIManager : MonoBehaviour
         rect.sizeDelta = new Vector2(250, 240);
 
         var bg = panel.AddComponent<Image>();
-        bg.color = new Color(0.05f, 0.07f, 0.1f, 0.92f);
+        bg.color = CasinoTheme.ScorePanel;
         bg.raycastTarget = false;
 
         scoreHeaderText = CreateText("Header", panel.transform);
@@ -1040,7 +1045,7 @@ public class UIManager : MonoBehaviour
         scoreHeaderText.fontSize = 17;
         scoreHeaderText.fontStyle = FontStyles.Bold;
         scoreHeaderText.alignment = TextAlignmentOptions.Center;
-        scoreHeaderText.color = Color.white;
+        scoreHeaderText.color = CasinoTheme.TextPrimary;
 
         humanStatsText = CreateText("HumanStats", panel.transform);
         var hu = humanStatsText.rectTransform;
@@ -1050,7 +1055,7 @@ public class UIManager : MonoBehaviour
         hu.offsetMax = new Vector2(-10, 0);
         humanStatsText.fontSize = 14;
         humanStatsText.alignment = TextAlignmentOptions.TopLeft;
-        humanStatsText.color = new Color(0.75f, 1f, 0.8f);
+        humanStatsText.color = CasinoTheme.PlayerAccent;
 
         aiStatsText = CreateText("AIStats", panel.transform);
         var ai = aiStatsText.rectTransform;
@@ -1060,7 +1065,7 @@ public class UIManager : MonoBehaviour
         ai.offsetMax = new Vector2(-10, 0);
         aiStatsText.fontSize = 14;
         aiStatsText.alignment = TextAlignmentOptions.TopLeft;
-        aiStatsText.color = new Color(1f, 0.8f, 0.75f);
+        aiStatsText.color = CasinoTheme.OpponentAccent;
     }
     
     private System.Collections.IEnumerator WaitAndRefresh()
@@ -1260,7 +1265,7 @@ public class UIManager : MonoBehaviour
 
         // Clickable so single-group builds can be selected for raising
         var hitArea = root.AddComponent<Image>();
-        hitArea.color = new Color(0, 0, 0, 0.01f);
+        hitArea.color = CasinoTheme.InvisibleHitArea;
         var rootButton = root.AddComponent<Button>();
         rootButton.transition = Selectable.Transition.None;
         rootButton.onClick.AddListener(() => OnBuildStackClicked(build, root));
@@ -1298,8 +1303,8 @@ public class UIManager : MonoBehaviour
         br.anchoredPosition = new Vector2(8, 8);
         br.sizeDelta = new Vector2(30, 30);
         var bi = badge.AddComponent<Image>();
-        bi.color = mine ? new Color(0.2f, 0.45f, 0.85f, 0.95f)
-                        : new Color(0.75f, 0.25f, 0.2f, 0.95f);
+        bi.color = mine ? CasinoTheme.BuildOwnedByPlayer
+                        : CasinoTheme.BuildOwnedByOpponent;
         bi.raycastTarget = false;
 
         var badgeText = CreateText("Value", badge.transform);
@@ -1310,7 +1315,7 @@ public class UIManager : MonoBehaviour
         badgeText.fontSize = 16;
         badgeText.fontStyle = FontStyles.Bold;
         badgeText.alignment = TextAlignmentOptions.Center;
-        badgeText.color = Color.white;
+        badgeText.color = CasinoTheme.BuildBadgeLabel;
         badgeText.raycastTarget = false;
         badgeText.text = build.DeclaredValue switch
         {
@@ -1832,7 +1837,7 @@ public class UIManager : MonoBehaviour
             moveBanner.fontSize = 21;
             moveBanner.fontStyle = FontStyles.Bold;
             moveBanner.alignment = TextAlignmentOptions.Center;
-            moveBanner.color = new Color(1f, 0.9f, 0.5f);
+            moveBanner.color = CasinoTheme.Headline;
         }
         moveBanner.text = text;
         moveBanner.alpha = 1f;
@@ -2024,51 +2029,19 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Public test method to manually trigger restart from Inspector or debug
-    /// </summary>
-    [ContextMenu("Test Restart Button")]
-    public void TestRestartButton()
-    {
-        Debug.Log("TestRestartButton called manually!");
-        OnRestartClicked();
-    }
-
     private void OnRestartClicked()
     {
-        Debug.Log("════════════════════════════════════════");
-        Debug.Log("OnRestartClicked CALLED!");
-        Debug.Log("════════════════════════════════════════");
-
         if (gameOverPanel != null)
-        {
-            Debug.Log($"Hiding game over panel (was active: {gameOverPanel.activeSelf})");
             gameOverPanel.SetActive(false);
-        }
-        else
-        {
-            Debug.LogWarning("gameOverPanel is null!");
-        }
 
         if (GameManager.Instance != null)
-        {
-            Debug.Log("Calling GameManager.Instance.InitializeGame()");
             GameManager.Instance.InitializeGame();
-        }
         else
-        {
-            Debug.LogError("GameManager.Instance is null!");
-        }
+            Debug.LogError("Restart failed: GameManager.Instance is null");
 
         if (playCardButton != null)
-        {
             playCardButton.interactable = true;
-            Debug.Log("Play card button set to interactable");
-        }
 
         RefreshUI();
-        Debug.Log("════════════════════════════════════════");
-        Debug.Log("OnRestartClicked COMPLETE!");
-        Debug.Log("════════════════════════════════════════");
     }
 }

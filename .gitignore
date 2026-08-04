@@ -66,3 +66,8 @@ Thumbs.db
 # Generated at runtime by UIManager / automation
 /layout-report.txt
 /auto-verify.flag
+/screenshot.flag
+/screenshots/
+
+# Agent tooling (local only)
+/.claude/
