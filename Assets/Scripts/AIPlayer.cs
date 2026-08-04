@@ -9,7 +9,7 @@ public class AIPlayer {
 
 
     public class AIAction {
-        public enum ActionType { PlayCard, CreateBuild, ModifyBuild }
+        public enum ActionType { PlayCard, CreateBuild, ModifyBuild, AddToBuild }
         public ActionType Type { get; set; }
         public int CardIndex { get; set; }
         public List<PlayingCard> BuildCards { get; set; }
@@ -67,6 +67,14 @@ public class AIPlayer {
       var chosen = buildCaptureMoves[Random.Range(0, buildCaptureMoves.Count)];
       Logger.LogMessage($"{player.Name} (Medium AI) plays build capture at index {chosen}");
       return new AIAction { Type = AIAction.ActionType.PlayCard, CardIndex = chosen };
+    }
+
+    // Add to an existing build at its value when a spare capture card remains
+    // (locks the build as multi; stealing an opponent's build preferred)
+    var addMove = FindAddToBuildMove(activeBuilds);
+    if (addMove != null) {
+      Logger.LogMessage($"{player.Name} (Medium AI) adds to a build of {addMove.TargetBuild.DeclaredValue}");
+      return addMove;
     }
 
     // Analyze regular capture moves for scorable cards
@@ -154,6 +162,15 @@ public class AIPlayer {
                 allActions.Add((buildAction, score));
             }
         }
+
+        // Adding to a build at value: locks it as multi; stealing is better
+        var addAction = FindAddToBuildMove(activeBuilds);
+        if (addAction != null)
+            allActions.Add((addAction, 55 + (addAction.TargetBuild.Owner != player ? 15 : 0)));
+
+        // Raising an opponent's single-group build: steal their setup
+        foreach (var raise in FindRaiseMoves(activeBuilds))
+            allActions.Add((raise, 60 + (raise.TargetBuild.Owner != player ? 20 : 0)));
 
         // Select the best action
         var bestAction = allActions.OrderByDescending(x => x.score).First();
@@ -262,6 +279,49 @@ public class AIPlayer {
         return card.rank == PlayingCard.Rank.Jack ||
                card.rank == PlayingCard.Rank.Queen ||
                card.rank == PlayingCard.Rank.King;
+    }
+
+    // Add-to-build: needs a card matching the build value AND another one
+    // kept back to take it. Opponent builds first (steal + lock).
+    private AIAction FindAddToBuildMove(List<Build> activeBuilds) {
+        foreach (var build in activeBuilds.OrderBy(b => b.Owner == player ? 1 : 0)) {
+            var matching = Enumerable.Range(0, player.HandSize())
+                .Where(i => CaptureChecker.BuildCaptureValue(player.Hand[i]) == build.DeclaredValue)
+                .ToList();
+            if (matching.Count >= 2) {
+                return new AIAction {
+                    Type = AIAction.ActionType.AddToBuild,
+                    CardIndex = matching[0],
+                    TargetBuild = build
+                };
+            }
+        }
+        return null;
+    }
+
+    // Raise moves: single-group numeric builds only; the new total must be
+    // higher, at most 10, and another held card must equal it.
+    private List<AIAction> FindRaiseMoves(List<Build> activeBuilds) {
+        var moves = new List<AIAction>();
+        foreach (var build in activeBuilds.Where(b => !b.IsMultiBuild && b.DeclaredValue <= 10)) {
+            int buildSum = build.Cards.Sum(c => CaptureChecker.GetCardValue(c));
+            for (int i = 0; i < player.HandSize(); i++) {
+                var card = player.Hand[i];
+                if (IsFaceCard(card)) continue;
+                int newValue = buildSum + CaptureChecker.GetCardValue(card);
+                if (newValue <= build.DeclaredValue || newValue > 10) continue;
+                bool holdsCapture = Enumerable.Range(0, player.HandSize())
+                    .Any(j => j != i && CaptureChecker.GetCardValue(player.Hand[j]) == newValue);
+                if (!holdsCapture) continue;
+                moves.Add(new AIAction {
+                    Type = AIAction.ActionType.ModifyBuild,
+                    CardIndex = i,
+                    DeclaredValue = newValue,
+                    TargetBuild = build
+                });
+            }
+        }
+        return moves;
     }
 
     // Get all combinations of specified size from a list

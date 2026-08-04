@@ -962,9 +962,13 @@ public class GameManager : MonoBehaviour
                 break;
 
             case AIPlayer.AIAction.ActionType.ModifyBuild:
-                // TODO: Implement build modification
-                Debug.LogWarning("AI build modification not yet implemented");
-                PlayCard(currentPlayer, action.CardIndex);
+                if (!TryRaiseBuild(currentPlayer, action.CardIndex, action.TargetBuild))
+                    PlayCard(currentPlayer, action.CardIndex);
+                break;
+
+            case AIPlayer.AIAction.ActionType.AddToBuild:
+                if (!TryAddToBuild(currentPlayer, action.CardIndex, action.TargetBuild))
+                    PlayCard(currentPlayer, action.CardIndex);
                 break;
         }
     }
