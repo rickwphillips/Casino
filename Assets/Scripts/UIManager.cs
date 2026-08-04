@@ -786,12 +786,23 @@ public class UIManager : MonoBehaviour
         if (capturedPanel.activeSelf && pileShowsHuman == human)
         {
             capturedPanel.SetActive(false);
+            SetLeftEdgeVisible(true);
             return;
         }
         pileShowsHuman = human;
         pileShownCount = -1;
         capturedPanel.SetActive(true);
+        SetLeftEdgeVisible(false);
         RebuildPilePanel();
+    }
+
+    // The open pile viewer occupies the left edge; the draw pile and status
+    // texts that live there step aside while it is open.
+    private void SetLeftEdgeVisible(bool visible)
+    {
+        if (drawPile != null) drawPile.SetActive(visible);
+        if (currentPlayerText != null) currentPlayerText.gameObject.SetActive(visible);
+        if (gameStatusText != null) gameStatusText.gameObject.SetActive(visible);
     }
 
     private void RebuildPilePanel()
