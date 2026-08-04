@@ -487,7 +487,8 @@ public class UIManager : MonoBehaviour
                 child.name == "TrailButton" || child.name == "SweepButton" ||
                 child.name == "HintText" || child.name == "HumanPile" ||
                 child.name == "AIPile" || child.name == "CapturedPanel" ||
-                child.name == "DrawPile")
+                child.name == "DrawPile" || child.name == "ScoreSummary" ||
+                child.name == "MoveBanner")
             {
                 keep.Add(child.gameObject);
             }
@@ -809,6 +810,116 @@ public class UIManager : MonoBehaviour
             var ui = mini.GetComponent<CardUI>() ?? mini.AddComponent<CardUI>();
             ui.Initialize(card, false);
         }
+    }
+
+    // ------------- between-decks scoring summary -------------
+
+    private GameObject summaryPanel;
+    private TextMeshProUGUI summaryLeft;
+    private TextMeshProUGUI summaryRight;
+    private TextMeshProUGUI summaryTitle;
+    private System.Action summaryContinue;
+
+    public void ShowRoundSummary(GamePlayer dealer, GamePlayer nonDealer,
+        Dictionary<string, int> dealerRound, Dictionary<string, int> nonDealerRound,
+        System.Action onContinue)
+    {
+        if (summaryPanel == null)
+            CreateSummaryPanel();
+
+        GamePlayer human = dealer.IsHuman() ? dealer : nonDealer;
+        GamePlayer ai = human == dealer ? nonDealer : dealer;
+        var humanRound = human == dealer ? dealerRound : nonDealerRound;
+        var aiRound = ai == dealer ? dealerRound : nonDealerRound;
+
+        summaryTitle.text = $"Deck complete - scoring   (first to {ScoringManager.Instance.WinScore})";
+        summaryLeft.text = SummaryColumn("You", human, humanRound);
+        summaryRight.text = SummaryColumn("AI", ai, aiRound);
+
+        summaryContinue = onContinue;
+        summaryPanel.SetActive(true);
+    }
+
+    private string SummaryColumn(string label, GamePlayer p, Dictionary<string, int> round)
+    {
+        int earned = round.Values.Sum();
+        string lines = round.Count > 0
+            ? string.Join("\n", round.Select(kv => $"{kv.Key}  +{kv.Value}"))
+            : "no points this deck";
+        return $"{label}\n\n{lines}\n\nThis deck: +{earned}\nTotal: {p.Score}";
+    }
+
+    private void CreateSummaryPanel()
+    {
+        summaryPanel = new GameObject("ScoreSummary");
+        summaryPanel.transform.SetParent(canvasTransform, false);
+        var rect = summaryPanel.AddComponent<RectTransform>();
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = new Vector2(520, 380);
+        var bg = summaryPanel.AddComponent<Image>();
+        bg.color = new Color(0.04f, 0.06f, 0.09f, 0.97f);
+
+        summaryTitle = CreateText("Title", summaryPanel.transform);
+        var tr = summaryTitle.rectTransform;
+        tr.anchorMin = new Vector2(0, 0.88f);
+        tr.anchorMax = Vector2.one;
+        tr.offsetMin = new Vector2(12, 0);
+        tr.offsetMax = new Vector2(-12, -6);
+        summaryTitle.fontSize = 18;
+        summaryTitle.fontStyle = FontStyles.Bold;
+        summaryTitle.alignment = TextAlignmentOptions.Center;
+        summaryTitle.color = new Color(1f, 0.9f, 0.5f);
+
+        summaryLeft = CreateText("Left", summaryPanel.transform);
+        var lr = summaryLeft.rectTransform;
+        lr.anchorMin = new Vector2(0.04f, 0.2f);
+        lr.anchorMax = new Vector2(0.48f, 0.86f);
+        lr.offsetMin = lr.offsetMax = Vector2.zero;
+        summaryLeft.fontSize = 15;
+        summaryLeft.alignment = TextAlignmentOptions.TopLeft;
+        summaryLeft.color = new Color(0.75f, 1f, 0.8f);
+
+        summaryRight = CreateText("Right", summaryPanel.transform);
+        var rr = summaryRight.rectTransform;
+        rr.anchorMin = new Vector2(0.52f, 0.2f);
+        rr.anchorMax = new Vector2(0.96f, 0.86f);
+        rr.offsetMin = rr.offsetMax = Vector2.zero;
+        summaryRight.fontSize = 15;
+        summaryRight.alignment = TextAlignmentOptions.TopLeft;
+        summaryRight.color = new Color(1f, 0.8f, 0.75f);
+
+        // Continue button
+        GameObject go = new("Continue");
+        go.transform.SetParent(summaryPanel.transform, false);
+        var br = go.AddComponent<RectTransform>();
+        br.anchorMin = new Vector2(0.5f, 0);
+        br.anchorMax = new Vector2(0.5f, 0);
+        br.pivot = new Vector2(0.5f, 0);
+        br.anchoredPosition = new Vector2(0, 14);
+        br.sizeDelta = new Vector2(190, 46);
+        var img = go.AddComponent<Image>();
+        img.color = new Color(0.72f, 0.6f, 0.25f, 0.95f);
+        var btn = go.AddComponent<Button>();
+        btn.onClick.AddListener(() =>
+        {
+            summaryPanel.SetActive(false);
+            var action = summaryContinue;
+            summaryContinue = null;
+            action?.Invoke();
+        });
+
+        var label = CreateText("Label", go.transform);
+        var lbr = label.rectTransform;
+        lbr.anchorMin = Vector2.zero;
+        lbr.anchorMax = Vector2.one;
+        lbr.offsetMin = lbr.offsetMax = Vector2.zero;
+        label.text = "Continue";
+        label.fontSize = 20;
+        label.alignment = TextAlignmentOptions.Center;
+        label.color = Color.white;
+
+        summaryPanel.SetActive(false);
     }
 
     // ------------- move animations (ghost cards, layout-independent) -------------

@@ -37,6 +37,10 @@ public class GameManager : MonoBehaviour
     // Game statistics tracking
     private readonly Dictionary<string, int> dealerScoreBreakdown = new();
     private readonly Dictionary<string, int> nonDealerScoreBreakdown = new();
+
+    // Points earned in the deck just scored (for the between-decks summary)
+    private readonly Dictionary<string, int> roundDealerBreakdown = new();
+    private readonly Dictionary<string, int> roundNonDealerBreakdown = new();
     
     private void Awake() {
         if (Instance == null) { Instance = this; }
@@ -390,31 +394,18 @@ public class GameManager : MonoBehaviour
         {
             GameLogger.Instance.LogDeckStatus(0);
             ScoreRound();
-            SwapDealer();
 
-            // A player wins by reaching the win score. If both cross in the same
-            // hand the higher score takes it; if they are tied, play continues.
-            int winScore = ScoringManager.Instance.WinScore;
-            bool someoneCrossed = dealer.Score >= winScore || nonDealer.Score >= winScore;
-
-            if (someoneCrossed && dealer.Score != nonDealer.Score)
+            // Pause on a scoring summary; play resumes from its Continue button
+            if (UIManager.Instance != null)
             {
-                EndGame();
+                UIManager.Instance.ShowRoundSummary(
+                    dealer, nonDealer, roundDealerBreakdown, roundNonDealerBreakdown,
+                    ResumeAfterScoring);
                 return;
             }
 
-            deck = new GameDeck();
-            deck.Shuffle();
-
-            // Deal initial table cards for new game
-            tableCards.Clear();
-            tableCards.AddRange(deck.DrawCards(TABLE_SIZE));
-            GameLogger.Instance.LogNewDeal(1);
-            nonDealer.AddCards(deck.DrawCards(HAND_SIZE));
-            dealer.AddCards(deck.DrawCards(HAND_SIZE));
-
-            if (UIManager.Instance != null)
-                UIManager.Instance.AnimateDeal(HAND_SIZE, HAND_SIZE, TABLE_SIZE);
+            ResumeAfterScoring();
+            return;
         }
         else
         {
@@ -446,9 +437,48 @@ public class GameManager : MonoBehaviour
         // Continue game flow
         ProcessNextTurn();
     }
+
+    // Continuation after the scoring summary: swap dealer, check for a
+    // winner, and start the next deck.
+    private void ResumeAfterScoring()
+    {
+        SwapDealer();
+
+        // A player wins by reaching the win score. If both cross in the same
+        // hand the higher score takes it; if they are tied, play continues.
+        int winScore = ScoringManager.Instance.WinScore;
+        bool someoneCrossed = dealer.Score >= winScore || nonDealer.Score >= winScore;
+
+        if (someoneCrossed && dealer.Score != nonDealer.Score)
+        {
+            EndGame();
+            return;
+        }
+
+        deck = new GameDeck();
+        deck.Shuffle();
+
+        tableCards.Clear();
+        tableCards.AddRange(deck.DrawCards(TABLE_SIZE));
+        GameLogger.Instance.LogNewDeal(1);
+        nonDealer.AddCards(deck.DrawCards(HAND_SIZE));
+        dealer.AddCards(deck.DrawCards(HAND_SIZE));
+
+        currentPlayer = nonDealer;
+
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.RefreshUI();
+            UIManager.Instance.AnimateDeal(HAND_SIZE, HAND_SIZE, TABLE_SIZE);
+        }
+
+        ProcessNextTurn();
+    }
     
     private void ScoreRound()
     {
+        roundDealerBreakdown.Clear();
+        roundNonDealerBreakdown.Clear();
         GameLogger.Instance.LogScoringStart();
         ScoringManager sm = ScoringManager.Instance;
         
@@ -573,6 +603,12 @@ public class GameManager : MonoBehaviour
             breakdown[category] += points;
         else
             breakdown[category] = points;
+
+        var round = player == dealer ? roundDealerBreakdown : roundNonDealerBreakdown;
+        if (round.ContainsKey(category))
+            round[category] += points;
+        else
+            round[category] = points;
     }
 
     private int CountSpades(List<PlayingCard> cards) =>
