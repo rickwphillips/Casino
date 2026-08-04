@@ -2,63 +2,75 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 
-// Automation hook: if <project>/auto-verify.flag exists when the editor
-// (re)loads scripts, restart Play mode fresh: exit a stale session if one is
-// running, then enter Play. Lets tooling drive the editor by focusing it.
+// Automation hook: drop <project>/auto-verify.flag and the editor restarts Play
+// mode fresh. Lets tooling drive the editor without a human pressing anything.
+//
+// Three bugs shaped this file, all of which failed silently, which is the worst
+// way for a verification tool to fail: reading a stale screenshot as a fresh one
+// is how you end up believing a broken thing works.
+//
+//   1. The flag was read once per domain reload, so `touch` alone did nothing.
+//      Unity skips the reimport when a file's contents have not changed, so no
+//      reload happened and the flag just sat there. Hence polling.
+//   2. The flag was deleted when EnterPlaymode was *called*, not when Play
+//      actually began. EnterPlaymode is a request Unity can ignore (mid-compile,
+//      mid-import, an unsaved-scene prompt), which left the flag consumed with
+//      nothing running. Hence: retire the flag only once isPlaying is observed,
+//      and keep retrying until then.
+//   3. "Did we start this session?" cannot live in a static. Entering Play
+//      triggers a domain reload, which resets statics, so the tool would decide
+//      its own session was stale and stop it, forever. Hence SessionState, which
+//      survives reloads within one editor session.
 [InitializeOnLoad]
 public static class AutoVerifyPlay
 {
+    private const string PendingKey = "AutoVerifyPlay.pending";
+    private const double PollSeconds = 0.5;
+    private const double RetrySeconds = 2.0;
+
     static string Marker => Path.Combine(Application.dataPath, "..", "auto-verify.flag");
 
-    // Poll rather than only checking at load. The flag used to be read once per
-    // domain reload, so `touch auto-verify.flag` on its own did nothing: Unity
-    // skips the reimport when a file's contents have not changed, so no reload
-    // happened and the flag sat there. That made unattended runs fail silently
-    // and intermittently, which is worse than failing outright.
-    private const double PollSeconds = 0.5;
-    private static double nextPoll;
+    private static double nextPoll, nextAttempt;
 
-    static AutoVerifyPlay()
-    {
-        EditorApplication.update += Poll;
-        if (File.Exists(Marker)) EditorApplication.delayCall += Kick;
-    }
+    static AutoVerifyPlay() => EditorApplication.update += Poll;
 
     static void Poll()
     {
         if (EditorApplication.timeSinceStartup < nextPoll) return;
         nextPoll = EditorApplication.timeSinceStartup + PollSeconds;
-        if (EditorApplication.isCompiling || EditorApplication.isUpdating) return;
-        if (!File.Exists(Marker)) return;
-        Kick();
-    }
 
-    static void Kick()
-    {
-        if (EditorApplication.isPlaying)
+        if (EditorApplication.isCompiling || EditorApplication.isUpdating) return;
+
+        if (!File.Exists(Marker))
         {
-            Debug.Log("AutoVerifyPlay: stopping stale Play session first");
-            EditorApplication.playModeStateChanged += ResumeAfterExit;
-            EditorApplication.ExitPlaymode();
+            SessionState.EraseBool(PendingKey);
             return;
         }
-        StartFresh();
-    }
 
-    static void ResumeAfterExit(PlayModeStateChange state)
-    {
-        if (state != PlayModeStateChange.EnteredEditMode) return;
-        EditorApplication.playModeStateChanged -= ResumeAfterExit;
-        EditorApplication.delayCall += StartFresh;
-    }
+        if (EditorApplication.isPlaying)
+        {
+            if (SessionState.GetBool(PendingKey, false))
+            {
+                // Our request took. Retire the flag so the run happens once.
+                try { File.Delete(Marker); } catch { }
+                SessionState.EraseBool(PendingKey);
+            }
+            else
+            {
+                // Someone else's session is running; restart it so the run is fresh.
+                Debug.Log("AutoVerifyPlay: stopping stale Play session first");
+                EditorApplication.ExitPlaymode();
+            }
+            return;
+        }
 
-    static void StartFresh()
-    {
-        try { File.Delete(Marker); } catch { }
-        // Pin the Game view first: entering Play with the wrong size makes the
-        // whole run useless, and both used to race on delayCall.
+        if (EditorApplication.timeSinceStartup < nextAttempt) return;
+        nextAttempt = EditorApplication.timeSinceStartup + RetrySeconds;
+
+        // Pin the Game view first: entering Play at the wrong size wastes the run.
         GameViewSizePin.ApplyRequested();
-        Debug.Log("AutoVerifyPlay: entering Play mode fresh");
+        SessionState.SetBool(PendingKey, true);
+        Debug.Log("AutoVerifyPlay: requesting Play mode");
         EditorApplication.EnterPlaymode();
     }
 }

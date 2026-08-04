@@ -71,7 +71,7 @@ public class ScreenshotCapture : MonoBehaviour
     }
 
     // Screenshots are diagnostics: a failure here must never take the game down.
-    private static void Capture(string label, int superSize)
+    public static void Capture(string label, int superSize = 1)
     {
         try
         {

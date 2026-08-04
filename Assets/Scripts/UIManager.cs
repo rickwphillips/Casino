@@ -1059,6 +1059,18 @@ public class UIManager : MonoBehaviour
     private TextMeshProUGUI summaryTitle;
     private System.Action summaryContinue;
 
+    public bool IsSummaryOpen => summaryPanel != null && summaryPanel.activeSelf;
+
+    // What the Continue button does. Split out so automation can advance a round
+    // without synthesising a click.
+    public void ContinueSummary()
+    {
+        if (summaryPanel != null) summaryPanel.SetActive(false);
+        var action = summaryContinue;
+        summaryContinue = null;
+        action?.Invoke();
+    }
+
     public void ShowRoundSummary(GamePlayer dealer, GamePlayer nonDealer,
         Dictionary<string, int> dealerRound, Dictionary<string, int> nonDealerRound,
         System.Action onContinue)
@@ -1141,13 +1153,7 @@ public class UIManager : MonoBehaviour
         var img = go.AddComponent<Image>();
         Surface(img, 5, CasinoTheme.ButtonPrimary, CasinoTheme.ButtonPrimaryBorder);
         var btn = go.AddComponent<Button>();
-        btn.onClick.AddListener(() =>
-        {
-            summaryPanel.SetActive(false);
-            var action = summaryContinue;
-            summaryContinue = null;
-            action?.Invoke();
-        });
+        btn.onClick.AddListener(ContinueSummary);
 
         var label = CreateText("Label", go.transform);
         var lbr = label.rectTransform;
