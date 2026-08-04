@@ -1,4 +1,4 @@
-# Unity generated
+# Unity generated (rebuildable, never source)
 /[Ll]ibrary/
 /[Tt]emp/
 /[Oo]bj/
@@ -9,33 +9,10 @@
 /[Mm]emoryCaptures/
 /[Rr]ecordings/
 
-# Unity Project Settings (keep only essential ones)
-/ProjectSettings/*
-!/ProjectSettings/ProjectSettings.asset
-!/ProjectSettings/EditorBuildSettings.asset
-
-# Unity Packages
-/Packages/
+# Packages: manifest + lockfile only
+/Packages/*
 !/Packages/manifest.json
 !/Packages/packages-lock.json
-
-# Package Cache
-/Library/PackageCache/
-/Library/ScriptAssemblies/
-
-# Unity Assets (exclude defaults, keep only game content)
-/Assets/Settings/
-/Assets/Settings.meta
-/Assets/Scenes/Sample*
-/Assets/Scenes.meta
-/Assets/TextMesh Pro/
-/Assets/TextMesh Pro.meta
-/Assets/UI/
-/Assets/UI.meta
-
-# Meta files (we want to keep these for scripts only)
-*.meta
-!/Assets/Scripts/*.meta
 
 # Asset Store Tools
 /[Aa]ssets/AssetStoreTools*
@@ -63,10 +40,7 @@ ExportedObj/
 *.opendb
 *.VC.db
 
-# Unity3D Generated
-*.pidb.meta
-*.pdb.meta
-*.mdb.meta
+# Unity3D generated
 sysinfo.txt
 *.apk
 *.aab
@@ -79,7 +53,7 @@ crashlytics-build.properties
 # Addressables
 /[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
 
-# OS Generated
+# OS generated
 .DS_Store
 .DS_Store?
 ._*
@@ -88,3 +62,7 @@ crashlytics-build.properties
 Icon?
 ehthumbs.db
 Thumbs.db
+
+# Generated at runtime by UIManager / automation
+/layout-report.txt
+/auto-verify.flag
