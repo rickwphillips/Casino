@@ -71,3 +71,4 @@ Thumbs.db
 
 # Agent tooling (local only)
 /.claude/
+/gameview.txt

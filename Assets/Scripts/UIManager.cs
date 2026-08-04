@@ -266,6 +266,10 @@ public class UIManager : MonoBehaviour
     private Transform canvasTransform;
     private bool lastHumanTurn;
 
+    // Screen size the current layout was built for. Drives the resize check in
+    // Update; zero forces a pass on the first frame.
+    private Vector2Int layoutScreen;
+
     // Captured-pile viewer
     private Button humanPileButton;
     private Button aiPileButton;
@@ -465,22 +469,22 @@ public class UIManager : MonoBehaviour
         var scaler = canvas.GetComponent<CanvasScaler>();
         if (scaler == null) scaler = canvas.gameObject.AddComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        // 16:9, matching how the game is actually played and the resolution the
-        // design mockups are authored at. The old 800x600 was a 4:3 assumption
-        // from before there was any way to look at the game: on a widescreen
-        // view it left the canvas ~1180 units wide, so every edge-anchored
-        // element sat far outside where the numbers below intended.
-        scaler.referenceResolution = new Vector2(1280, 720);
+
+        // Every number below comes from the profile, so a new screen shape is a
+        // new Profile in CasinoLayout rather than an edit here.
+        var L = CasinoLayout.Pick(Screen.width, Screen.height);
+        scaler.referenceResolution = L.Reference;
         scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-        scaler.matchWidthOrHeight = 1f; // match height: vertical layout stays put
+        scaler.matchWidthOrHeight = L.Match;
+        layoutScreen = new Vector2Int(Screen.width, Screen.height);
 
         // Reparent the four card containers directly under the canvas
         var keep = new HashSet<GameObject>();
 
-        keep.Add(ReAnchor(dealerHandContainer, new Vector2(0.5f, 1), new Vector2(0, -12), new Vector2(420, 100)));
-        keep.Add(ReAnchor(nonDealerHandContainer, new Vector2(0.5f, 0), new Vector2(0, 14), new Vector2(420, 120)));
+        keep.Add(Place(dealerHandContainer, L.OpponentHand));
+        keep.Add(Place(nonDealerHandContainer, L.PlayerHand));
         // Builds render inline in the table row; no separate builds area
-        keep.Add(ReAnchor(tableCardsContainer, new Vector2(0.5f, 0.5f), new Vector2(20, 10), new Vector2(560, 130)));
+        keep.Add(Place(tableCardsContainer, L.Table));
 
         EnsureRowLayout(dealerHandContainer);
         EnsureRowLayout(nonDealerHandContainer);
@@ -489,15 +493,27 @@ public class UIManager : MonoBehaviour
         // The scene's generic Play button is replaced by the explicit
         // Sweep / Trail / Build actions - leave it out of keep so it hides.
 
-        // Status texts: bottom-left stack (the only corner nothing else uses)
-        keep.Add(ReAnchorText(currentPlayerText, new Vector2(14, 84), 14));
-        keep.Add(ReAnchorText(deckCountText, new Vector2(14, 54), 13));
-        keep.Add(ReAnchorText(gameStatusText, new Vector2(14, 24), 13));
+        keep.Add(PlaceText(currentPlayerText, L.TurnText, 14));
+        keep.Add(PlaceText(gameStatusText, L.StatusText, 13));
+        if (deckCountText != null) deckCountText.gameObject.SetActive(false);
+
+        // Runtime-created furniture. These used to keep whatever position their
+        // constructor gave them, which is why the score panel and the action
+        // rail drifted apart on a wide canvas: nothing owned them after creation.
+        PlaceByName("ScorePanel", L.Score);
+        PlaceByName("HumanPile", L.PlayerPile);
+        PlaceByName("AIPile", L.AiPile);
+        PlaceByName("DrawPile", L.DrawPile);
+        PlaceByName("HintText", L.Hint);
+        PlaceByName("VersionText", L.Version);
+
+        string[] actions = { "SweepButton", "TrailButton", "BuildButton", "SuggestButton" };
+        for (int i = 0; i < actions.Length; i++) PlaceByName(actions[i], L.Action(i));
 
         // Game over panel: centered card
         if (gameOverPanel != null)
         {
-            keep.Add(ReAnchor(gameOverPanel.transform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(420, 230)));
+            keep.Add(Place(gameOverPanel.transform, L.GameOver));
             var img = gameOverPanel.GetComponent<Image>();
             if (img != null) img.color = CasinoTheme.GameOverPanel;
         }
@@ -586,6 +602,33 @@ public class UIManager : MonoBehaviour
         return go;
     }
 
+    // --- Profile-driven placement -----------------------------------
+    // Same job as ReAnchor, but taking a Zone so the caller never spells out
+    // coordinates. Anchor and pivot are deliberately equal: a Zone reads as
+    // "this corner, this far in, this big", which is what layout-report shows.
+
+    private GameObject Place(Transform t, CasinoLayout.Zone z) =>
+        ReAnchor(t, z.Anchor, z.Pos, z.Size);
+
+    private GameObject PlaceText(TextMeshProUGUI text, CasinoLayout.Zone z, float fontSize)
+    {
+        if (text == null) return null;
+        var go = Place(text.transform, z);
+        text.fontSize = fontSize;
+        text.alignment = TextAlignmentOptions.BottomLeft;
+        text.color = CasinoTheme.TextMuted;
+        return go;
+    }
+
+    // The runtime furniture is found by name rather than held in fields, because
+    // that is already how EnforceLayout decides what to keep. Missing is fine:
+    // a layout pass can run before every piece exists.
+    private void PlaceByName(string name, CasinoLayout.Zone z)
+    {
+        var child = canvasTransform.Find(name);
+        if (child != null) Place(child, z);
+    }
+
     private void EnsureRowLayout(Transform container)
     {
         if (container == null) return;
@@ -600,7 +643,7 @@ public class UIManager : MonoBehaviour
         if (layout == null)
             layout = container.gameObject.AddComponent<HorizontalLayoutGroup>();
         if (layout == null) return;
-        layout.spacing = 8;
+        layout.spacing = CasinoLayout.Active.RowSpacing;
         layout.childAlignment = TextAnchor.MiddleCenter;
         layout.childControlWidth = false;
         layout.childControlHeight = false;
@@ -1077,6 +1120,17 @@ public class UIManager : MonoBehaviour
     
     private void Update()
     {
+        // A window resize can cross a breakpoint, which changes the whole
+        // arrangement, not just its scale. Re-run the layout when the screen
+        // actually changes size; comparing two ints per frame is free, and
+        // EnforceLayout is not cheap enough to run unconditionally.
+        if (canvasTransform != null &&
+            (Screen.width != layoutScreen.x || Screen.height != layoutScreen.y))
+        {
+            try { EnforceLayout(); }
+            catch (System.Exception e) { Debug.LogError($"EnforceLayout on resize failed: {e}"); }
+        }
+
         // Refresh UI every frame to show current state
         if (GameManager.Instance != null && GameManager.Instance.GetCurrentPlayer() != null)
         {

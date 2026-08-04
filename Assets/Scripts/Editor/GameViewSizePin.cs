@@ -1,16 +1,20 @@
 using System;
+using System.IO;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 
-// Pins the Game view to a fixed 1280x720 so screenshots are reproducible and
-// map 1:1 onto the design reference canvas.
+// Pins the Game view to a fixed size, one per CasinoLayout profile, so
+// screenshots are reproducible and canvas units equal screen pixels.
 //
 // Why this exists: on Free Aspect the Game view is whatever size the window
 // happens to be, and with CanvasScaler matchWidthOrHeight = 1 that silently
 // changes the canvas width on every run (observed: 1350x600, then 1182x600).
 // Two screenshots of the same build were not comparable to each other, let
 // alone to a mockup. A fixed size makes the design loop mean something.
+//
+// Drop <project>/gameview.txt containing "WxH" (e.g. 720x1280) and reload to
+// switch breakpoint unattended; the Casino > Game View menu does the same by hand.
 //
 // The Game view size list is internal editor API, hence the reflection. It is
 // wrapped so that an API change in a future Unity breaks the pin with a clear
@@ -19,17 +23,44 @@ using UnityEngine;
 [InitializeOnLoad]
 public static class GameViewSizePin
 {
-    private const int Width = 1280;
-    private const int Height = 720;
-    private const string Label = "Casino 1280x720";
+    // One entry per CasinoLayout profile, so every breakpoint can be checked.
+    private const string Prefix = "Casino ";
+    private static readonly (int w, int h) Wide = (1280, 720);
+    private static readonly (int w, int h) Compact = (1024, 768);
+    private static readonly (int w, int h) PortraitSize = (720, 1280);
 
-    static GameViewSizePin() => EditorApplication.delayCall += () => Pin(false);
+    // Tooling drops <project>/gameview.txt containing "WxH" to switch shape
+    // between runs without a human touching the Game view dropdown.
+    private static string RequestPath =>
+        Path.GetFullPath(Path.Combine(Application.dataPath, "..", "gameview.txt"));
 
-    [MenuItem("Casino/Pin Game View to 1280x720")]
-    private static void PinFromMenu() => Pin(true);
+    static GameViewSizePin() => EditorApplication.delayCall += () => Pin(Requested(), false);
 
-    private static void Pin(bool verbose)
+    [MenuItem("Casino/Game View/Wide 1280x720")]
+    private static void PinWide() => Pin(Wide, true);
+    [MenuItem("Casino/Game View/Compact 1024x768")]
+    private static void PinCompact() => Pin(Compact, true);
+    [MenuItem("Casino/Game View/Portrait 720x1280")]
+    private static void PinPortrait() => Pin(PortraitSize, true);
+
+    private static (int w, int h) Requested()
     {
+        try
+        {
+            if (!File.Exists(RequestPath)) return Wide;
+            var parts = File.ReadAllText(RequestPath).Trim().ToLowerInvariant().Split('x');
+            if (parts.Length == 2 && int.TryParse(parts[0], out int w) && int.TryParse(parts[1], out int h)
+                && w > 0 && h > 0)
+                return (w, h);
+        }
+        catch { }
+        return Wide;
+    }
+
+    private static void Pin((int w, int h) size, bool verbose)
+    {
+        int Width = size.w, Height = size.h;
+        string Label = Prefix + Width + "x" + Height;
         try
         {
             // Do not assume which assembly holds these: UnityEditor.dll is a
@@ -54,14 +85,14 @@ public static class GameViewSizePin
             object group = sizesType.GetMethod("GetGroup")
                 .Invoke(sizes, new[] { Enum.ToObject(groupEnum, (int)currentGroup) });
 
-            int index = IndexOfLabel(group);
+            int index = IndexOfLabel(group, Label);
             if (index < 0)
             {
-                object size = sizeType
+                object entry = sizeType
                     .GetConstructor(new[] { sizeKind, typeof(int), typeof(int), typeof(string) })
                     .Invoke(new[] { Enum.Parse(sizeKind, "FixedResolution"), Width, Height, Label });
-                group.GetType().GetMethod("AddCustomSize").Invoke(group, new[] { size });
-                index = IndexOfLabel(group);
+                group.GetType().GetMethod("AddCustomSize").Invoke(group, new[] { entry });
+                index = IndexOfLabel(group, Label);
             }
             if (index < 0)
             {
@@ -86,7 +117,7 @@ public static class GameViewSizePin
                 selected.SetValue(window, index);
                 ((EditorWindow)window).Repaint();
             }
-            if (verbose) Debug.Log($"Game view pinned to {Label}");
+            Debug.Log($"Game view pinned to {Label}");
         }
         catch (Exception e)
         {
@@ -105,7 +136,7 @@ public static class GameViewSizePin
         return null;
     }
 
-    private static int IndexOfLabel(object group)
+    private static int IndexOfLabel(object group, string label)
     {
         var type = group.GetType();
         int total = (int)type.GetMethod("GetTotalCount").Invoke(group, null);
@@ -114,13 +145,15 @@ public static class GameViewSizePin
         {
             object size = get.Invoke(group, new object[] { i });
             var text = size.GetType().GetProperty("displayText").GetValue(size) as string;
-            if (text != null && text.Contains(Label)) return i;
+            if (text != null && text.Contains(label)) return i;
         }
         return -1;
     }
 
     private static void Warn(bool verbose, string reason)
     {
-        if (verbose) Debug.LogWarning($"Could not pin the Game view ({reason}). Set it by hand: Game view dropdown > + > Fixed Resolution {Width}x{Height}.");
+        if (verbose) Debug.LogWarning(
+            $"Could not pin the Game view ({reason}). Set it by hand: " +
+            "Game view dropdown > + > Fixed Resolution.");
     }
 }
