@@ -69,28 +69,39 @@ public static class CasinoLayout
     public static readonly Profile Wide = new()
     {
         Name = "Wide", Reference = new Vector2(1280, 720), Match = 1f,
-        CardSize = new Vector2(80, 120), RowSpacing = 10f,
+        CardSize = new Vector2(80, 120), RowSpacing = 14f,
 
-        OpponentHand = new Zone(0.5f, 1f, -69, -14, 460, 110),
-        Table        = new Zone(0.5f, 0.5f, -69, 20, 620, 140),
-        PlayerHand   = new Zone(0.5f, 0f, -69, 18, 460, 130),
-        Hint         = new Zone(0.5f, 0f, -69, 162, 560, 48),
+        // Ported from the Parlor mockup's grid, not re-invented:
+        //   columns  168 | 1fr | 272      rows  112 | 1fr | 46 | 158    padding 14
+        //   "deck  opp    score"
+        //   "deck  table  score"
+        //   "piles hint   actions"
+        //   "piles hand   actions"
+        // Left column is deck over piles; the right rail is score over actions.
+        // The play column spans x 182..994, so its centre is 588, which is 52
+        // left of the canvas centre. That is where the -52 offsets come from.
 
-        Score      = new Zone(1f, 1f, -12, -12, 256, 220),
-        PlayerPile = new Zone(1f, 1f, -12, -238, 256, 34),
-        AiPile     = new Zone(1f, 1f, -12, -276, 256, 34),
+        OpponentHand = new Zone(0.5f, 1f, -52, -14, 460, 112),
+        Table        = new Zone(0.5f, 0.5f, -52, 46, 620, 150),
+        Hint         = new Zone(0.5f, 0f, -52, 172, 560, 46),
+        PlayerHand   = new Zone(0.5f, 0f, -52, 14, 460, 158),
 
+        Score = new Zone(1f, 1f, -14, -14, 272, 232),
         ActionAnchor = new Vector2(1, 0),
-        ActionFirst  = new Vector2(-12, 30),   // clears the version stamp at y 4..22
+        ActionFirst  = new Vector2(-14, 30),   // clears the version stamp at y 4..22
         ActionStep   = new Vector2(0, 54),
-        ActionSize   = new Vector2(256, 46),
+        ActionSize   = new Vector2(272, 46),
 
-        DrawPile   = new Zone(0f, 0f, 28, 152, 96, 132),
-        TurnText   = new Zone(0f, 0f, 16, 112, 190, 26),
-        StatusText = new Zone(0f, 0f, 16, 86, 190, 26),
-        Version    = new Zone(1f, 0f, -10, 4, 120, 18),
-        GameOver   = new Zone(0.5f, 0.5f, 0, 0, 440, 240),
-    };
+        // Left column, top to bottom: draw pile, status, then the two piles.
+        DrawPile   = new Zone(0f, 0f, 50, 396, 96, 132),
+        TurnText   = new Zone(0f, 0f, 14, 130, 170, 24),
+        StatusText = new Zone(0f, 0f, 14, 104, 170, 24),
+        PlayerPile = new Zone(0f, 0f, 14, 62, 168, 34),
+        AiPile     = new Zone(0f, 0f, 14, 20, 168, 34),
+
+        Version  = new Zone(1f, 0f, -10, 4, 120, 18),
+        GameOver = new Zone(0.5f, 0.5f, 0, 0, 440, 240),
+        };
 
     // -----------------------------------------------------------------
     // Compact: 4:3 and similar. Same arrangement, tighter rail.
@@ -98,28 +109,30 @@ public static class CasinoLayout
     public static readonly Profile Compact = new()
     {
         Name = "Compact", Reference = new Vector2(1024, 768), Match = 1f,
-        CardSize = new Vector2(76, 114), RowSpacing = 8f,
+        CardSize = new Vector2(76, 114), RowSpacing = 10f,
 
-        OpponentHand = new Zone(0.5f, 1f, -58, -12, 420, 104),
-        Table        = new Zone(0.5f, 0.5f, -58, 16, 560, 132),
-        PlayerHand   = new Zone(0.5f, 0f, -58, 14, 420, 124),
-        Hint         = new Zone(0.5f, 0f, -58, 150, 500, 46),
+        // Same Parlor grid, tighter: columns 140 | 1fr | 236, padding 12.
+        // Play column is x 152..776, centre 464, i.e. 48 left of canvas centre.
+        OpponentHand = new Zone(0.5f, 1f, -48, -12, 420, 104),
+        Table        = new Zone(0.5f, 0.5f, -48, 40, 560, 140),
+        Hint         = new Zone(0.5f, 0f, -48, 152, 500, 44),
+        PlayerHand   = new Zone(0.5f, 0f, -48, 12, 420, 140),
 
-        Score      = new Zone(1f, 1f, -10, -10, 226, 210),
-        PlayerPile = new Zone(1f, 1f, -10, -226, 226, 32),
-        AiPile     = new Zone(1f, 1f, -10, -262, 226, 32),
-
+        Score = new Zone(1f, 1f, -12, -12, 236, 220),
         ActionAnchor = new Vector2(1, 0),
-        ActionFirst  = new Vector2(-10, 28),   // clears the version stamp at y 4..22
+        ActionFirst  = new Vector2(-12, 28),
         ActionStep   = new Vector2(0, 50),
-        ActionSize   = new Vector2(226, 44),
+        ActionSize   = new Vector2(236, 44),
 
-        DrawPile   = new Zone(0f, 0f, 24, 140, 88, 120),
-        TurnText   = new Zone(0f, 0f, 14, 100, 180, 24),
-        StatusText = new Zone(0f, 0f, 14, 76, 180, 24),
-        Version    = new Zone(1f, 0f, -10, 4, 120, 18),
-        GameOver   = new Zone(0.5f, 0.5f, 0, 0, 420, 230),
-    };
+        DrawPile   = new Zone(0f, 0f, 38, 416, 88, 120),
+        TurnText   = new Zone(0f, 0f, 12, 122, 150, 24),
+        StatusText = new Zone(0f, 0f, 12, 96, 150, 24),
+        PlayerPile = new Zone(0f, 0f, 12, 56, 140, 32),
+        AiPile     = new Zone(0f, 0f, 12, 18, 140, 32),
+
+        Version  = new Zone(1f, 0f, -10, 4, 120, 18),
+        GameOver = new Zone(0.5f, 0.5f, 0, 0, 420, 230),
+        };
 
     // -----------------------------------------------------------------
     // Portrait: phone. Match width, not height, or the whole board scales

@@ -918,7 +918,7 @@ public class UIManager : MonoBehaviour
         lr.anchorMax = Vector2.one;
         lr.offsetMin = new Vector2(8, 0);
         lr.offsetMax = new Vector2(-8, 0);
-        label.fontSize = 14;
+        label.fontSize = 13;
         label.alignment = TextAlignmentOptions.Left;
         label.color = CasinoTheme.TextPrimary;
         return btn;
@@ -1531,8 +1531,8 @@ public class UIManager : MonoBehaviour
 
         if (humanPileLabel != null)
         {
-            humanPileLabel.text = $"Your pile: {human.CapturedCards.Count} cards  (view)";
-            aiPileLabel.text = $"AI pile: {ai.CapturedCards.Count} cards  (view)";
+            humanPileLabel.text = $"Your pile  {human.CapturedCards.Count}";
+            aiPileLabel.text = $"AI pile  {ai.CapturedCards.Count}";
         }
         if (capturedPanel != null && capturedPanel.activeSelf)
             RebuildPilePanel();
