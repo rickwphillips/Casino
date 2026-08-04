@@ -1314,6 +1314,21 @@ public class UIManager : MonoBehaviour
         }
     }
     
+    // Design-verification hook for CasinoStatePreview. Puts one card in each of
+    // the four states side by side so they can be compared directly; an ordinary
+    // board never shows more than one or two at once. Presentational only.
+    public void ApplyStatePreview()
+    {
+        var hand = nonDealerCardUIs;   // human is non-dealer, bottom row
+        if (hand == null || hand.Count < 4) return;
+        hand[0].SetCapturable(true);
+        hand[1].SetSuggested(true);
+        hand[2].SetOpponentTaking(true);
+        hand[3].SetSelected(true);
+        if (hintText != null)
+            hintText.text = "State preview:  capturable / suggested / opponent taking / selected";
+    }
+
     public void RefreshUI()
     {
         UpdatePlayerHands();
@@ -1491,7 +1506,7 @@ public class UIManager : MonoBehaviour
         int n = build.Cards.Count;
         Vector2 miniSize = CardSize(0.7f);
         float step = miniSize.x * (16f / 56f);   // same overlap ratio the fan was drawn at
-        rect.sizeDelta = new Vector2(miniSize.x + (n - 1) * step, miniSize.y + 12f);
+        rect.sizeDelta = new Vector2(miniSize.x + (n - 1) * step, miniSize.y + 26f);
 
         for (int i = 0; i < n; i++)
         {
@@ -1523,6 +1538,10 @@ public class UIManager : MonoBehaviour
         br.anchoredPosition = new Vector2(8, 8);
         br.sizeDelta = new Vector2(30, 30);
         var bi = badge.AddComponent<Image>();
+        // RoundedFill is white, so Image.color still carries the owner colour.
+        // Radius half the badge size makes it a disc, as drawn.
+        bi.sprite = CasinoArt.RoundedFill(15);
+        bi.type = Image.Type.Sliced;
         bi.color = mine ? CasinoTheme.BuildOwnedByPlayer
                         : CasinoTheme.BuildOwnedByOpponent;
         bi.raycastTarget = false;
@@ -1541,6 +1560,34 @@ public class UIManager : MonoBehaviour
         {
             11 => "J", 12 => "Q", 13 => "K", _ => build.DeclaredValue.ToString()
         };
+
+        // A single build is malleable: raisable, and stealable by the opponent.
+        // A multi-build is locked and can only be taken whole. Without this they
+        // render identically and the rule is invisible on the board.
+        GameObject tag = new("Lock");
+        tag.transform.SetParent(root.transform, false);
+        var tr = tag.AddComponent<RectTransform>();
+        tr.anchorMin = tr.anchorMax = new Vector2(0.5f, 0);
+        tr.pivot = new Vector2(0.5f, 0);
+        tr.anchoredPosition = new Vector2(0, -3);
+        tr.sizeDelta = new Vector2(62, 15);
+        var ti = tag.AddComponent<Image>();
+        Surface(ti, 3,
+            build.IsMultiBuild ? CasinoTheme.BuildTagLocked : CasinoTheme.BuildTagRaisable,
+            CasinoTheme.PileBorder);
+        ti.raycastTarget = false;
+
+        var tagText = CreateText("Text", tag.transform);
+        var ttr = tagText.rectTransform;
+        ttr.anchorMin = Vector2.zero;
+        ttr.anchorMax = Vector2.one;
+        ttr.offsetMin = ttr.offsetMax = Vector2.zero;
+        tagText.fontSize = 9;
+        tagText.characterSpacing = 6f;
+        tagText.alignment = TextAlignmentOptions.Center;
+        tagText.color = CasinoTheme.BuildTagLabel;
+        tagText.raycastTarget = false;
+        tagText.text = build.IsMultiBuild ? "LOCKED" : "RAISABLE";
 
         return root;
     }
