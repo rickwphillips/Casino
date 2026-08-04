@@ -138,6 +138,7 @@ and summary columns — so player/opponent now read as one consistent pair.
 
 **Stage 2 — Visual identity spec. DONE 2026-08-04.**
 <https://claude.ai/code/artifact/a5a58c55-67e3-470a-ac06-cd6e685d509a>
+Checked in at `docs/design/stage2-identity-spec.html`.
 
 Scoped to **structure, not skin**, to avoid pre-empting the three directions:
 token architecture, the palette as a *reference* instantiation (not a
@@ -162,6 +163,7 @@ and indices-only vs full pips.
 
 **Stage 3 — Three desktop directions. DONE 2026-08-04.**
 <https://claude.ai/code/artifact/cc80a7e0-2c83-4f42-b5e6-d183ba849451>
+Checked in at `docs/design/stage3-directions.html`.
 
 One Artifact, three switchable boards, each live at exactly 1280x720. Built on
 assumed answers to the Stage 2 questions (felt survives in one direction only,

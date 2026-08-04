@@ -1,0 +1,691 @@
+<title>Casino: Three Directions</title>
+<style>
+/* ===================================================================
+   PAGE CHROME (deliberately neutral: the boards carry all the colour)
+   =================================================================== */
+:root {
+  --pg:      #F2F3EF;
+  --pg2:     #E5E8E1;
+  --pgink:   #171C16;
+  --pgink2:  #4A544A;
+  --pgink3:  #79836F;
+  --pgrule:  #D5DAD0;
+  --pgacc:   #2E6B3E;
+  --pgwarn:  #A6431F;
+  --ui:   system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --srf:  ui-serif, "Iowan Old Style", "Hoefler Text", "Palatino Linotype", Georgia, serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --pg:#0A0D0A; --pg2:#131813; --pgink:#E5E9E2; --pgink2:#AFB8AC;
+          --pgink3:#7A8378; --pgrule:#212821; --pgacc:#66C07E; --pgwarn:#E08A62; }
+}
+:root[data-theme="dark"] { --pg:#0A0D0A; --pg2:#131813; --pgink:#E5E9E2; --pgink2:#AFB8AC;
+  --pgink3:#7A8378; --pgrule:#212821; --pgacc:#66C07E; --pgwarn:#E08A62; }
+:root[data-theme="light"] { --pg:#F2F3EF; --pg2:#E5E8E1; --pgink:#171C16; --pgink2:#4A544A;
+  --pgink3:#79836F; --pgrule:#D5DAD0; --pgacc:#2E6B3E; --pgwarn:#A6431F; }
+
+* { box-sizing: border-box; }
+body { margin:0; background:var(--pg); color:var(--pgink); font-family:var(--ui);
+       font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased; }
+.wrap { max-width:1180px; margin:0 auto; padding:2.5rem 1.5rem 5rem; }
+
+.eyebrow { font-family:var(--mono); font-size:.68rem; letter-spacing:.16em;
+           text-transform:uppercase; color:var(--pgink3); margin:0 0 .7rem; }
+h1 { font-family:var(--srf); font-weight:600; font-size:clamp(2rem,4.6vw,3rem);
+     line-height:1.05; letter-spacing:-.02em; margin:0 0 .8rem; text-wrap:balance; }
+.stand { font-size:1.05rem; color:var(--pgink2); max-width:60ch; margin:0 0 1.4rem; }
+h2 { font-family:var(--srf); font-size:1.45rem; font-weight:600; letter-spacing:-.012em;
+     margin:0 0 .5rem; text-wrap:balance; }
+h3 { font-size:.86rem; font-weight:650; margin:1.4rem 0 .5rem; }
+p { margin:0 0 .9rem; max-width:68ch; }
+ul { padding-left:1.1rem; margin:0 0 .9rem; } li { margin-bottom:.35rem; max-width:66ch; }
+code { font-family:var(--mono); font-size:.85em; background:var(--pg2); padding:.1em .35em; border-radius:3px; }
+hr { border:none; border-top:1px solid var(--pgrule); margin:3rem 0; }
+a { color:var(--pgacc); }
+:focus-visible { outline:2px solid var(--pgacc); outline-offset:2px; }
+
+/* ---- direction tabs ---- */
+.tabs { display:flex; flex-wrap:wrap; gap:.5rem; margin:0 0 1.2rem; }
+.tab { appearance:none; border:1px solid var(--pgrule); background:transparent;
+       color:var(--pgink2); font-family:var(--ui); font-size:.9rem; font-weight:550;
+       padding:.55rem 1rem; border-radius:4px; cursor:pointer; display:flex; gap:.6rem;
+       align-items:baseline; transition:border-color .15s, color .15s, background .15s; }
+.tab .k { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em; color:var(--pgink3); }
+.tab:hover { border-color:var(--pgink3); color:var(--pgink); }
+.tab[aria-selected="true"] { background:var(--pgink); color:var(--pg); border-color:var(--pgink); }
+.tab[aria-selected="true"] .k { color:var(--pg); opacity:.72; }
+
+/* ---- 1280x720 frame ---- */
+.frame { position:relative; width:100%; aspect-ratio:16/9; overflow:hidden;
+         border:1px solid var(--pgrule); border-radius:6px; background:#000; }
+.board { position:absolute; top:0; left:0; width:1280px; height:720px;
+         transform-origin:top left; display:grid; }
+.framemeta { display:flex; flex-wrap:wrap; gap:.4rem 1.4rem; font-family:var(--mono);
+             font-size:.7rem; color:var(--pgink3); margin:.6rem 0 0; letter-spacing:.04em; }
+
+/* ---- notes under the board ---- */
+.notes { display:grid; gap:1.6rem; grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+         margin-top:2rem; }
+.note h3 { margin-top:0; }
+.note p, .note li { font-size:.9rem; color:var(--pgink2); max-width:none; }
+.commit { border-left:3px solid var(--pgacc); padding-left:1rem; }
+.risk   { border-left:3px solid var(--pgwarn); padding-left:1rem; }
+
+table { border-collapse:collapse; width:100%; font-size:.86rem; }
+th,td { text-align:left; padding:.45rem .6rem; border-bottom:1px solid var(--pgrule); vertical-align:top; }
+th { font-family:var(--mono); font-size:.65rem; text-transform:uppercase; letter-spacing:.12em;
+     color:var(--pgink3); font-weight:600; border-bottom:1px solid var(--pgink3); }
+.tblwrap { overflow-x:auto; }
+
+/* ===================================================================
+   SHARED BOARD STRUCTURE
+   =================================================================== */
+.z { position:relative; min-width:0; }
+.row { display:flex; align-items:center; }
+.card {
+  position:relative; flex:0 0 auto; width:80px; height:120px; border-radius:4px;
+  background:#fff; color:#111; display:flex; align-items:center; justify-content:center;
+  font-weight:600; font-size:34px; line-height:1; user-select:none;
+  transition:transform .13s ease, box-shadow .13s ease, outline-color .13s;
+  outline:0 solid transparent;
+}
+.card.red { color:#C8102E; }
+.card .ix {            /* corner index: the Stage 2 hard requirement */
+  position:absolute; top:5px; left:6px; font-size:13px; font-weight:700;
+  line-height:1.05; text-align:center; letter-spacing:-.02em;
+}
+.card .ix i { display:block; font-style:normal; font-size:11px; }
+.card.mini { width:56px; height:80px; font-size:23px; }
+.card.mini .ix { font-size:10px; top:3px; left:4px; }
+.card.mini .ix i { font-size:9px; }
+.card.back { color:transparent; }
+.card.back .ix { display:none; }
+.hand .card { cursor:pointer; }
+.hand .card:hover { transform:translateY(-8px); }
+.card.sel { transform:translateY(-14px); z-index:3; }
+.card.dim { opacity:.42; }
+
+/* build stack: 16px step, alternate 3px drop, 2deg fan (from CreateBuildUI) */
+.stack { position:relative; height:92px; flex:0 0 auto; }
+.stack .card.mini { position:absolute; top:6px; }
+.badge { position:absolute; top:-6px; right:-8px; width:30px; height:30px; border-radius:50%;
+         display:flex; align-items:center; justify-content:center; color:#fff;
+         font-weight:700; font-size:16px; z-index:5; }
+.lock { position:absolute; bottom:-4px; right:-6px; z-index:5;
+        font-family:var(--mono); font-size:9px; letter-spacing:.08em; text-transform:uppercase;
+        padding:1px 5px; border-radius:2px; }
+
+.btn { display:flex; align-items:center; justify-content:center; cursor:pointer;
+       font-weight:600; user-select:none; transition:filter .13s, opacity .13s; }
+.btn[data-off="1"] { opacity:.38; cursor:not-allowed; }
+.btn:not([data-off="1"]):hover { filter:brightness(1.12); }
+
+.stat { display:flex; justify-content:space-between; gap:1em; font-variant-numeric:tabular-nums; }
+
+/* ===================================================================
+   DIRECTION A  -  PARLOR
+   deep felt, brass rules, engraved serif. the felt survives here.
+   =================================================================== */
+[data-dir="a"] .board {
+  grid-template-columns:168px 1fr 272px;
+  grid-template-rows:112px 1fr 46px 158px;
+  grid-template-areas:
+    "deck  opp    score"
+    "deck  table  score"
+    "piles hint   actions"
+    "piles hand   actions";
+  background:
+    radial-gradient(120% 80% at 50% 38%, #1E6438 0%, #124726 46%, #0A2E19 100%);
+  font-family:var(--ui); color:#EFE6CE;
+  padding:14px; gap:0;
+}
+[data-dir="a"] .board::after {   /* table rail */
+  content:""; position:absolute; inset:8px; border:1px solid rgba(197,161,79,.34);
+  border-radius:10px; pointer-events:none;
+}
+[data-dir="a"] .z-deck{grid-area:deck}    [data-dir="a"] .z-opp{grid-area:opp}
+[data-dir="a"] .z-score{grid-area:score}  [data-dir="a"] .z-table{grid-area:table}
+[data-dir="a"] .z-piles{grid-area:piles}  [data-dir="a"] .z-hint{grid-area:hint}
+[data-dir="a"] .z-actions{grid-area:actions} [data-dir="a"] .z-hand{grid-area:hand}
+
+[data-dir="a"] .zlabel { display:none; }
+[data-dir="a"] .z-opp, [data-dir="a"] .z-table, [data-dir="a"] .z-hand {
+  display:flex; align-items:center; justify-content:center; }
+[data-dir="a"] .z-opp .row, [data-dir="a"] .z-table .row, [data-dir="a"] .z-hand .row { gap:14px; }
+[data-dir="a"] .card { box-shadow:0 3px 10px rgba(0,0,0,.45); font-family:var(--srf); }
+[data-dir="a"] .card.back {
+  background:repeating-linear-gradient(45deg,#8E7433 0 2px,#5C4A1E 2px 9px),#5C4A1E;
+  border:2px solid #C5A14F; }
+[data-dir="a"] .card.cap { outline:3px solid #F2D588; box-shadow:0 0 0 6px rgba(242,213,136,.2),0 3px 10px rgba(0,0,0,.45); }
+[data-dir="a"] .card.sel { box-shadow:0 12px 22px rgba(0,0,0,.5); outline:3px solid #FFF3D0; }
+[data-dir="a"] .badge.you   { background:#2F6FCB; box-shadow:0 0 0 2px rgba(255,255,255,.55); }
+[data-dir="a"] .badge.them  { background:#B03A2B; box-shadow:0 0 0 2px rgba(255,255,255,.55); }
+[data-dir="a"] .lock { background:#3A2E12; color:#E4C97E; border:1px solid #8E7433; }
+[data-dir="a"] .stack.cap::before {
+  content:""; position:absolute; inset:-8px -10px; border:2px dashed #F2D588;
+  border-radius:8px; opacity:.85; }
+[data-dir="a"] .panel {
+  background:linear-gradient(180deg, rgba(10,32,20,.82), rgba(6,24,14,.9));
+  border:1px solid rgba(197,161,79,.4); border-radius:6px; padding:14px 16px; }
+[data-dir="a"] .z-score .ttl {
+  font-family:var(--srf); font-size:17px; text-align:center; color:#F2D588;
+  border-bottom:1px solid rgba(197,161,79,.35); padding-bottom:8px; margin-bottom:10px;
+  letter-spacing:.01em; }
+[data-dir="a"] .side { font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+  font-family:var(--mono); margin:10px 0 5px; }
+[data-dir="a"] .side.you  { color:#9FD8AE; } [data-dir="a"] .side.them { color:#E8AE9A; }
+[data-dir="a"] .stat { font-size:13px; color:#E4DCC4; padding:1px 0; }
+[data-dir="a"] .stat b { color:#fff; font-weight:650; }
+[data-dir="a"] .z-actions { display:flex; flex-direction:column; justify-content:flex-end; gap:10px; padding-left:16px; }
+[data-dir="a"] .btn { height:46px; border-radius:5px; font-size:16px; letter-spacing:.02em;
+  font-family:var(--srf); border:1px solid rgba(197,161,79,.5); }
+[data-dir="a"] .btn.primary { background:linear-gradient(180deg,#CBA84E,#93762A); color:#221A06; border-color:#E4C97E; }
+[data-dir="a"] .btn.ghost   { background:rgba(255,255,255,.06); color:#EFE6CE; }
+[data-dir="a"] .z-hint { display:flex; align-items:center; justify-content:center;
+  font-size:15px; color:#F0DFAE; text-align:center; font-family:var(--srf); font-style:italic; }
+[data-dir="a"] .z-deck { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; }
+[data-dir="a"] .z-piles { display:flex; flex-direction:column; justify-content:flex-end; gap:8px; padding-bottom:4px; }
+[data-dir="a"] .pile { font-size:12px; color:#D9CFB4; border:1px solid rgba(197,161,79,.3);
+  border-radius:4px; padding:6px 8px; background:rgba(0,0,0,.22);
+  display:flex; justify-content:space-between; gap:10px; }
+[data-dir="a"] .deckn { font-family:var(--mono); font-size:12px; color:#D9CFB4; letter-spacing:.06em; }
+
+/* ===================================================================
+   DIRECTION B  -  SLATE
+   no felt. an instrument. cards are the only bright objects.
+   =================================================================== */
+[data-dir="b"] .board {
+  grid-template-columns:300px 1fr;
+  grid-template-rows:96px 1fr 48px 150px 72px;
+  grid-template-areas:
+    "side opp"
+    "side table"
+    "side hint"
+    "side hand"
+    "side actions";
+  background:#191B19; font-family:var(--ui); color:#DCDFD8;
+}
+[data-dir="b"] .z-deck, [data-dir="b"] .z-score, [data-dir="b"] .z-piles { grid-area:side; }
+[data-dir="b"] .z-opp{grid-area:opp} [data-dir="b"] .z-table{grid-area:table}
+[data-dir="b"] .z-hint{grid-area:hint} [data-dir="b"] .z-hand{grid-area:hand}
+[data-dir="b"] .z-actions{grid-area:actions}
+
+[data-dir="b"] .z-score { z-index:2; padding:20px 22px 0; }
+[data-dir="b"] .z-piles { z-index:2; align-self:end; padding:0 22px 20px; }
+[data-dir="b"] .z-deck  { z-index:2; align-self:end; padding:0 22px 152px;
+  display:flex; align-items:center; gap:12px; }
+[data-dir="b"] .board::before {   /* sidebar ground + divider */
+  content:""; position:absolute; left:0; top:0; width:300px; height:100%;
+  background:#101210; border-right:1px solid #2A2E29; }
+[data-dir="b"] .zlabel {
+  font-family:var(--mono); font-size:9.5px; letter-spacing:.18em; text-transform:uppercase;
+  color:#6E756B; margin-bottom:8px; }
+[data-dir="b"] .z-opp, [data-dir="b"] .z-table, [data-dir="b"] .z-hand {
+  display:flex; align-items:center; padding-left:44px; }
+[data-dir="b"] .z-opp > .zlabel, [data-dir="b"] .z-table > .zlabel,
+[data-dir="b"] .z-hand > .zlabel { flex:0 0 78px; margin-bottom:0; }
+[data-dir="b"] .z-opp .row, [data-dir="b"] .z-table .row, [data-dir="b"] .z-hand .row { gap:12px; }
+[data-dir="b"] .card { border-radius:5px; box-shadow:0 2px 6px rgba(0,0,0,.6); }
+[data-dir="b"] .card.back { background:#242A24; border:1px solid #39413A; }
+[data-dir="b"] .card.cap { outline:2px solid #4FA3E3; box-shadow:0 0 0 5px rgba(79,163,227,.16); }
+[data-dir="b"] .card.sel { outline:2px solid #E8C15A; box-shadow:0 10px 20px rgba(0,0,0,.6); }
+[data-dir="b"] .stack.cap::before { content:""; position:absolute; inset:-7px -9px;
+  border:2px solid #4FA3E3; border-radius:6px; }
+[data-dir="b"] .badge.you  { background:#2F6FCB; } [data-dir="b"] .badge.them { background:#B03A2B; }
+[data-dir="b"] .lock { background:#2A2E29; color:#9AA396; border:1px solid #3C433B; }
+[data-dir="b"] .srow { display:grid; grid-template-columns:1fr auto; gap:6px; align-items:center;
+  padding:7px 0; border-bottom:1px solid #20241F; font-size:13px; }
+[data-dir="b"] .srow .lab { color:#9AA396; }
+[data-dir="b"] .srow .val { font-family:var(--mono); font-variant-numeric:tabular-nums; color:#EDEFE9; font-size:14px; }
+[data-dir="b"] .who { display:flex; justify-content:space-between; align-items:baseline;
+  margin:16px 0 4px; }
+[data-dir="b"] .who .n { font-size:12.5px; letter-spacing:.1em; text-transform:uppercase;
+  font-family:var(--mono); }
+[data-dir="b"] .who.you .n { color:#77C98F; } [data-dir="b"] .who.them .n { color:#D89179; }
+[data-dir="b"] .who .s { font-family:var(--mono); font-size:26px; font-variant-numeric:tabular-nums; color:#fff; }
+[data-dir="b"] .meter { height:4px; background:#22261F; border-radius:2px; overflow:hidden; margin-top:5px; }
+[data-dir="b"] .meter i { display:block; height:100%; border-radius:2px; }
+[data-dir="b"] .who.you + .meter i { background:#77C98F; } [data-dir="b"] .mt-them i { background:#D89179; }
+[data-dir="b"] .z-actions { display:flex; align-items:center; gap:10px; padding:0 44px 18px; }
+[data-dir="b"] .btn { flex:1; height:44px; border-radius:4px; font-size:14.5px; letter-spacing:.04em; }
+[data-dir="b"] .btn.primary { background:#E8C15A; color:#1A1A14; }
+[data-dir="b"] .btn.ghost { background:#22261F; color:#C9CEC4; border:1px solid #333A32; }
+[data-dir="b"] .z-hint { display:flex; align-items:center; padding-left:44px; font-size:14px; color:#A8B0A4; }
+[data-dir="b"] .z-hint b { color:#E8C15A; font-weight:600; }
+[data-dir="b"] .pile { font-size:12px; color:#9AA396; display:flex; justify-content:space-between;
+  padding:6px 0; border-top:1px solid #20241F; }
+[data-dir="b"] .pile b { color:#DCDFD8; font-family:var(--mono); }
+[data-dir="b"] .deckn { font-family:var(--mono); font-size:12px; color:#9AA396; letter-spacing:.05em; }
+
+/* ===================================================================
+   DIRECTION C  -  PAPER
+   printed rules sheet. ink and card red only. light ground.
+   =================================================================== */
+[data-dir="c"] .board {
+  grid-template-columns:1fr;
+  grid-template-rows:58px 100px 1fr 44px 152px 74px;
+  grid-template-areas:"score" "opp" "table" "hint" "hand" "actions";
+  background:#EFEDE6; font-family:var(--ui); color:#16150F;
+  padding:0 56px;
+}
+[data-dir="c"] .board::before {  /* margin rule, like a ruled sheet */
+  content:""; position:absolute; left:40px; top:0; bottom:0; width:1px; background:#D6D2C4; }
+[data-dir="c"] .z-deck  { display:none; }
+[data-dir="c"] .z-piles { display:none; }
+[data-dir="c"] .z-score{grid-area:score} [data-dir="c"] .z-opp{grid-area:opp}
+[data-dir="c"] .z-table{grid-area:table} [data-dir="c"] .z-hint{grid-area:hint}
+[data-dir="c"] .z-hand{grid-area:hand}   [data-dir="c"] .z-actions{grid-area:actions}
+[data-dir="c"] .zlabel {
+  position:absolute; left:0; top:50%; transform:translateY(-50%) rotate(180deg);
+  writing-mode:vertical-rl; font-family:var(--mono); font-size:9px; letter-spacing:.22em;
+  text-transform:uppercase; color:#9A9481; }
+[data-dir="c"] .z-opp, [data-dir="c"] .z-table, [data-dir="c"] .z-hand {
+  display:flex; align-items:center; justify-content:center; }
+[data-dir="c"] .z-opp .row, [data-dir="c"] .z-table .row, [data-dir="c"] .z-hand .row { gap:16px; }
+[data-dir="c"] .card { border:1.5px solid #16150F; border-radius:2px; box-shadow:none;
+  background:#FCFBF6; }
+[data-dir="c"] .card.red { color:#C8102E; }
+[data-dir="c"] .card.back { background:#16150F; border-color:#16150F;
+  background-image:repeating-linear-gradient(45deg,#EFEDE6 0 1px,transparent 1px 7px); }
+[data-dir="c"] .card.cap { border-color:#C8102E; border-width:3px;
+  box-shadow:4px 4px 0 rgba(200,16,46,.16); }
+[data-dir="c"] .card.sel { box-shadow:5px 5px 0 #16150F; }
+[data-dir="c"] .stack.cap::before { content:""; position:absolute; inset:-8px -10px;
+  border:2px solid #C8102E; border-radius:2px; }
+[data-dir="c"] .badge { border-radius:2px; border:1.5px solid #16150F; }
+[data-dir="c"] .badge.you  { background:#16150F; color:#FCFBF6; }
+[data-dir="c"] .badge.them { background:#C8102E; color:#FCFBF6; }
+[data-dir="c"] .lock { background:#FCFBF6; color:#16150F; border:1.5px solid #16150F; border-radius:2px; }
+[data-dir="c"] .z-score { display:flex; align-items:center; gap:28px;
+  border-bottom:1.5px solid #16150F; }
+[data-dir="c"] .sc { display:flex; align-items:baseline; gap:8px; }
+[data-dir="c"] .sc .n { font-family:var(--mono); font-size:10px; letter-spacing:.18em;
+  text-transform:uppercase; color:#6B6656; }
+[data-dir="c"] .sc .s { font-family:var(--mono); font-size:24px; font-variant-numeric:tabular-nums; }
+[data-dir="c"] .sc.them .s { color:#C8102E; }
+[data-dir="c"] .scmeta { margin-left:auto; display:flex; gap:22px; font-family:var(--mono);
+  font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:#6B6656; }
+[data-dir="c"] .scmeta b { color:#16150F; }
+[data-dir="c"] .z-actions { display:flex; align-items:center; justify-content:center; gap:12px;
+  border-top:1.5px solid #16150F; }
+[data-dir="c"] .btn { height:42px; padding:0 26px; border:1.5px solid #16150F; border-radius:2px;
+  font-family:var(--mono); font-size:12px; letter-spacing:.16em; text-transform:uppercase; }
+[data-dir="c"] .btn.primary { background:#16150F; color:#FCFBF6; }
+[data-dir="c"] .btn.ghost { background:transparent; color:#16150F; }
+[data-dir="c"] .z-hint { display:flex; align-items:center; justify-content:center;
+  font-size:13.5px; color:#4A463A; }
+[data-dir="c"] .z-hint b { color:#C8102E; font-weight:650; }
+[data-dir="c"] .deckn { font-family:var(--mono); font-size:10px; letter-spacing:.12em;
+  text-transform:uppercase; color:#6B6656; margin-top:6px; }
+
+@media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Casino &middot; Stage 3 of the UI redesign</p>
+  <h1>Three directions, one system</h1>
+  <p class="stand">
+    Each board below is live at exactly 1280&times;720, the reference canvas.
+    Click a card in your hand to see what it can take. All three run the same
+    state vocabulary from the Stage 2 spec; only the skin and the arrangement change.
+  </p>
+</header>
+
+<div class="tabs" role="tablist" aria-label="Visual directions">
+  <button class="tab" role="tab" id="tab-a" aria-controls="frame" aria-selected="true"  data-d="a"><span class="k">A</span> Parlor</button>
+  <button class="tab" role="tab" id="tab-b" aria-controls="frame" aria-selected="false" data-d="b"><span class="k">B</span> Slate</button>
+  <button class="tab" role="tab" id="tab-c" aria-controls="frame" aria-selected="false" data-d="c"><span class="k">C</span> Paper</button>
+</div>
+
+<div class="frame" id="frame">
+  <div class="board" id="board">
+    <div class="z z-opp"><div class="zlabel">Opponent</div><div class="row" id="opp"></div></div>
+    <div class="z z-table"><div class="zlabel">Table</div><div class="row" id="table"></div></div>
+    <div class="z z-hand"><div class="zlabel">Your hand</div><div class="row hand" id="hand"></div></div>
+    <div class="z z-hint" id="hint"></div>
+    <div class="z z-score" id="score"></div>
+    <div class="z z-piles" id="piles"></div>
+    <div class="z z-deck" id="deck"></div>
+    <div class="z z-actions" id="actions"></div>
+  </div>
+</div>
+<p class="framemeta">
+  <span>canvas 1280 &times; 720</span>
+  <span>scaleFactor 1.000</span>
+  <span id="metadir">direction A</span>
+  <span>state: you own the 8 multi-build</span>
+</p>
+
+<div id="dirnotes"></div>
+
+<hr>
+
+<section>
+  <h2>What the board is showing</h2>
+  <p>
+    The position is chosen to exercise every gap Stage 2 found, rather than an
+    opening deal where nothing interesting is legal.
+  </p>
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>On the table</th><th>Why it is there</th></tr></thead>
+    <tbody>
+      <tr><td>Loose: A&hearts;, 3&diams;, 6&spades;, 9&clubs;</td><td>Sum material, so capture previews have something to find</td></tr>
+      <tr><td>Build of 5 (2&diams;+3&clubs;), theirs, single</td><td>Malleable and stealable. It may be combined with loose cards</td></tr>
+      <tr><td>Build of 8 (4&spades;+4&hearts;, 8&diams;), yours, multi</td><td>Locked. Cannot be raised, only taken whole. And it makes trailing illegal</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <h3>What each card in hand does</h3>
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Card</th><th>Takes</th><th>Demonstrates</th></tr></thead>
+    <tbody>
+      <tr><td><b>9&diams;</b></td><td>9&clubs; by rank; 3&diams;+6&spades; by sum; or their 5-build with A&hearts;+3&diams;</td><td>Three separate sets at once, including a steal</td></tr>
+      <tr><td><b>8&clubs;</b></td><td>Your own 8 multi-build; or their 5-build with 3&diams;</td><td>Taking your own build, and a second steal route</td></tr>
+      <tr><td><b>5&hearts;</b></td><td>Their 5-build outright</td><td>Straight build capture</td></tr>
+      <tr><td><b>Q&diams;</b></td><td>Nothing</td><td>Face cards take rank only. With trail locked, this is a dead card</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>
+    Because you own a build, trailing is illegal: you must sweep or build. Every
+    direction has to say that out loud, which is why the Trail button is disabled
+    with a stated reason rather than silently refusing, as it does today.
+  </p>
+</section>
+
+<hr>
+
+<section>
+  <h2>How they differ where it counts</h2>
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th></th><th>A &middot; Parlor</th><th>B &middot; Slate</th><th>C &middot; Paper</th></tr></thead>
+    <tbody>
+      <tr><td><b>Ground</b></td><td>Felt, lit and vignetted</td><td>Neutral graphite, no felt</td><td>Paper, light</td></tr>
+      <tr><td><b>Capturable</b></td><td>Warm gold glow</td><td>Blue outline</td><td>Red rule, thickened</td></tr>
+      <tr><td><b>Selected</b></td><td>Lift plus pale outline</td><td>Lift plus amber outline</td><td>Lift plus hard drop shadow</td></tr>
+      <tr><td><b>Score</b></td><td>Framed panel, right rail</td><td>Instrument sidebar with progress to 11</td><td>Printed scoreline across the top</td></tr>
+      <tr><td><b>Actions</b></td><td>Vertical right rail</td><td>Horizontal bar under your hand</td><td>Centred footer row</td></tr>
+      <tr><td><b>Portrait risk</b></td><td>High: right rail is the first thing to fail</td><td>Low: sidebar collapses, bar is already thumb-height</td><td>Medium: single column already, but wide cards</td></tr>
+      <tr><td><b>Art needed</b></td><td>Most: felt texture, gilt back, real display face</td><td>Least: it is a type and spacing exercise</td><td>Medium: the card faces carry it</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<script>
+/* =========================================================
+   Model
+   ========================================================= */
+const SUIT = { H:{g:'♥',red:1}, D:{g:'♦',red:1}, S:{g:'♠'}, C:{g:'♣'} };
+const val = r => r==='A'?1 : r==='J'?11 : r==='Q'?12 : r==='K'?13 : +r;
+
+const state = {
+  opp: 4, deck: 34, you: 3, ai: 5, win: 11, yourPile: 12, aiPile: 6,
+  table: [ {r:'A',s:'H'}, {r:'3',s:'D'}, {r:'6',s:'S'}, {r:'9',s:'C'} ],
+  builds: [
+    { id:'b1', v:5, owner:'them', multi:false, cards:[{r:'2',s:'D'},{r:'3',s:'C'}] },
+    { id:'b2', v:8, owner:'you',  multi:true,  cards:[{r:'4',s:'S'},{r:'4',s:'H'},{r:'8',s:'D'}] }
+  ],
+  hand: [ {r:'9',s:'D'}, {r:'8',s:'C'}, {r:'5',s:'H'}, {r:'Q',s:'D'} ]
+};
+let dir = 'a', selected = -1;
+
+/* All subsets of loose table cards summing to n. Face cards cannot be summed. */
+function subsetsSumming(cards, n) {
+  const idx = cards.map((c,i)=>({c,i})).filter(o=>val(o.c.r)<=10);
+  const out = [];
+  const walk = (at, acc, sum) => {
+    if (sum === n && acc.length) { out.push(acc.slice()); return; }
+    if (sum >= n || at >= idx.length) return;
+    for (let j = at; j < idx.length; j++) {
+      acc.push(idx[j].i); walk(j+1, acc, sum + val(idx[j].c.r)); acc.pop();
+    }
+  };
+  walk(0, [], 0);
+  return out;
+}
+
+/* What a played card can take. Mirrors CaptureChecker: rank matches, sum sets,
+   builds at value, and combining an OPPONENT's single build with loose cards. */
+function captures(card) {
+  const v = val(card.r), sets = [], cards = new Set(), builds = new Set();
+  state.table.forEach((c,i) => {
+    if (c.r === card.r) { sets.push({kind:'rank', cards:[i], builds:[]}); cards.add(i); }
+  });
+  if (v <= 10) {
+    subsetsSumming(state.table, v).forEach(ix => {
+      if (ix.length === 1 && state.table[ix[0]].r === card.r) return;  // already counted
+      sets.push({kind:'sum', cards:ix, builds:[]}); ix.forEach(i=>cards.add(i));
+    });
+  }
+  state.builds.forEach(b => {
+    if (b.v === v) { sets.push({kind:'build', cards:[], builds:[b.id]}); builds.add(b.id); }
+  });
+  if (v <= 10) {
+    state.builds.forEach(b => {
+      if (b.owner !== 'them' || b.multi || b.v >= v) return;
+      subsetsSumming(state.table, v - b.v).forEach(ix => {
+        sets.push({kind:'steal', cards:ix, builds:[b.id]});
+        ix.forEach(i=>cards.add(i)); builds.add(b.id);
+      });
+    });
+  }
+  return { sets, cards, builds };
+}
+
+const youOwnBuild = () => state.builds.some(b => b.owner === 'you');
+
+/* =========================================================
+   View
+   ========================================================= */
+const el = (t, cls, html) => { const n=document.createElement(t); if(cls)n.className=cls;
+  if(html!=null)n.innerHTML=html; return n; };
+
+function cardEl(c, {mini=false, back=false}={}) {
+  const n = el('div', 'card' + (mini?' mini':'') + (back?' back':'') + (!back && SUIT[c.s].red ? ' red':''));
+  if (!back) {
+    n.appendChild(el('div','ix', c.r + '<i>' + SUIT[c.s].g + '</i>'));
+    n.appendChild(el('span', null, c.r + '<span style="font-size:.72em">' + SUIT[c.s].g + '</span>'));
+  }
+  return n;
+}
+
+function buildEl(b) {
+  const n = el('div','stack');
+  n.style.width = (56 + (b.cards.length-1)*16) + 'px';
+  b.cards.forEach((c,i) => {
+    const m = cardEl(c, {mini:true});
+    m.style.left = (i*16)+'px';
+    m.style.top  = (6 + (i%2)*3)+'px';
+    m.style.transform = 'rotate(' + ((i-(b.cards.length-1)/2)*-2) + 'deg)';
+    n.appendChild(m);
+  });
+  n.appendChild(el('div','badge ' + (b.owner==='you'?'you':'them'),
+    b.v===11?'J':b.v===12?'Q':b.v===13?'K':b.v));
+  n.appendChild(el('div','lock', b.multi ? 'locked' : 'raisable'));
+  return n;
+}
+
+function render() {
+  document.documentElement.setAttribute('data-dir', dir);
+  document.getElementById('metadir').textContent = 'direction ' + dir.toUpperCase();
+
+  const played = selected >= 0 ? state.hand[selected] : null;
+  const res = played ? captures(played) : {sets:[], cards:new Set(), builds:new Set()};
+
+  const opp = document.getElementById('opp'); opp.textContent = '';
+  for (let i=0;i<state.opp;i++) opp.appendChild(cardEl(null,{back:true}));
+
+  const tb = document.getElementById('table'); tb.textContent = '';
+  state.table.forEach((c,i) => {
+    const n = cardEl(c);
+    if (played) n.classList.add(res.cards.has(i) ? 'cap' : 'dim');
+    tb.appendChild(n);
+  });
+  state.builds.forEach(b => {
+    const n = buildEl(b);
+    if (played) n.classList.add(res.builds.has(b.id) ? 'cap' : 'dim');
+    tb.appendChild(n);
+  });
+
+  const hd = document.getElementById('hand'); hd.textContent = '';
+  state.hand.forEach((c,i) => {
+    const n = cardEl(c);
+    if (i === selected) n.classList.add('sel');
+    n.tabIndex = 0;
+    n.addEventListener('click', () => { selected = selected===i ? -1 : i; render(); });
+    n.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){ e.preventDefault();
+      selected = selected===i ? -1 : i; render(); } });
+    hd.appendChild(n);
+  });
+
+  /* hint: the teaching line */
+  const hint = document.getElementById('hint');
+  const say = h => hint.innerHTML = '<span>' + h + '</span>';
+  if (!played) {
+    say('Your turn. You own the 8 build, so you must <b>sweep or build</b>. Pick a card.');
+  } else if (!res.sets.length) {
+    say('<b>' + played.r + SUIT[played.s].g + '</b> takes nothing, and trailing is locked while you own a build.');
+  } else {
+    const bits = res.sets.map(s => {
+      const cs = s.cards.map(i => state.table[i].r + SUIT[state.table[i].s].g);
+      const bs = s.builds.map(id => 'the ' + state.builds.find(b=>b.id===id).v + '-build');
+      return bs.concat(cs).join(' + ');
+    });
+    say('<b>' + played.r + SUIT[played.s].g + '</b> can take: ' + bits.join(' &nbsp;|&nbsp; ') +
+      '. Sweeps are optional, take any of them.');
+  }
+
+  renderScore(); renderPiles(); renderDeck(); renderActions(res);
+}
+
+function renderScore() {
+  const s = document.getElementById('score'); s.textContent = '';
+  if (dir === 'a') {
+    const p = el('div','panel');
+    p.appendChild(el('div','ttl','First to ' + state.win));
+    p.appendChild(el('div','side you','You &middot; non-dealer'));
+    [['Score',state.you],['Cards',7],['Spades',3],['Aces',1]].forEach(([k,v]) =>
+      p.appendChild(el('div','stat','<span>'+k+'</span><b>'+v+'</b>')));
+    p.appendChild(el('div','side them','AI &middot; dealer'));
+    [['Score',state.ai],['Cards',5],['Spades',2],['Aces',2]].forEach(([k,v]) =>
+      p.appendChild(el('div','stat','<span>'+k+'</span><b>'+v+'</b>')));
+    s.appendChild(p);
+  } else if (dir === 'b') {
+    s.appendChild(el('div','zlabel','Score &middot; first to ' + state.win));
+    const mk = (who,cls,score,rows) => {
+      s.appendChild(el('div','who '+cls,'<span class="n">'+who+'</span><span class="s">'+score+'</span>'));
+      const m = el('div','meter' + (cls==='them'?' mt-them':''));
+      const bar = el('i'); bar.style.width = (score/state.win*100)+'%'; m.appendChild(bar);
+      s.appendChild(m);
+      rows.forEach(([k,v]) => s.appendChild(el('div','srow','<span class="lab">'+k+'</span><span class="val">'+v+'</span>')));
+    };
+    mk('You','you',state.you,[['Cards',7],['Spades',3],['Aces',1],['Big / Little','no / yes']]);
+    mk('AI','them',state.ai,[['Cards',5],['Spades',2],['Aces',2],['Big / Little','yes / no']]);
+  } else {
+    s.appendChild(el('div','sc you','<span class="n">You</span><span class="s">'+state.you+'</span>'));
+    s.appendChild(el('div','sc them','<span class="n">AI</span><span class="s">'+state.ai+'</span>'));
+    s.appendChild(el('div','scmeta',
+      '<span>First to <b>'+state.win+'</b></span><span>Deck <b>'+state.deck+'</b></span>' +
+      '<span>Your pile <b>'+state.yourPile+'</b></span><span>AI pile <b>'+state.aiPile+'</b></span>'));
+  }
+}
+
+function renderPiles() {
+  const p = document.getElementById('piles'); p.textContent = '';
+  if (dir === 'c') return;
+  if (dir === 'b') p.appendChild(el('div','zlabel','Captured'));
+  p.appendChild(el('div','pile','<span>Your pile</span><b>'+state.yourPile+'</b>'));
+  p.appendChild(el('div','pile','<span>AI pile</span><b>'+state.aiPile+'</b>'));
+}
+
+function renderDeck() {
+  const d = document.getElementById('deck'); d.textContent = '';
+  const back = cardEl(null,{back:true, mini: dir!=='a'});
+  d.appendChild(back);
+  d.appendChild(el('div','deckn', dir==='c' ? 'Deck ' + state.deck : state.deck + ' left'));
+}
+
+function renderActions(res) {
+  const a = document.getElementById('actions'); a.textContent = '';
+  const canSweep = res.sets.length > 0;
+  const mk = (label, cls, off, why) => {
+    const b = el('div','btn '+cls, label);
+    if (off) { b.dataset.off = '1'; b.title = why; }
+    b.setAttribute('role','button'); b.tabIndex = off ? -1 : 0;
+    a.appendChild(b);
+  };
+  mk('Sweep','primary', !canSweep, 'Select a card that can capture');
+  mk('Build','ghost', selected < 0, 'Select a card first');
+  mk('Trail','ghost', true, 'You own the 8 build. You must sweep or build.');
+  mk('Suggest','ghost', false, '');
+}
+
+/* =========================================================
+   Frame scaling + tabs
+   ========================================================= */
+function fit() {
+  const f = document.getElementById('frame');
+  document.getElementById('board').style.transform = 'scale(' + (f.clientWidth/1280) + ')';
+}
+addEventListener('resize', fit);
+
+const NOTES = {
+a: {
+  name:'Parlor', line:'The felt survives, but as a lit table rather than a flat green fill.',
+  commit:['Ground stays green, now a radial-lit felt with a brass rail inset, so the board reads as an object with edges instead of a coloured window.',
+          'Serif display face for ranks, banner and buttons. Card ranks are the one place a serif earns its keep: it is the classic engraved playing-card tradition and it makes 6 and 9 unmistakable.',
+          'Capturable reads as a warm gold glow, which sits inside the existing gold and cream vocabulary rather than importing a new signal hue.',
+          'Card backs become gilt-on-oxblood, replacing the procedural navy lattice.'],
+  risk:['Most expensive direction. It needs a felt texture, a real back, and a display font asset to look like the intent rather than a gradient.',
+        'The right-hand action rail is the first thing that breaks in portrait, so this is the direction that costs the most at Stage 4.',
+        'Warm gold on warm felt is a narrow contrast band. The capturable glow is doing a lot of work and needs checking at low brightness.']
+},
+b: {
+  name:'Slate', line:'Drop the felt. Treat the board as an instrument you operate.',
+  commit:['No felt at all. A neutral graphite ground makes the cards the only bright objects on screen, which is the actual subject.',
+          'Left sidebar is a genuine instrument panel: score with a progress meter toward 11, then the per-category breakdown that currently sits in a dense unreadable text block.',
+          'Actions move to a horizontal bar directly under your hand. This is both the mobile-correct position and the shorter pointer travel on desktop.',
+          'Signal colours are separate from the accent: blue means capturable, amber means selected. Neither is used decoratively anywhere else.'],
+  risk:['It looks like a tool, not a card game. If the family feel matters, this is the direction that loses it.',
+        'A neutral dark ground plus a single amber is close to a generic dark-UI look. The sidebar information design has to carry the personality, because the palette will not.',
+        'Cheapest to build and the safest for mobile, which makes it tempting for reasons that are not visual.']
+},
+c: {
+  name:'Paper', line:'A printed rules sheet. Ink and card red, nothing else.',
+  commit:['Light ground. The palette is taken from the only place the game already has one: cards are black and red on off-white, so the interface is too.',
+          'Monospace for every piece of chrome, set in letterspaced caps. Zone names are printed down the left margin like a diagram, which suits a game whose zones are rules-defined.',
+          'Capturable is a thickened red rule, selected is a hard offset shadow. State is carried by weight and displacement, not by fill, so it survives being printed or screenshotted in greyscale.',
+          'Score becomes a single printed scoreline across the top instead of a panel.'],
+  risk:['The biggest departure. A light card game reads as unusual and some of that is the point, but it is the one most likely to be rejected on sight.',
+        'Red is doing double duty: it is both the heart and diamond suit colour and the capturable signal. That collision needs resolving, probably by making the signal a rule weight rather than a hue.',
+        'Least atmospheric. There is no table here, only a diagram of one.']
+}};
+
+function notes() {
+  const n = NOTES[dir], host = document.getElementById('dirnotes');
+  host.textContent = '';
+  host.appendChild(el('h2', null, dir.toUpperCase() + ' &middot; ' + n.name));
+  host.appendChild(el('p', 'stand', n.line));
+  const g = el('div','notes');
+  const c = el('div','note commit'); c.appendChild(el('h3',null,'What it commits to'));
+  const cu = el('ul'); n.commit.forEach(t => cu.appendChild(el('li',null,t))); c.appendChild(cu);
+  const r = el('div','note risk'); r.appendChild(el('h3',null,'What it costs'));
+  const ru = el('ul'); n.risk.forEach(t => ru.appendChild(el('li',null,t))); r.appendChild(ru);
+  g.appendChild(c); g.appendChild(r); host.appendChild(g);
+}
+
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.setAttribute('aria-selected', String(x===t)));
+  dir = t.dataset.d; render(); notes(); fit();
+}));
+
+render(); notes(); fit();
+</script>
+</div>

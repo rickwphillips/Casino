@@ -1,0 +1,673 @@
+<title>Casino Visual Identity Spec</title>
+<style>
+:root {
+  --ground:      #F1F4EE;
+  --ground-2:    #E4E9E0;
+  --ink:         #171E17;
+  --ink-2:       #3F4A3E;
+  --ink-3:       #6E7A6C;
+  --rule:        #D2D9CE;
+  --felt:        #1B5E2F;
+  --felt-soft:   #E2EDE4;
+  --brass:       #8A6E24;
+  --alarm:       #A33520;
+  --code-bg:     #E8EDE5;
+  --shadow:      0 1px 2px rgba(23,30,23,.06), 0 6px 20px rgba(23,30,23,.05);
+
+  --display: ui-serif, "Iowan Old Style", "Hoefler Text", "Palatino Linotype", Georgia, serif;
+  --body:    system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --data:    ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  --measure: 66ch;
+  --s1: .25rem; --s2: .5rem; --s3: .75rem; --s4: 1rem;
+  --s5: 1.5rem; --s6: 2rem; --s7: 3rem; --s8: 4.5rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground:    #0B100C;
+    --ground-2:  #131A14;
+    --ink:       #E4EAE2;
+    --ink-2:     #B3BEB1;
+    --ink-3:     #7E8A7C;
+    --rule:      #232C24;
+    --felt:      #5CBE7C;
+    --felt-soft: #16241A;
+    --brass:     #D3B15C;
+    --alarm:     #E08163;
+    --code-bg:   #151D16;
+    --shadow:    0 1px 2px rgba(0,0,0,.5), 0 6px 22px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"] {
+  --ground:#0B100C; --ground-2:#131A14; --ink:#E4EAE2; --ink-2:#B3BEB1;
+  --ink-3:#7E8A7C; --rule:#232C24; --felt:#5CBE7C; --felt-soft:#16241A;
+  --brass:#D3B15C; --alarm:#E08163; --code-bg:#151D16;
+  --shadow:0 1px 2px rgba(0,0,0,.5), 0 6px 22px rgba(0,0,0,.4);
+}
+:root[data-theme="light"] {
+  --ground:#F1F4EE; --ground-2:#E4E9E0; --ink:#171E17; --ink-2:#3F4A3E;
+  --ink-3:#6E7A6C; --rule:#D2D9CE; --felt:#1B5E2F; --felt-soft:#E2EDE4;
+  --brass:#8A6E24; --alarm:#A33520; --code-bg:#E8EDE5;
+  --shadow:0 1px 2px rgba(23,30,23,.06), 0 6px 20px rgba(23,30,23,.05);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--ground); color: var(--ink);
+  font-family: var(--body); font-size: 16.5px; line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+.page { max-width: 1200px; margin: 0 auto; padding: var(--s6) var(--s5) var(--s8); }
+@media (min-width: 1080px) {
+  .page { display: grid; grid-template-columns: 190px minmax(0,1fr); gap: var(--s8); padding-top: var(--s8); }
+  .masthead { grid-column: 1 / -1; }
+}
+
+/* ---- masthead ---- */
+.masthead { border-bottom: 2px solid var(--ink); padding-bottom: var(--s5); margin-bottom: var(--s7); }
+.eyebrow {
+  font-family: var(--data); font-size: .69rem; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--ink-3); margin: 0 0 var(--s3);
+}
+h1 {
+  font-family: var(--display); font-weight: 600; font-size: clamp(2.3rem, 5.5vw, 3.6rem);
+  line-height: 1.02; letter-spacing: -.022em; margin: 0 0 var(--s4); text-wrap: balance;
+}
+h1 em { font-style: italic; color: var(--felt); }
+.standfirst { font-size: 1.1rem; color: var(--ink-2); max-width: 58ch; margin: 0; }
+.facts {
+  display: flex; flex-wrap: wrap; gap: var(--s2) var(--s5);
+  margin-top: var(--s5); font-family: var(--data); font-size: .74rem;
+  color: var(--ink-3); letter-spacing: .04em;
+}
+.facts b { color: var(--ink-2); font-weight: 600; }
+
+/* ---- nav ---- */
+nav { display: none; }
+@media (min-width: 1080px) {
+  nav { display: block; position: sticky; top: var(--s5); align-self: start; }
+  nav ol { list-style: none; margin: 0; padding: 0; counter-reset: sec; }
+  nav li { margin-bottom: var(--s2); }
+  nav a {
+    display: block; text-decoration: none; color: var(--ink-3);
+    font-size: .81rem; line-height: 1.35; padding: 2px 0 2px var(--s4);
+    border-left: 2px solid var(--rule); transition: color .15s, border-color .15s;
+  }
+  nav a:hover, nav a:focus-visible { color: var(--felt); border-left-color: var(--felt); }
+}
+
+/* ---- sections ---- */
+section { margin-bottom: var(--s8); scroll-margin-top: var(--s5); }
+h2 {
+  font-family: var(--display); font-weight: 600; font-size: 1.72rem;
+  letter-spacing: -.015em; margin: 0 0 var(--s2); text-wrap: balance;
+}
+h3 {
+  font-size: .93rem; font-weight: 650; margin: var(--s6) 0 var(--s3);
+  letter-spacing: .005em;
+}
+p, li { max-width: var(--measure); }
+p { margin: 0 0 var(--s4); }
+ul { padding-left: 1.15rem; margin: 0 0 var(--s4); }
+li { margin-bottom: var(--s2); }
+a { color: var(--felt); }
+strong { font-weight: 650; }
+code, .tok {
+  font-family: var(--data); font-size: .855em;
+  background: var(--code-bg); padding: .12em .38em; border-radius: 3px;
+}
+.lede { font-size: 1.02rem; color: var(--ink-2); }
+
+/* ---- callout ---- */
+.note {
+  border-left: 3px solid var(--brass); background: var(--ground-2);
+  padding: var(--s4) var(--s5); margin: var(--s5) 0; border-radius: 0 4px 4px 0;
+}
+.note.warn { border-left-color: var(--alarm); }
+.note p:last-child { margin-bottom: 0; }
+.note .eyebrow { color: var(--brass); }
+.note.warn .eyebrow { color: var(--alarm); }
+
+/* ---- specimen band ---- */
+.band {
+  background: var(--ground-2); border: 1px solid var(--rule);
+  border-radius: 6px; padding: var(--s5); margin: var(--s5) 0;
+  overflow-x: auto;
+}
+
+/* ---- swatches ---- */
+.swatches { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fill, minmax(196px,1fr)); }
+.sw { background: var(--ground); border: 1px solid var(--rule); border-radius: 5px; overflow: hidden; }
+.sw .chip { height: 62px; }
+.sw .meta { padding: var(--s3); }
+.sw .nm { font-family: var(--data); font-size: .76rem; font-weight: 600; letter-spacing: .01em; }
+.sw .hx { font-family: var(--data); font-size: .7rem; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+/* ---- tables ---- */
+table { border-collapse: collapse; width: 100%; font-size: .86rem; }
+th, td { text-align: left; padding: var(--s2) var(--s3); border-bottom: 1px solid var(--rule); vertical-align: top; }
+th {
+  font-family: var(--data); font-size: .68rem; text-transform: uppercase;
+  letter-spacing: .12em; color: var(--ink-3); font-weight: 600;
+  border-bottom: 1px solid var(--ink-3);
+}
+td.num, td.mono { font-family: var(--data); font-variant-numeric: tabular-nums; font-size: .8rem; }
+tbody tr:last-child td { border-bottom: none; }
+
+/* ---- felt stage for card specimens ---- */
+.stage {
+  background: #144A26; border-radius: 6px; padding: var(--s6) var(--s5);
+  display: flex; flex-wrap: wrap; gap: var(--s6); align-items: flex-end;
+}
+.spec { text-align: center; }
+.spec .cap {
+  font-family: var(--data); font-size: .66rem; letter-spacing: .1em;
+  text-transform: uppercase; color: rgba(255,255,255,.62); margin-top: var(--s3);
+}
+
+/* card, at the exact Unity units the engine uses */
+.card {
+  width: 80px; height: 120px; background: #fff; border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--body); font-weight: 600; font-size: 30px; color: #000;
+  position: relative; box-shadow: 0 2px 5px rgba(0,0,0,.35);
+}
+.card.red { color: #E61A1A; }
+.card.sel   { background: #B3E6FF; transform: scale(1.15); }
+.card.sugg  { background: #B3FFB3; }
+.card.back  {
+  background:
+    repeating-linear-gradient(45deg,  #385299 0 3px, #1A2961 3px 12px),
+    repeating-linear-gradient(-45deg, #385299 0 3px, transparent 3px 12px) ,
+    #1A2961;
+  background-blend-mode: normal;
+}
+.card.mini { width: 56px; height: 80px; font-size: 21px; }
+
+/* build stack: 16px step and 2deg fan, reproduced from CreateBuildUI */
+.stack { position: relative; width: 104px; height: 92px; }
+.stack .card.mini { position: absolute; top: 6px; }
+.badge {
+  position: absolute; right: -8px; top: -8px; width: 30px; height: 30px;
+  border-radius: 15px; display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 700; font-size: 16px; font-family: var(--body);
+}
+.badge.mine { background: #3373D9; }
+.badge.theirs { background: #BF4033; }
+
+/* ---- state grid ---- */
+.states { display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fill, minmax(230px,1fr)); }
+.state {
+  border: 1px solid var(--rule); border-radius: 5px; background: var(--ground);
+  padding: var(--s4); display: flex; flex-direction: column; gap: var(--s2);
+}
+.state .nm { font-family: var(--data); font-size: .74rem; font-weight: 650; }
+.state .desc { font-size: .82rem; color: var(--ink-2); line-height: 1.45; }
+.state .sig {
+  font-family: var(--data); font-size: .68rem; color: var(--ink-3);
+  padding-top: var(--s2); border-top: 1px dashed var(--rule);
+}
+.state.gap { border-color: var(--alarm); border-style: dashed; }
+.state.gap .nm { color: var(--alarm); }
+
+.pill {
+  display: inline-block; font-family: var(--data); font-size: .64rem;
+  letter-spacing: .1em; text-transform: uppercase; padding: .18em .5em;
+  border-radius: 3px; background: var(--felt-soft); color: var(--felt);
+  border: 1px solid color-mix(in srgb, var(--felt) 30%, transparent);
+}
+.pill.gap { background: transparent; color: var(--alarm); border-color: var(--alarm); }
+
+hr.rule { border: none; border-top: 1px solid var(--rule); margin: var(--s7) 0; }
+
+:focus-visible { outline: 2px solid var(--felt); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="page">
+
+<header class="masthead">
+  <p class="eyebrow">Casino &middot; Stage 2 of the UI redesign</p>
+  <h1>The system, not yet <em>the skin</em></h1>
+  <p class="standfirst">
+    A structural spec for the Casino UI: what the tokens are called, what the card
+    states mean, and what the geometry is. Three visual directions will each fill
+    this in differently. This document is what they have to agree on.
+  </p>
+  <div class="facts">
+    <span><b>Build</b> v1.0.0</span>
+    <span><b>Canvas</b> 1280 &times; 720, scaleFactor 1.000</span>
+    <span><b>Code seam</b> CasinoTheme.cs</span>
+    <span><b>Status</b> draft for review</span>
+  </div>
+</header>
+
+<nav aria-label="Sections">
+  <ol>
+    <li><a href="#relation">1. What this fixes</a></li>
+    <li><a href="#tokens">2. Token architecture</a></li>
+    <li><a href="#palette">3. Palette, as built</a></li>
+    <li><a href="#type">4. Typography</a></li>
+    <li><a href="#space">5. Space and the canvas</a></li>
+    <li><a href="#card">6. Card anatomy</a></li>
+    <li><a href="#states">7. State vocabulary</a></li>
+    <li><a href="#open">8. Left open on purpose</a></li>
+    <li><a href="#questions">9. Decisions needed</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<section id="relation">
+  <h2>1. What this document fixes, and what it does not</h2>
+  <p class="lede">
+    Stage 3 builds three distinct visual directions. A single identity spec written
+    before that choice would either pre-empt it or say nothing.
+  </p>
+  <p>
+    So this spec fixes <strong>structure</strong> and leaves <strong>skin</strong> alone.
+    It settles the vocabulary: how many token roles exist, what each one means, which
+    card states the rules require the player to tell apart, and what the real geometry
+    is. Each Stage 3 direction then instantiates the same token names with different
+    values. Swapping directions becomes editing <code>CasinoTheme.Palette</code>, not
+    rebuilding the UI.
+  </p>
+  <p>
+    The palette in section 3 is therefore a <em>reference instantiation</em>, the one
+    shipping in v1.0.0, not a recommendation. It is here so the directions have a
+    baseline to be measured against.
+  </p>
+</section>
+
+<hr class="rule">
+
+<section id="tokens">
+  <h2>2. Token architecture</h2>
+  <p class="eyebrow">Governs: Assets/Scripts/CasinoTheme.cs</p>
+  <p>
+    Two tiers, already implemented in Stage 1. The rule that makes it work is that
+    <strong>UIManager may only ever name a semantic token</strong>. It must never
+    reference a raw hue, and never a raw literal.
+  </p>
+  <table>
+    <thead><tr><th>Tier</th><th>Example</th><th>Answers</th><th>Who edits it</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>Palette</b></td>
+        <td class="mono">Palette.GoldDeep</td>
+        <td>What hue is this?</td>
+        <td>A visual direction. Wholesale re-skins happen only here.</td>
+      </tr>
+      <tr>
+        <td><b>Semantic</b></td>
+        <td class="mono">ButtonPrimary</td>
+        <td>What does this element mean?</td>
+        <td>This spec. Adding a role is a design decision, not a color decision.</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="note">
+    <p class="eyebrow">Why the tiers are worth the indirection</p>
+    <p>
+      Stage 1 found four pairs of identical colors reached by different code paths,
+      including the move banner and the round summary title, and the score panel stats
+      and the summary columns. They were the same by coincidence, and a palette edit
+      would have desynchronised them. Naming <span class="tok">Headline</span> and
+      <span class="tok">PlayerAccent</span> once makes that coincidence a guarantee.
+    </p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<section id="palette">
+  <h2>3. Palette, as currently built</h2>
+  <p>
+    Eighteen hues and twenty-two semantic roles, extracted from thirty-nine literals.
+    Unity floats are given because <code>CasinoTheme</code> is authored in them and
+    round-tripping through hex loses precision.
+  </p>
+
+  <h3>Palette tier</h3>
+  <div class="band">
+    <div class="swatches">
+      <div class="sw"><div class="chip" style="background:#144A26"></div><div class="meta"><div class="nm">Felt</div><div class="hx">#144A26</div></div></div>
+      <div class="sw"><div class="chip" style="background:#2E6B4D"></div><div class="meta"><div class="nm">FeltLight</div><div class="hx">#2E6B4D</div></div></div>
+      <div class="sw"><div class="chip" style="background:#1A2961"></div><div class="meta"><div class="nm">Navy</div><div class="hx">#1A2961</div></div></div>
+      <div class="sw"><div class="chip" style="background:#385299"></div><div class="meta"><div class="nm">NavyLight</div><div class="hx">#385299</div></div></div>
+      <div class="sw"><div class="chip" style="background:#FFE680"></div><div class="meta"><div class="nm">Gold</div><div class="hx">#FFE680</div></div></div>
+      <div class="sw"><div class="chip" style="background:#B89940"></div><div class="meta"><div class="nm">GoldDeep</div><div class="hx">#B89940</div></div></div>
+      <div class="sw"><div class="chip" style="background:#FFF299"></div><div class="meta"><div class="nm">Cream</div><div class="hx">#FFF299</div></div></div>
+      <div class="sw"><div class="chip" style="background:#0A0F17"></div><div class="meta"><div class="nm">Ink</div><div class="hx">#0A0F17</div></div></div>
+      <div class="sw"><div class="chip" style="background:#0D121A"></div><div class="meta"><div class="nm">Slate</div><div class="hx">#0D121A</div></div></div>
+      <div class="sw"><div class="chip" style="background:#1F2938"></div><div class="meta"><div class="nm">SlateBlue</div><div class="hx">#1F2938</div></div></div>
+      <div class="sw"><div class="chip" style="background:#0D141F"></div><div class="meta"><div class="nm">Midnight</div><div class="hx">#0D141F</div></div></div>
+      <div class="sw"><div class="chip" style="background:#E61A1A"></div><div class="meta"><div class="nm">CardRed</div><div class="hx">#E61A1A</div></div></div>
+      <div class="sw"><div class="chip" style="background:#BFFFCC"></div><div class="meta"><div class="nm">Mint</div><div class="hx">#BFFFCC</div></div></div>
+      <div class="sw"><div class="chip" style="background:#FFCCBF"></div><div class="meta"><div class="nm">Blush</div><div class="hx">#FFCCBF</div></div></div>
+      <div class="sw"><div class="chip" style="background:#B3E6FF"></div><div class="meta"><div class="nm">Sky</div><div class="hx">#B3E6FF</div></div></div>
+      <div class="sw"><div class="chip" style="background:#B3FFB3"></div><div class="meta"><div class="nm">Leaf</div><div class="hx">#B3FFB3</div></div></div>
+      <div class="sw"><div class="chip" style="background:#3373D9"></div><div class="meta"><div class="nm">BuildBlue</div><div class="hx">#3373D9</div></div></div>
+      <div class="sw"><div class="chip" style="background:#BF4033"></div><div class="meta"><div class="nm">BuildRust</div><div class="hx">#BF4033</div></div></div>
+    </div>
+  </div>
+
+  <h3>Semantic roles</h3>
+  <div class="band">
+  <table>
+    <thead><tr><th>Role</th><th>Resolves to</th><th>Applied to</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">TableFelt</td><td class="mono">Felt</td><td>Full-bleed background</td></tr>
+      <tr><td class="mono">GameOverPanel</td><td class="mono">Midnight @ .96</td><td>End-of-game card</td></tr>
+      <tr><td class="mono">PileViewerPanel</td><td class="mono">Ink @ .96</td><td>Captured-pile overlay</td></tr>
+      <tr><td class="mono">RoundSummaryPanel</td><td class="mono">Ink @ .97</td><td>Between-rounds summary</td></tr>
+      <tr><td class="mono">ScorePanel</td><td class="mono">Slate @ .92</td><td>Top-right score readout</td></tr>
+      <tr><td class="mono">PileButton</td><td class="mono">SlateBlue @ .92</td><td>Your pile / AI pile rows</td></tr>
+      <tr><td class="mono">ButtonPrimary</td><td class="mono">GoldDeep @ .95</td><td>Sweep, Continue</td></tr>
+      <tr><td class="mono">ButtonSecondary</td><td class="mono">FeltLight @ .95</td><td>Build, Trail, Suggest</td></tr>
+      <tr><td class="mono">HintText</td><td class="mono">Cream</td><td>Centre instruction line</td></tr>
+      <tr><td class="mono">Headline</td><td class="mono">Gold</td><td>Move banner, summary title</td></tr>
+      <tr><td class="mono">PlayerAccent</td><td class="mono">Mint</td><td>Your stats, your summary column</td></tr>
+      <tr><td class="mono">OpponentAccent</td><td class="mono">Blush</td><td>AI stats, AI summary column</td></tr>
+      <tr><td class="mono">TextPrimary / TextMuted / TextFaint</td><td class="mono">white @ 1 / .85 / .35</td><td>Labels, deck count, version stamp</td></tr>
+      <tr><td class="mono">CardFace</td><td class="mono">white</td><td>Face-up card ground</td></tr>
+      <tr><td class="mono">CardBackBase / CardBackLattice</td><td class="mono">Navy / NavyLight</td><td>Procedural 64&times;96 back texture</td></tr>
+      <tr><td class="mono">SuitRed / SuitBlack</td><td class="mono">CardRed / black</td><td>Rank and pip glyphs</td></tr>
+      <tr><td class="mono">CardSelected</td><td class="mono">Sky</td><td>See section 7</td></tr>
+      <tr><td class="mono">CardSuggested</td><td class="mono">Leaf</td><td>See section 7</td></tr>
+      <tr><td class="mono">BuildOwnedByPlayer</td><td class="mono">BuildBlue @ .95</td><td>Build value badge, yours</td></tr>
+      <tr><td class="mono">BuildOwnedByOpponent</td><td class="mono">BuildRust @ .95</td><td>Build value badge, theirs</td></tr>
+      <tr><td class="mono">InvisibleHitArea</td><td class="mono">black @ .01</td><td>Build click target, see note</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="note">
+    <p class="eyebrow">Do not delete this one</p>
+    <p>
+      <span class="tok">InvisibleHitArea</span> is alpha 0.01, not 0. A Unity
+      <code>Image</code> with zero alpha stops receiving raycasts, so a build stack
+      would become unclickable. It looks like a rounding artifact and is load-bearing.
+    </p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<section id="type">
+  <h2>4. Typography</h2>
+  <p>
+    Every glyph in the game is currently the Unity default sans at one weight.
+    Card ranks, the hint line, the score readout, and the button labels are all
+    the same face, separated only by size. There is one font asset in the project:
+    none.
+  </p>
+  <p>
+    A TMP font asset is the single largest visual lever available, and it is a
+    Stage 5 deliverable. What Stage 2 fixes is the <strong>set of roles</strong>
+    a direction must supply, so no direction ships a face that cannot do all four.
+  </p>
+  <div class="band">
+  <table>
+    <thead><tr><th>Role</th><th>Job</th><th>Requirement</th><th>Size now</th></tr></thead>
+    <tbody>
+      <tr><td><b>Rank</b></td><td>Card rank and suit glyph</td><td>Unambiguous 6/9 and 10; must carry a suit pip at small size; the only text that is read at a glance rather than parsed</td><td class="num">30 / 21 mini</td></tr>
+      <tr><td><b>Interface</b></td><td>Buttons, hint line, turn state</td><td>Legible at 13 to 20 units on a saturated ground</td><td class="num">13&ndash;20</td></tr>
+      <tr><td><b>Data</b></td><td>Score panel, deck count, build values</td><td>Tabular figures. Scores are compared line to line and must not jitter</td><td class="num">13&ndash;16</td></tr>
+      <tr><td><b>Display</b></td><td>Move banner, round summary, game over</td><td>The only place a direction gets to be loud</td><td class="num">20&ndash;24</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="note warn">
+    <p class="eyebrow">Known trap</p>
+    <p>
+      TMP text metrics do not match CSS. A Stage 3 mockup that sets a rank at 30px
+      will not produce identical bounds in Unity, because TMP measures from the font's
+      own ascender and descender rather than a CSS line box. Treat mockup type sizes as
+      intent, and the <code>layout-report.txt</code> diff in Stage 4 as truth.
+    </p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<section id="space">
+  <h2>5. Space and the canvas</h2>
+  <p class="eyebrow">Governs: UIManager.EnforceLayout()</p>
+  <p>
+    The reference canvas is <strong>1280 &times; 720</strong> with
+    <code>matchWidthOrHeight = 1</code>. With the Game view pinned to the same size,
+    canvas units equal screen pixels exactly, so every number below is directly
+    checkable against <code>layout-report.txt</code>.
+  </p>
+  <p>
+    The layout uses no spacing scale at present. Observed gutters include 10, 12, 14,
+    16, 20 and 30, chosen ad hoc. Proposed scale, in canvas units, with everything
+    a multiple of 4:
+  </p>
+  <div class="band">
+    <table>
+      <thead><tr><th>Step</th><th>Units</th><th>Use</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">xs</td><td class="num">4</td><td>Glyph to its container</td></tr>
+        <tr><td class="mono">sm</td><td class="num">8</td><td>Within a control, badge offset</td></tr>
+        <tr><td class="mono">md</td><td class="num">16</td><td>Screen edge inset, button stack gap</td></tr>
+        <tr><td class="mono">lg</td><td class="num">24</td><td>Between related groups</td></tr>
+        <tr><td class="mono">xl</td><td class="num">48</td><td>Between zones (hand, table, rail)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3>Zones as currently anchored</h3>
+  <div class="band">
+    <table>
+      <thead><tr><th>Zone</th><th>Anchor</th><th>Offset</th><th>Size</th></tr></thead>
+      <tbody>
+        <tr><td>Opponent hand</td><td class="mono">0.5, 1</td><td class="num">0, -12</td><td class="num">420 &times; 100</td></tr>
+        <tr><td>Table row</td><td class="mono">0.5, 0.5</td><td class="num">20, 10</td><td class="num">560 &times; 130</td></tr>
+        <tr><td>Your hand</td><td class="mono">0.5, 0</td><td class="num">0, 14</td><td class="num">420 &times; 120</td></tr>
+        <tr><td>Score panel</td><td class="mono">1, 1</td><td class="num">-12, -12</td><td class="num">250 &times; 240</td></tr>
+        <tr><td>Action stack</td><td class="mono">1, 0</td><td class="num">-16, 16 / 70 / 124 / 178</td><td class="num">160 &times; 48</td></tr>
+        <tr><td>Draw pile</td><td class="mono">0, 0</td><td class="num">30, 130</td><td class="num">96 &times; 132</td></tr>
+        <tr><td>Hint line</td><td class="mono">0.5, 0</td><td class="num">0, 145</td><td class="num">470 &times; 54</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note warn">
+    <p class="eyebrow">What the 1280 &times; 720 baseline exposed</p>
+    <p>
+      These offsets were tuned against a 600-unit-tall canvas. At 720 the whole left
+      half of the board is empty felt, the table row sits 20 units right of centre for
+      no reason anyone remembers, and the action stack is separated from the score panel
+      it belongs with by roughly 160 units of nothing. The table row is 560 wide holding
+      four 80-wide cards. None of this is new damage; it is layout debt that was
+      previously hidden by the canvas stretching. Stage 4 owns it.
+    </p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<section id="card">
+  <h2>6. Card anatomy</h2>
+  <p class="eyebrow">Governs: CardUI</p>
+  <p>
+    A card is an <code>Image</code> with a single TMP string centred on it, for example
+    <code>10&hearts;</code>. There are no corner indices, no pips, and no court art.
+    Specimens below are rendered at the exact unit sizes the engine uses.
+  </p>
+  <div class="band" style="padding:0; border:none;">
+    <div class="stage">
+      <div class="spec"><div class="card">8<span style="font-size:.7em">&clubs;</span></div><div class="cap">Face up &middot; 80&times;120</div></div>
+      <div class="spec"><div class="card red">10<span style="font-size:.7em">&hearts;</span></div><div class="cap">Red suit</div></div>
+      <div class="spec"><div class="card back"></div><div class="cap">Back &middot; procedural</div></div>
+      <div class="spec"><div class="card mini">4<span style="font-size:.7em">&spades;</span></div><div class="cap">In build &middot; 56&times;80</div></div>
+      <div class="spec">
+        <div class="stack">
+          <div class="card mini" style="left:0;   transform:rotate(2deg)">3<span style="font-size:.7em">&hearts;</span></div>
+          <div class="card mini" style="left:16px; top:9px; transform:rotate(0deg)">5<span style="font-size:.7em">&clubs;</span></div>
+          <div class="card mini" style="left:32px; transform:rotate(-2deg)">8<span style="font-size:.7em">&spades;</span></div>
+          <div class="badge mine">8</div>
+        </div>
+        <div class="cap">Build stack &middot; yours</div>
+      </div>
+    </div>
+  </div>
+  <p>
+    The build stack is not a box with a header. It is a physical fan: 16 units of
+    horizontal step per card, alternate cards dropped 3 units, and a rotation of
+    2 degrees per position away from centre, with a 30-unit owner-coloured badge
+    pinned to the top right carrying the declared value. That is a good idea already
+    in the code and every direction should keep it.
+  </p>
+  <div class="note">
+    <p class="eyebrow">Requirement for every direction</p>
+    <p>
+      Corner indices are not decoration here. Cards in a build overlap with only
+      16 units showing, so the centred glyph on every card except the last is hidden.
+      A player cannot currently read what is in a build without opening it. Any
+      direction must put the rank in the top-left corner, inside 16 units.
+    </p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<section id="states">
+  <h2>7. State vocabulary</h2>
+  <p class="lede">
+    This is the part the rules actually constrain. Casino asks the player to
+    distinguish things that look alike, and the current UI does not always let them.
+  </p>
+  <h3>States that exist today</h3>
+  <div class="states">
+    <div class="state">
+      <span class="pill">shipped</span>
+      <div class="nm">Selected</div>
+      <div class="desc">The player has chosen this card, in hand or on the table.</div>
+      <div class="sig">Sky ground + scale 1.15</div>
+    </div>
+    <div class="state">
+      <span class="pill">shipped</span>
+      <div class="nm">Suggested</div>
+      <div class="desc">Either the Suggest hint's recommendation, or a hand card that can take the selected table card.</div>
+      <div class="sig">Leaf ground, no scale</div>
+    </div>
+    <div class="state">
+      <span class="pill">shipped</span>
+      <div class="nm">Selectable</div>
+      <div class="desc">Playable this turn. Currently only affects whether the button responds.</div>
+      <div class="sig">No visual signal at all</div>
+    </div>
+    <div class="state">
+      <span class="pill">shipped</span>
+      <div class="nm">Build owner</div>
+      <div class="desc">Whose build this is.</div>
+      <div class="sig">Badge: BuildBlue yours, BuildRust theirs</div>
+    </div>
+    <div class="state">
+      <span class="pill">shipped</span>
+      <div class="nm">Build selected</div>
+      <div class="desc">Chosen for raising or capture.</div>
+      <div class="sig">Root scale 1.1, no tint</div>
+    </div>
+  </div>
+
+  <h3>Gaps the rules create</h3>
+  <p>
+    Each of these is a rule the player must reason about with no visual support.
+  </p>
+  <div class="states">
+    <div class="state gap">
+      <span class="pill gap">missing</span>
+      <div class="nm">Malleable vs locked</div>
+      <div class="desc">A single build can be raised and stolen. A multi-build is locked and can only be taken whole. They render identically.</div>
+      <div class="sig">Needs: Build.IsMultiBuild</div>
+    </div>
+    <div class="state gap">
+      <span class="pill gap">missing</span>
+      <div class="nm">Steal target</div>
+      <div class="desc">An opponent's single build is sweep material and may be combined with loose table cards. Your own never may. Owner colour implies this but never states it.</div>
+      <div class="sig">Needs: owner + malleability</div>
+    </div>
+    <div class="state gap">
+      <span class="pill gap">missing</span>
+      <div class="nm">Trail locked</div>
+      <div class="desc">If you own a build you must sweep or build; trailing is illegal. The Trail button gives no indication of why it will refuse.</div>
+      <div class="sig">Needs: disabled + reason</div>
+    </div>
+    <div class="state gap">
+      <span class="pill gap">missing</span>
+      <div class="nm">Capturable</div>
+      <div class="desc">Sweeps are optional and partial: the played card may take several sets at once and the player chooses. Nothing shows which table cards the held card could take before selecting it.</div>
+      <div class="sig">Needs: CaptureChecker preview</div>
+    </div>
+  </div>
+
+  <div class="note warn">
+    <p class="eyebrow">Two collisions to resolve, not restyle</p>
+    <p>
+      <strong>Selected means two opposite things.</strong>
+      <code>HighlightTableCardsForCapture</code> reuses <code>SetSelected(true)</code> to
+      show what the <em>AI</em> is about to take. The identical Sky tint and 1.15 scale
+      therefore reads as both "you picked this" and "the opponent is taking this."
+      These need separate signals.
+    </p>
+    <p>
+      <strong>Suggested means two different things.</strong> It marks the Suggest
+      hint's recommended play, and separately marks hand cards that can take a chosen
+      table card. One is advice, the other is availability. A direction that gives them
+      the same green inherits the ambiguity.
+    </p>
+  </div>
+
+  <h3>Rules for any direction</h3>
+  <ul>
+    <li><strong>Never encode state in hue alone.</strong> Pair every tint with a second channel: scale, outline, elevation, or a corner mark. Owner colour on builds is the one place hue currently carries meaning by itself.</li>
+    <li><strong>Advice and availability must differ.</strong> Suggest is optional guidance; capturability is a fact about the board.</li>
+    <li><strong>Player action and opponent action must differ.</strong> See the collision above.</li>
+    <li><strong>Keep the physical fan.</strong> Builds read as stacked cards, not as a labelled container.</li>
+  </ul>
+</section>
+
+<hr class="rule">
+
+<section id="open">
+  <h2>8. Left open on purpose</h2>
+  <p>
+    These belong to Stage 3, and a direction that does not take a clear position on
+    each of them is not a direction:
+  </p>
+  <ul>
+    <li>Whether the ground stays felt green, and whether it is flat, textured, or lit.</li>
+    <li>The card back. It is currently a procedural navy lattice and is the most obvious candidate for real art.</li>
+    <li>Whether the score readout stays a dense text block or becomes a scannable panel. It is the one screen region where information design matters more than styling.</li>
+    <li>Whether the four action buttons stay a vertical rail on the right edge, which is also the arrangement that fails first in portrait.</li>
+    <li>Type personality, within the four roles fixed in section 4.</li>
+  </ul>
+</section>
+
+<hr class="rule">
+
+<section id="questions">
+  <h2>9. Decisions needed before Stage 3</h2>
+  <ol>
+    <li>
+      <strong>Does the felt survive?</strong> If green is non-negotiable as the
+      identity, two of the three directions are constrained before they start and it
+      is better to say so now.
+    </li>
+    <li>
+      <strong>How much should the UI teach?</strong> The four missing states above are
+      all rule-explaining. Filling them makes the game far more legible to anyone who
+      is not you, and busier for someone who already knows the family rules. That is a
+      product decision, not a visual one.
+    </li>
+    <li>
+      <strong>Card faces: indices only, or full pips?</strong> Corner indices are
+      required either way. Pip layouts are considerably more art, and this is a game
+      where the rank matters and the suit only matters for spades and two specific cards.
+    </li>
+  </ol>
+</section>
+
+</main>
+</div>
