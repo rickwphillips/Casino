@@ -474,6 +474,20 @@ public class UIManager : MonoBehaviour
         feltImage.color = feltImage.sprite != null ? Color.white : CasinoTheme.TableFelt;
         feltImage.raycastTarget = false;
 
+        // Fabric grain over the felt, tiled so it stays sharp at any screen size.
+        GameObject grain = new("TableGrain");
+        grain.transform.SetParent(canvasTransform, false);
+        grain.transform.SetSiblingIndex(1);
+        var grainRect = grain.AddComponent<RectTransform>();
+        grainRect.anchorMin = Vector2.zero;
+        grainRect.anchorMax = Vector2.one;
+        grainRect.offsetMin = grainRect.offsetMax = Vector2.zero;
+        var grainImage = grain.AddComponent<Image>();
+        grainImage.sprite = CasinoArt.FeltGrain();
+        grainImage.type = Image.Type.Tiled;
+        grainImage.color = Color.white;
+        grainImage.raycastTarget = false;
+
         // Brass rail: the inset frame that makes the board read as a table with
         // edges rather than a coloured window. 9-sliced so it stays a hairline.
         GameObject rail = new("TableRail");
@@ -646,7 +660,7 @@ public class UIManager : MonoBehaviour
         // Our runtime objects stay too
         foreach (Transform child in canvasTransform)
         {
-            if (child.name == "TableFelt" || child.name == "TableRail" || child.name == "ScorePanel" ||
+            if (child.name == "TableFelt" || child.name == "TableGrain" || child.name == "TableRail" || child.name == "ScorePanel" ||
                 child.name == "BuildButton" || child.name == "SuggestButton" ||
                 child.name == "TrailButton" || child.name == "SweepButton" ||
                 child.name == "HintText" || child.name == "HumanPile" ||

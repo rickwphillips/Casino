@@ -74,8 +74,8 @@ public static class CasinoTheme
     public static Color GameOverPanel => Palette.PanelDeep.WithAlpha(0.96f);
     public static Color PileViewerPanel => Palette.PanelDeep.WithAlpha(0.96f);
     public static Color RoundSummaryPanel => Palette.PanelDeep.WithAlpha(0.97f);
-    public static Color ScorePanel => Palette.PanelInk.WithAlpha(0.86f);
-    public static Color PileButton => Palette.PanelInk.WithAlpha(0.74f);
+    public static Color ScorePanel => Palette.PanelInk.WithAlpha(0.94f);
+    public static Color PileButton => Palette.PanelInk.WithAlpha(0.88f);
 
     // Transparent-but-raycastable: an Image needs a non-zero alpha to receive
     // clicks, so builds get an invisible hit area rather than a visible one.
@@ -85,7 +85,7 @@ public static class CasinoTheme
     // Buttons
     // ---------------------------------------------------------------
     public static Color ButtonPrimary => Palette.BrassDeep;                     // Sweep, Continue
-    public static Color ButtonSecondary => Palette.PanelInk.WithAlpha(0.72f);   // Build, Trail, Suggest
+    public static Color ButtonSecondary => Palette.PanelInk.WithAlpha(0.88f);   // Build, Trail, Suggest
     public static Color ButtonLabel => Palette.Parchment;
     public static Color ButtonPrimaryLabel => new(0.133f, 0.102f, 0.024f);
 

@@ -236,7 +236,29 @@ diffing the real `layout-report.txt` against the spec numbers.
   sites, but have not been seen on screen; that needs playing a hand with a build
   on the table.
 
-**Stage 5 — Art assets**, split three ways as described above.
+**Stage 5 — Art assets. LANDED 2026-08-04, procedurally.**
+
+Everything is generated in `CasinoArt.cs` rather than imported, so the project
+still ships no binary art except the OFL font. That was not the original plan
+(which assumed PNGs from `canvas-design`) but procedural won on the merits here:
+the felt has to cover any aspect ratio, the card back has to stay crisp at three
+card sizes, and both are flat-colour geometry that a generator does better than
+a raster at fixed resolution.
+
+- **Felt** is a radial gradient lit above centre, with a separate tiled grain
+  layer. The grain has to be its own tiling Image: the gradient is a 128px sprite
+  stretched over the whole screen, so anything baked into it blurs away. Two
+  octaves, fine tooth dominant. Heavy mottle read as blotches and heavy per-pixel
+  noise read as static; the mix landed at 78/22 with alpha 0.17.
+- **Card back** is brass edge, bronze margin, inner hairline, then a fine gilt
+  diamond lattice with brighter studs where the stripes cross. The original
+  single 12px lattice edge-to-edge read as wallpaper; the inset panel is what
+  makes it look like the back of a card.
+- **Panel opacity** had to rise (0.72-0.86 to 0.88-0.94) once grain existed,
+  because the translucent panels let it through and it speckled the text.
+
+Remaining, if wanted: title art (there is no title screen), and a felt weave with
+direction rather than isotropic noise.
 
 **Stage 6 — DesignSync library**, only once the component vocabulary stops moving.
 Maintaining HTML components mirroring Unity components is real duplication cost and

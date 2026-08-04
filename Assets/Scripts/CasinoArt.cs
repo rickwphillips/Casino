@@ -10,7 +10,7 @@ using UnityEngine;
 // picking Parlor.
 public static class CasinoArt
 {
-    private static Sprite feltSprite, cardBackSprite, railSprite;
+    private static Sprite feltSprite, cardBackSprite, railSprite, grainSprite;
     private static readonly Dictionary<string, Sprite> cache = new();
 
     // ---------------------------------------------------------------
@@ -109,6 +109,56 @@ public static class CasinoArt
         return feltSprite;
     }
 
+    // Fabric grain, tiled over the felt at 1:1.
+    //
+    // The felt gradient is a 128px sprite stretched over the whole screen, so any
+    // detail baked into it blurs away. Grain has to be a separate tiling layer or
+    // the table reads as a screen fill rather than cloth. Two octaves: a fine
+    // per-pixel tooth, and a slower mottle so it does not look like TV static.
+    public static Sprite FeltGrain()
+    {
+        if (grainSprite != null) return grainSprite;
+        const int N = 64;
+        var tex = new Texture2D(N, N, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Repeat };
+
+        for (int y = 0; y < N; y++)
+            for (int x = 0; x < N; x++)
+            {
+                float fine = Hash(x, y);
+                float mottle = Smooth(x / 4f, y / 4f, 16);
+                // Signed around mid grey: the overlay both lifts and darkens, so
+                // the felt keeps its own colour instead of being washed out.
+                float v = (fine - 0.5f) * 0.78f + (mottle - 0.5f) * 0.22f;
+                tex.SetPixel(x, y, new Color(v > 0 ? 1f : 0f, v > 0 ? 1f : 0f, v > 0 ? 1f : 0f,
+                                             Mathf.Abs(v) * 0.17f));
+            }
+        tex.Apply();
+        grainSprite = Sprite.Create(tex, new Rect(0, 0, N, N), new Vector2(0.5f, 0.5f));
+        return grainSprite;
+    }
+
+    // Deterministic, so screenshots of the same build are byte-identical.
+    private static float Hash(int x, int y)
+    {
+        uint h = (uint)(x * 374761393 + y * 668265263);
+        h = (h ^ (h >> 13)) * 1274126177u;
+        return ((h ^ (h >> 16)) & 0xFFFF) / 65535f;
+    }
+
+    // Value noise that wraps at `period`, so the tile has no visible seam.
+    private static float Smooth(float x, float y, int period)
+    {
+        int x0 = Mathf.FloorToInt(x), y0 = Mathf.FloorToInt(y);
+        float fx = x - x0, fy = y - y0;
+        fx = fx * fx * (3 - 2 * fx);
+        fy = fy * fy * (3 - 2 * fy);
+        float A = Hash(x0 % period, y0 % period);
+        float B = Hash((x0 + 1) % period, y0 % period);
+        float C = Hash(x0 % period, (y0 + 1) % period);
+        float D = Hash((x0 + 1) % period, (y0 + 1) % period);
+        return Mathf.Lerp(Mathf.Lerp(A, B, fx), Mathf.Lerp(C, D, fx), Mathf.Lerp(0, 1, fy));
+    }
+
     // Gilt lattice on bronze with a brass edge, replacing the navy card back.
     public static Sprite CardBack()
     {
@@ -119,12 +169,28 @@ public static class CasinoArt
         var gilt = CasinoTheme.CardBackLattice;
         var border = CasinoTheme.CardBackBorder;
 
+        // Brass edge, a bronze margin, then a finer gilt diamond lattice inside a
+        // second hairline. The single 12px lattice edge-to-edge read as wallpaper;
+        // the inset panel is what makes it look like the back of a card.
         for (int y = 0; y < H; y++)
             for (int x = 0; x < W; x++)
             {
-                bool onBorder = x < 2 || y < 2 || x >= W - 2 || y >= H - 2;
-                bool stripe = ((x + y) % 12) < 3 || ((x - y + 960) % 12) < 3;
-                tex.SetPixel(x, y, onBorder ? border : stripe ? gilt : field);
+                bool outerEdge = x < 2 || y < 2 || x >= W - 2 || y >= H - 2;
+                bool margin = x < 6 || y < 6 || x >= W - 6 || y >= H - 6;
+                bool innerRule = !margin && (x == 6 || y == 6 || x == W - 7 || y == H - 7);
+
+                // Diamond lattice: two crossing stripe families at 8px pitch.
+                bool a = ((x + y) % 10) < 1;
+                bool b = ((x - y + 960) % 10) < 1;
+                bool node = a && b;   // where they cross, brighten to a stud
+
+                Color c = outerEdge ? border
+                        : innerRule ? border
+                        : margin    ? field
+                        : node      ? Color.Lerp(gilt, border, 0.55f)
+                        : (a || b)  ? gilt
+                        : field;
+                tex.SetPixel(x, y, c);
             }
         tex.Apply();
         cardBackSprite = Sprite.Create(tex, new Rect(0, 0, W, H), new Vector2(0.5f, 0.5f));
