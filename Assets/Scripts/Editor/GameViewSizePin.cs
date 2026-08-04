@@ -61,6 +61,7 @@ public static class GameViewSizePin
     {
         int Width = size.w, Height = size.h;
         string Label = Prefix + Width + "x" + Height;
+        Debug.Log($"GameViewSizePin: requesting {Label}");
         try
         {
             // Do not assume which assembly holds these: UnityEditor.dll is a
@@ -152,7 +153,7 @@ public static class GameViewSizePin
 
     private static void Warn(bool verbose, string reason)
     {
-        if (verbose) Debug.LogWarning(
+        Debug.LogWarning(
             $"Could not pin the Game view ({reason}). Set it by hand: " +
             "Game view dropdown > + > Fixed Resolution.");
     }

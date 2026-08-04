@@ -95,6 +95,7 @@ public class CardUI : MonoBehaviour
 
                 // Set color based on suit - red for Hearts/Diamonds, black for Clubs/Spades
                 rankSuitText.color = GetSuitColor(card.suit);
+                CasinoType.ApplySerif(rankSuitText);
             }
         }
 
@@ -130,6 +131,7 @@ public class CardUI : MonoBehaviour
             cornerText.alignment = TextAlignmentOptions.TopLeft;
             cornerText.enableWordWrapping = false;
             cornerText.lineSpacing = -34f;   // stack the suit tight under the rank
+            CasinoType.ApplySerif(cornerText);
         }
 
         bool show = !isFaceDown && card != null;
@@ -469,6 +471,7 @@ public class UIManager : MonoBehaviour
         hintRect.sizeDelta = new Vector2(470, 54);
         hintText.fontSize = 15;
         hintText.alignment = TextAlignmentOptions.Center;
+        CasinoType.ApplySerif(hintText);
         hintText.color = CasinoTheme.HintText;
         hintText.text = "";
 
@@ -673,6 +676,18 @@ public class UIManager : MonoBehaviour
     // coordinates. Anchor and pivot are deliberately equal: a Zone reads as
     // "this corner, this far in, this big", which is what layout-report shows.
 
+    // Cards come from a prefab whose size is baked in, so every instantiation
+    // site has to be told the profile's size or portrait keeps desktop cards.
+    // Build minis are 0.7 of a full card, which is the 56x80-to-80x120 ratio the
+    // stack fan was originally drawn at.
+    private static Vector2 CardSize(float scale = 1f) => CasinoLayout.Active.CardSize * scale;
+
+    private static void SizeCard(GameObject card, float scale = 1f)
+    {
+        var r = card != null ? card.GetComponent<RectTransform>() : null;
+        if (r != null) r.sizeDelta = CardSize(scale);
+    }
+
     private GameObject Place(Transform t, CasinoLayout.Zone z) =>
         ReAnchor(t, z.Anchor, z.Pos, z.Size);
 
@@ -744,6 +759,7 @@ public class UIManager : MonoBehaviour
         labelText.fontSize = 20;
         labelText.alignment = TextAlignmentOptions.Center;
         labelText.color = CasinoTheme.ButtonLabel;
+        CasinoType.ApplySerif(labelText);
 
         return button;
     }
@@ -1012,6 +1028,7 @@ public class UIManager : MonoBehaviour
         summaryTitle.fontSize = 18;
         summaryTitle.fontStyle = FontStyles.Bold;
         summaryTitle.alignment = TextAlignmentOptions.Center;
+        CasinoType.ApplySerif(summaryTitle);
         summaryTitle.color = CasinoTheme.Headline;
 
         summaryLeft = CreateText("Left", summaryPanel.transform);
@@ -1101,7 +1118,7 @@ public class UIManager : MonoBehaviour
         ghost.name = "Ghost";
         var rect = ghost.GetComponent<RectTransform>();
         rect.position = startWorld;
-        rect.sizeDelta = new Vector2(80, 120);
+        rect.sizeDelta = CardSize();
 
         var ui = ghost.GetComponent<CardUI>() ?? ghost.AddComponent<CardUI>();
         ui.Initialize(card, false);
@@ -1154,6 +1171,7 @@ public class UIManager : MonoBehaviour
         scoreHeaderText.fontSize = 17;
         scoreHeaderText.fontStyle = FontStyles.Bold;
         scoreHeaderText.alignment = TextAlignmentOptions.Center;
+        CasinoType.ApplySerif(scoreHeaderText);
         scoreHeaderText.color = CasinoTheme.TextPrimary;
 
         humanStatsText = CreateText("HumanStats", panel.transform);
@@ -1283,7 +1301,7 @@ public class UIManager : MonoBehaviour
         for (int i = 0; i < player.Hand.Count; i++)
         {
             GameObject cardObj = Instantiate(cardPrefab, container);
-            Debug.Log("Created card object " + i);
+            SizeCard(cardObj);
 
             // Get existing CardUI component or add one if it doesn't exist
             CardUI cardUI = cardObj.GetComponent<CardUI>();
@@ -1325,6 +1343,7 @@ public class UIManager : MonoBehaviour
             for (int i = 0; i < tableCards.Count; i++)
             {
                 GameObject cardObj = Instantiate(cardPrefab, tableCardsContainer);
+                SizeCard(cardObj);
 
                 // Get existing CardUI component or add one if it doesn't exist
                 CardUI cardUI = cardObj.GetComponent<CardUI>();
@@ -1390,8 +1409,9 @@ public class UIManager : MonoBehaviour
         rootButton.transition = Selectable.Transition.None;
         rootButton.onClick.AddListener(() => OnBuildStackClicked(build, root));
         int n = build.Cards.Count;
-        const float step = 16f;
-        rect.sizeDelta = new Vector2(56 + (n - 1) * step, 92);
+        Vector2 miniSize = CardSize(0.7f);
+        float step = miniSize.x * (16f / 56f);   // same overlap ratio the fan was drawn at
+        rect.sizeDelta = new Vector2(miniSize.x + (n - 1) * step, miniSize.y + 12f);
 
         for (int i = 0; i < n; i++)
         {
@@ -1407,9 +1427,9 @@ public class UIManager : MonoBehaviour
 
             var r = mini.GetComponent<RectTransform>();
             r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
-            r.sizeDelta = new Vector2(56, 80);
+            r.sizeDelta = miniSize;
             r.anchoredPosition = new Vector2(
-                -(rect.sizeDelta.x - 56) / 2f + i * step, (i % 2) * -3f);
+                -(rect.sizeDelta.x - miniSize.x) / 2f + i * step, (i % 2) * -3f);
             r.localRotation = Quaternion.Euler(0, 0, (i - (n - 1) / 2f) * -2f);
         }
 
@@ -1958,6 +1978,7 @@ public class UIManager : MonoBehaviour
             moveBanner.fontStyle = FontStyles.Bold;
             moveBanner.alignment = TextAlignmentOptions.Center;
             moveBanner.color = CasinoTheme.Headline;
+            CasinoType.ApplySerif(moveBanner);
         }
         moveBanner.text = text;
         moveBanner.alpha = 1f;

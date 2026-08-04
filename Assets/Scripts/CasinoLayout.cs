@@ -135,10 +135,13 @@ public static class CasinoLayout
         Name = "Portrait", Reference = new Vector2(720, 1280), Match = 0f,
         CardSize = new Vector2(72, 108), RowSpacing = 6f,
 
-        Score        = new Zone(0.5f, 1f, 0, -10, 700, 92),
-        OpponentHand = new Zone(0.5f, 1f, 0, -112, 684, 120),
-        PlayerPile   = new Zone(0f, 1f, 14, -240, 336, 34),
-        AiPile       = new Zone(1f, 1f, -14, -240, 336, 34),
+        // 220 tall, not 92: the score panel's internal layout is authored for a
+        // column of eight stat lines and is not itself profile-aware, so a short
+        // wide bar makes its children collide. Give it the height it needs.
+        Score        = new Zone(0.5f, 1f, 0, -10, 700, 220),
+        OpponentHand = new Zone(0.5f, 1f, 0, -240, 684, 120),
+        PlayerPile   = new Zone(0f, 1f, 14, -368, 336, 34),
+        AiPile       = new Zone(1f, 1f, -14, -368, 336, 34),
 
         Table      = new Zone(0.5f, 0.5f, 0, 60, 684, 300),
         Hint       = new Zone(0.5f, 0f, 0, 470, 660, 56),
