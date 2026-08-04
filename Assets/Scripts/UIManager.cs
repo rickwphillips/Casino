@@ -259,6 +259,7 @@ public class UIManager : MonoBehaviour
     private TextMeshProUGUI trailButtonLabel;
     private TextMeshProUGUI sweepButtonLabel;
     private TextMeshProUGUI hintText;
+    private TextMeshProUGUI versionText;
     private TextMeshProUGUI scoreHeaderText;
     private TextMeshProUGUI humanStatsText;
     private TextMeshProUGUI aiStatsText;
@@ -401,6 +402,18 @@ public class UIManager : MonoBehaviour
         hintText.color = new Color(1f, 0.95f, 0.6f);
         hintText.text = "";
 
+        versionText = CreateText("VersionText", canvasTransform);
+        var verRect = versionText.rectTransform;
+        verRect.anchorMin = new Vector2(1, 0);
+        verRect.anchorMax = new Vector2(1, 0);
+        verRect.pivot = new Vector2(1, 0);
+        verRect.anchoredPosition = new Vector2(-10, 4);
+        verRect.sizeDelta = new Vector2(120, 18);
+        versionText.fontSize = 10;
+        versionText.alignment = TextAlignmentOptions.BottomRight;
+        versionText.color = new Color(1f, 1f, 1f, 0.35f);
+        versionText.text = $"v{Application.version}";
+
         CreateScorePanel();
         CreatePileViewer();
         CreateDrawPile();
@@ -493,7 +506,7 @@ public class UIManager : MonoBehaviour
                 child.name == "HintText" || child.name == "HumanPile" ||
                 child.name == "AIPile" || child.name == "CapturedPanel" ||
                 child.name == "DrawPile" || child.name == "ScoreSummary" ||
-                child.name == "MoveBanner")
+                child.name == "MoveBanner" || child.name == "VersionText")
             {
                 keep.Add(child.gameObject);
             }
