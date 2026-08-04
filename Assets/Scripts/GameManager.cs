@@ -348,6 +348,44 @@ public class GameManager : MonoBehaviour
         return true;
     }
 
+    // Add a hand card to a build at its existing value (e.g. a 9 onto the
+    // 9-build): a new group joins, the build locks as multi, and the adder
+    // takes ownership. Must still hold a card that can take the build.
+    public bool TryAddToBuild(GamePlayer player, int handCardIndex, Build build)
+    {
+        if (player != currentPlayer)
+        {
+            Debug.LogWarning($"It's not {player.Name}'s turn!");
+            return false;
+        }
+        if (handCardIndex < 0 || handCardIndex >= player.HandSize())
+            return false;
+
+        PlayingCard handCard = player.Hand[handCardIndex];
+        if (CaptureChecker.BuildCaptureValue(handCard) != build.DeclaredValue)
+            return false;
+
+        // Another card must remain to capture the build
+        bool holdsCapture = player.Hand.Any(c => c != handCard &&
+            CaptureChecker.BuildCaptureValue(c) == build.DeclaredValue);
+        if (!holdsCapture)
+        {
+            Debug.LogWarning($"{player.Name} would have no card left to take the build!");
+            return false;
+        }
+
+        handCard = player.PlayCard(handCardIndex);
+        build.AddToBuild(handCard, player);
+
+        if (UIManager.Instance != null)
+            UIManager.Instance.ShowMove(
+                $"{Who(player)} add{(player.IsHuman() ? "" : "s")} {CaptureChecker.Describe(handCard)} to the build");
+
+        GameLogger.Instance.LogBuildModified(player, build, handCard, build.DeclaredValue);
+        AdvanceAfterPlay(player);
+        return true;
+    }
+
     // Raise a single-group build by adding a hand card: the 6s become 8s.
     // Multi-builds are locked. The raiser takes ownership and must hold the
     // new capture card (ModifyBuild validates both).

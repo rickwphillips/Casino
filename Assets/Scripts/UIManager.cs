@@ -1538,12 +1538,24 @@ public class UIManager : MonoBehaviour
 
         bool hasBuildSelection = humanTurn && selectedCard != null && buildSelection.Count > 0;
 
-        // A selected build stack turns the Build button into a raise action
+        // A selected build stack turns the Build button into add or raise
         if (humanTurn && selectedBuild != null)
         {
             var gmr = GameManager.Instance;
             var raiser = gmr.GetCurrentPlayer();
-            if (selectedBuild.IsMultiBuild || selectedCard == null)
+
+            // Same value: add a new group (allowed even on multi-builds)
+            if (selectedCard != null &&
+                CaptureChecker.BuildCaptureValue(selectedCard.Card) == selectedBuild.DeclaredValue)
+            {
+                bool holdsAnother = raiser.Hand.Any(c => c != selectedCard.Card &&
+                    CaptureChecker.BuildCaptureValue(c) == selectedBuild.DeclaredValue);
+                buildButton.interactable = holdsAnother;
+                buildButtonLabel.text = holdsAnother
+                    ? $"Add to {SweepName(selectedCard.Card)}"
+                    : "Need another to take it";
+            }
+            else if (selectedBuild.IsMultiBuild || selectedCard == null)
             {
                 buildButton.interactable = false;
                 buildButtonLabel.text = selectedBuild.IsMultiBuild ? "Locked (multi)" : "Raise: pick a card";
@@ -1646,19 +1658,27 @@ public class UIManager : MonoBehaviour
         if (!player.IsHuman() || selectedCard == null)
             return;
 
-        // Raise mode: a build stack is selected
+        // Build-stack mode: same value adds a group, higher value raises
         if (selectedBuild != null)
         {
             int idx = HandCardIndex(player, selectedCard.Card);
             if (idx < 0) return;
-            if (GameManager.Instance.TryRaiseBuild(player, idx, selectedBuild))
+
+            bool sameValue = CaptureChecker.BuildCaptureValue(selectedCard.Card) == selectedBuild.DeclaredValue;
+            bool ok = sameValue
+                ? GameManager.Instance.TryAddToBuild(player, idx, selectedBuild)
+                : GameManager.Instance.TryRaiseBuild(player, idx, selectedBuild);
+
+            if (ok)
             {
                 hintText.text = "";
                 ClearSelections();
             }
             else
             {
-                hintText.text = "Can't raise: you must hold the new total, and multi-builds are locked.";
+                hintText.text = sameValue
+                    ? "Can't add: you need another card that takes the build."
+                    : "Can't raise: you must hold the new total, and multi-builds are locked.";
             }
             return;
         }

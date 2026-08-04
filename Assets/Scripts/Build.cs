@@ -6,7 +6,7 @@ public class Build
     private readonly List<PlayingCard> _cards = new();
     private int _declaredValue;
     private GamePlayer _owner;
-    private readonly bool _isMultiBuild;
+    private bool _isMultiBuild;
 
     public IReadOnlyList<PlayingCard> Cards => _cards;
     public int DeclaredValue => _declaredValue;
@@ -34,6 +34,15 @@ public class Build
     public bool ContainsCard(PlayingCard card)
     {
         return _cards.Contains(card);
+    }
+
+    // Add a card at the build's existing value: a new group joins the stack,
+    // the build becomes (or stays) multi, and the adder takes ownership.
+    public void AddToBuild(PlayingCard card, GamePlayer newOwner)
+    {
+        _cards.Add(card);
+        _owner = newOwner;
+        _isMultiBuild = true;
     }
 
     public void ModifyBuild(PlayingCard card, int newValue, GamePlayer newOwner)
