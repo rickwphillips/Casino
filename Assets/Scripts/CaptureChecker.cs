@@ -14,26 +14,37 @@ public class CaptureChecker {
                 .ToList();
         }
 
-        // Find all possible capture combinations
-        var allCombinations = FindAllCombinations(playedValue, tableCards);
+        // Casino rule: the played card captures ALL matching cards and ALL
+        // sets summing to its value, simultaneously. Find the union of
+        // disjoint combinations that captures the most cards.
+        var eligibleCards = tableCards.Where(card => !IsFaceCard(card)).ToList();
+        return MaxDisjointCapture(eligibleCards, playedValue);
+    }
 
-        // Return the best combination (prioritize: most cards, then direct pairs)
-        if (allCombinations.Count == 0) {
-            return new List<PlayingCard>();
+    // Largest union of disjoint card sets, each summing to the target value.
+    private static List<PlayingCard> MaxDisjointCapture(List<PlayingCard> available, int targetValue) {
+        var combinations = new List<List<PlayingCard>>();
+        FindCombinationsRecursive(targetValue, available, new List<PlayingCard>(), 0, 0, combinations);
+
+        var best = new List<PlayingCard>();
+        foreach (var combo in combinations) {
+            var remaining = new List<PlayingCard>(available);
+            foreach (var card in combo) remaining.Remove(card);
+
+            var rest = MaxDisjointCapture(remaining, targetValue);
+            int total = combo.Count + rest.Count;
+
+            if (total > best.Count ||
+                (total == best.Count && total > 0 &&
+                 combo.Concat(rest).Count(IsHighValueCard) > best.Count(IsHighValueCard))) {
+                best = combo.Concat(rest).ToList();
+            }
+
+            // Cannot beat capturing every available card
+            if (best.Count == available.Count) break;
         }
 
-        // Find combinations with direct rank matches
-        var directPairs = allCombinations
-            .Where(combo => combo.Any(card => card.rank == playedCard.rank))
-            .ToList();
-
-        // Prefer direct pairs, then combinations with most cards
-        var bestCombination = (directPairs.Count > 0 ? directPairs : allCombinations)
-            .OrderByDescending(combo => combo.Count)
-            .ThenByDescending(combo => combo.Count(c => IsHighValueCard(c)))
-            .First();
-
-        return bestCombination;
+        return best;
     }
 
     private static List<List<PlayingCard>> FindAllCombinations(int targetValue, List<PlayingCard> tableCards) {
@@ -82,6 +93,61 @@ public class CaptureChecker {
                (card.suit == PlayingCard.Suit.Spades && card.rank == PlayingCard.Rank.Two);
     }
     
+    // True if the chosen cards are exactly capturable by the played card:
+    // for a face card, all chosen share its rank; for a number card, the
+    // chosen cards partition into sets each summing to its value. The player
+    // chooses what to sweep - they never have to take everything available.
+    public static bool IsExactCaptureSet(PlayingCard playedCard, List<PlayingCard> chosen) {
+        if (chosen == null || chosen.Count == 0) return false;
+
+        if (IsFaceCard(playedCard))
+            return chosen.All(c => c.rank == playedCard.rank);
+
+        if (chosen.Any(IsFaceCard)) return false;
+        return CanPartitionExact(new List<PlayingCard>(chosen), GetCardValue(playedCard));
+    }
+
+    // All values 1-10 this hand card + table cards can declare as a build:
+    // the combined cards must partition into sets each summing to the value.
+    // Multiple sets = a multi-build (e.g. three 10s built at once).
+    public static List<int> PossibleBuildValues(PlayingCard handCard, List<PlayingCard> tableCards) {
+        var values = new List<int>();
+        var all = new List<PlayingCard>(tableCards) { handCard };
+        if (all.Any(IsFaceCard)) {
+            if (all.All(c => c.rank == handCard.rank) && IsFaceCard(handCard))
+                values.Add(BuildCaptureValue(handCard));
+            return values;
+        }
+        for (int v = 1; v <= 10; v++)
+            if (CanPartitionExact(new List<PlayingCard>(all), v))
+                values.Add(v);
+        return values;
+    }
+
+    public static bool CanPartitionExact(List<PlayingCard> cards, int target) {
+        if (cards.Count == 0) return true;
+
+        var combos = new List<List<PlayingCard>>();
+        FindCombinationsRecursive(target, cards, new List<PlayingCard>(), 0, 0, combos);
+
+        // Every card must be used: try each combo containing the first card
+        foreach (var combo in combos.Where(c => c.Contains(cards[0]))) {
+            var remaining = new List<PlayingCard>(cards);
+            foreach (var c in combo) remaining.Remove(c);
+            if (CanPartitionExact(remaining, target)) return true;
+        }
+        return false;
+    }
+
+    // Value a card counts for when capturing or declaring a BUILD:
+    // numeric cards 1-10, face builds J=11 Q=12 K=13.
+    public static int BuildCaptureValue(PlayingCard card) => card.rank switch {
+        PlayingCard.Rank.Jack => 11,
+        PlayingCard.Rank.Queen => 12,
+        PlayingCard.Rank.King => 13,
+        _ => GetCardValue(card)
+    };
+
     public static int GetCardValue(PlayingCard card) => card.rank switch {
         PlayingCard.Rank.Ace => 1,
         PlayingCard.Rank.Two => 2,
@@ -100,5 +166,23 @@ public class CaptureChecker {
         return card.rank == PlayingCard.Rank.Jack ||
                card.rank == PlayingCard.Rank.Queen ||
                card.rank == PlayingCard.Rank.King;
+    }
+
+    // Short display form, e.g. "9♥" / "K♠"
+    public static string Describe(PlayingCard card) {
+        string rank = card.rank switch {
+            PlayingCard.Rank.Ace => "A",
+            PlayingCard.Rank.Jack => "J",
+            PlayingCard.Rank.Queen => "Q",
+            PlayingCard.Rank.King => "K",
+            _ => ((int)card.rank + 1).ToString()
+        };
+        string suit = card.suit switch {
+            PlayingCard.Suit.Hearts => "♥",
+            PlayingCard.Suit.Diamonds => "♦",
+            PlayingCard.Suit.Clubs => "♣",
+            _ => "♠"
+        };
+        return rank + suit;
     }
 }

@@ -48,6 +48,14 @@ public class GameManager : MonoBehaviour
     }
     
     public void InitializeGame() {
+        // 1-player guarantee: this is a human-vs-AI game. If the scene still
+        // carries an old AI-vs-AI configuration, seat the human as non-dealer.
+        if (dealerPlayerType == GamePlayer.PlayerType.AI &&
+            nonDealerPlayerType == GamePlayer.PlayerType.AI)
+        {
+            nonDealerPlayerType = GamePlayer.PlayerType.Human;
+        }
+
         deck = new GameDeck();
         deck.Shuffle();
 
@@ -84,35 +92,20 @@ public class GameManager : MonoBehaviour
         ProcessNextTurn();
     }
 
-   // Add this method to GameManager.cs to help debug
-
-private void ProcessNextTurn()
-{
-    if (currentPhase != GamePhase.Playing) return;
-
-    // === DEBUG LOGGING START ===
-    Debug.Log("╔══════════════════════════════════════╗");
-    Debug.Log($"║ TURN START");
-    Debug.Log($"║ Player: {currentPlayer.Name}");
-    Debug.Log($"║ Player Type: {currentPlayer.Type}");
-    Debug.Log($"║ Is Human: {currentPlayer.IsHuman()}");
-    Debug.Log($"║ Hand Size: {currentPlayer.HandSize()}");
-    Debug.Log($"║ Current Phase: {currentPhase}");
-    Debug.Log("╚══════════════════════════════════════╝");
-    // === DEBUG LOGGING END ===
-
-    if (currentPlayer.IsHuman())
+    private void ProcessNextTurn()
     {
-        waitingForHumanInput = true;
-        Debug.Log(">>> WAITING FOR HUMAN INPUT <<<");
+        if (currentPhase != GamePhase.Playing) return;
+
+        if (currentPlayer.IsHuman())
+        {
+            waitingForHumanInput = true;
+        }
+        else
+        {
+            waitingForHumanInput = false;
+            StartCoroutine(AIPlayTurnCoroutine());
+        }
     }
-    else
-    {
-        waitingForHumanInput = false;
-        Debug.Log($">>> AI TURN - Scheduling in {aiMoveDelay}s <<<");
-        StartCoroutine(AIPlayTurnCoroutine());
-    }
-}
     
     private void DealInitialRound() => new[] {
         (nonDealer, HAND_SIZE),
@@ -124,7 +117,11 @@ private void ProcessNextTurn()
         else { tableCards.AddRange(cards); }
     });
 
-    public void PlayCard(GamePlayer player, int cardIndex) {
+    public bool PlayerOwnsBuild(GamePlayer player) => PlayerHasPendingBuild(player);
+
+    // forceTrail: play the card to the table without capturing. Legal whenever
+    // the player does not own a build, even if captures are available.
+    public void PlayCard(GamePlayer player, int cardIndex, bool forceTrail = false) {
         if (player != currentPlayer) {
             Debug.LogWarning($"It's not {player.Name}'s turn!");
             return;
@@ -147,30 +144,40 @@ private void ProcessNextTurn()
         {
             GameLogger.Instance.LogPlayerTurn(player, playedCard);
 
-            int playedValue = CaptureChecker.GetCardValue(playedCard);
+            // Builds are captured by matching value (1-10) or face rank (11-13)
+            int buildValue = CaptureChecker.BuildCaptureValue(playedCard);
 
             // Check if player can capture their own builds
-            var playerBuilds = activeBuilds.Where(b => b.Owner == player && b.DeclaredValue == playedValue).ToList();
+            var playerBuilds = activeBuilds.Where(b => b.Owner == player && b.DeclaredValue == buildValue).ToList();
 
             // Check for valid table card captures
             List<PlayingCard> captures = CaptureChecker.GetValidCaptures(playedCard, tableCards);
 
             // Check if player can capture opponent builds
-            var opponentBuildsToCapture = activeBuilds.Where(b => b.Owner != player && b.DeclaredValue == playedValue).ToList();
+            var opponentBuildsToCapture = activeBuilds.Where(b => b.Owner != player && b.DeclaredValue == buildValue).ToList();
 
             bool hasPendingBuild = PlayerHasPendingBuild(player);
             bool canCapture = captures.Count > 0 || playerBuilds.Count > 0 || opponentBuildsToCapture.Count > 0;
 
-            // If player has a pending build, they MUST capture if possible
-            if (hasPendingBuild && !canCapture)
+            // Build owners cannot trail: they must capture or keep building
+            if (hasPendingBuild && (forceTrail || !canCapture))
             {
-                Debug.LogWarning($"{player.Name} has a pending build and must capture it! Cannot trail.");
+                Debug.LogWarning($"{player.Name} owns a build and must capture or build - cannot trail.");
                 player.AddCard(playedCard); // Return card to hand
                 return;
             }
 
-            if (canCapture)
+            if (canCapture && !forceTrail)
             {
+                if (UIManager.Instance != null)
+                {
+                    UIManager.Instance.AnimateCapture(playedCard, captures, player.IsHuman());
+                    string taken = string.Join(" ", captures.Select(CaptureChecker.Describe));
+                    UIManager.Instance.ShowMove(
+                        $"{Who(player)} play{(player.IsHuman() ? "" : "s")} {CaptureChecker.Describe(playedCard)}" +
+                        (taken.Length > 0 ? $" - takes {taken}" : " - takes a build"));
+                }
+
                 // Capture table cards
                 foreach (PlayingCard capturedCard in captures)
                 {
@@ -209,30 +216,140 @@ private void ProcessNextTurn()
             else
             {
                 // Trail - add to table (only if no pending builds)
+                if (UIManager.Instance != null)
+                {
+                    UIManager.Instance.AnimateTrail(playedCard);
+                    UIManager.Instance.ShowMove(
+                        $"{Who(player)} trail{(player.IsHuman() ? "" : "s")} {CaptureChecker.Describe(playedCard)}");
+                }
                 tableCards.Add(playedCard);
                 GameLogger.Instance.LogTrail(player, playedCard, tableCards);
             }
             
-            cardsPlayedThisRound++;
-            
-            // Clear waiting flag if human just played
-            if (player.IsHuman())
-                waitingForHumanInput = false;
-
-            // Refresh UI after card played
-            if (UIManager.Instance != null)
-                UIManager.Instance.RefreshUI();
-            
-            if (cardsPlayedThisRound == HAND_SIZE * 2)
-            {
-                EndRound();
-            }
-            else
-            {
-                currentPlayer = (currentPlayer == dealer) ? nonDealer : dealer;
-                ProcessNextTurn();
-            }
+            AdvanceAfterPlay(player);
         }
+    }
+
+    [SerializeField] private float moveShowDelay = 1.3f;
+
+    // Shared post-action bookkeeping: counts the play, clears the human-input
+    // flag, refreshes UI, then pauses so the move is readable before the next
+    // turn begins.
+    private void AdvanceAfterPlay(GamePlayer player)
+    {
+        cardsPlayedThisRound++;
+
+        if (player.IsHuman())
+            waitingForHumanInput = false;
+
+        if (UIManager.Instance != null)
+            UIManager.Instance.RefreshUI();
+
+        StartCoroutine(ContinueAfterPause());
+    }
+
+    private System.Collections.IEnumerator ContinueAfterPause()
+    {
+        yield return new WaitForSeconds(moveShowDelay);
+
+        if (cardsPlayedThisRound == HAND_SIZE * 2)
+        {
+            EndRound();
+        }
+        else
+        {
+            currentPlayer = (currentPlayer == dealer) ? nonDealer : dealer;
+            ProcessNextTurn();
+        }
+    }
+
+    private string Who(GamePlayer p) => p.IsHuman() ? "You" : "AI";
+
+    // Full build action for the current player (human UI or AI): plays the hand
+    // card, validates and creates the build, and advances the turn. On failure
+    // the hand card is returned and the turn does not advance.
+    public bool TryCreateBuild(GamePlayer player, int handCardIndex, List<PlayingCard> tableCardsForBuild)
+    {
+        if (player != currentPlayer)
+        {
+            Debug.LogWarning($"It's not {player.Name}'s turn!");
+            return false;
+        }
+
+        PlayingCard handCard = player.PlayCard(handCardIndex);
+        if (handCard == null)
+            return false;
+
+        // Declared value: face builds use their rank value; numeric builds use
+        // the highest value the cards partition into that the player can capture
+        int declaredValue = CaptureChecker.PossibleBuildValues(handCard, tableCardsForBuild)
+            .Where(v => PlayerCanCaptureValue(player, v))
+            .DefaultIfEmpty(0)
+            .Max();
+
+        if (!CreateBuild(player, handCard, tableCardsForBuild, declaredValue))
+        {
+            player.AddCard(handCard); // invalid build: return card, turn continues
+            return false;
+        }
+
+        AdvanceAfterPlay(player);
+        return true;
+    }
+
+    // Capture exactly the chosen table cards with the chosen hand card.
+    // The player picks what to sweep; partial captures are legal.
+    public bool TryCaptureSelected(GamePlayer player, int handCardIndex, List<PlayingCard> chosenCards)
+    {
+        if (player != currentPlayer)
+        {
+            Debug.LogWarning($"It's not {player.Name}'s turn!");
+            return false;
+        }
+        if (handCardIndex < 0 || handCardIndex >= player.HandSize())
+            return false;
+
+        PlayingCard handCard = player.Hand[handCardIndex];
+        if (!CaptureChecker.IsExactCaptureSet(handCard, chosenCards))
+            return false;
+
+        handCard = player.PlayCard(handCardIndex);
+
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.AnimateCapture(handCard, chosenCards, player.IsHuman());
+            UIManager.Instance.ShowMove(
+                $"{Who(player)} play{(player.IsHuman() ? "" : "s")} {CaptureChecker.Describe(handCard)}" +
+                $" - takes {string.Join(" ", chosenCards.Select(CaptureChecker.Describe))}");
+        }
+
+        foreach (var c in chosenCards)
+            tableCards.Remove(c);
+
+        player.AddCapturedCard(handCard);
+        player.AddCapturedCards(chosenCards);
+        lastPlayerToCaptureThisRound = player;
+        GameLogger.Instance.LogCapture(player, handCard, chosenCards);
+
+        if (tableCards.Count == 0 && activeBuilds.Count == 0)
+        {
+            player.IncrementSweepCount();
+            GameLogger.Instance.LogSweep(player);
+        }
+
+        AdvanceAfterPlay(player);
+        return true;
+    }
+
+    // Hard-AI evaluation of the current player's hand, exposed as a hint for
+    // the human player. Read-only: nothing is played.
+    public AIPlayer.AIAction GetSuggestionForCurrentPlayer()
+    {
+        if (currentPlayer == null || currentPlayer.HandSize() == 0)
+            return null;
+
+        var advisor = new AIPlayer(currentPlayer, AIPlayer.Difficulty.Hard);
+        return advisor.GetBestAction(tableCards, activeBuilds);
     }
     
     private void EndRound()
@@ -240,8 +357,10 @@ private void ProcessNextTurn()
         GameLogger.Instance.LogRoundEnd(1, cardsPlayedThisRound);
 
         bool isDeckEmpty = deck.CardsRemaining() == 0;
-        bool awardNow = ScoringManager.Instance.TableCardTiming == ScoreVariables.TableCardAwardTiming.AfterEachHand ||
-                        (ScoringManager.Instance.TableCardTiming == ScoreVariables.TableCardAwardTiming.OnlyAtGameEnd && isDeckEmpty);
+
+        // The table persists for the whole deck. Trailed cards and builds are
+        // only awarded once the deck is exhausted, to the last player to capture.
+        bool awardNow = isDeckEmpty;
 
         // Award remaining table cards based on configuration
         if (awardNow && tableCards.Count > 0 && lastPlayerToCaptureThisRound != null)
@@ -270,8 +389,12 @@ private void ProcessNextTurn()
             ScoreRound();
             SwapDealer();
 
-            if (dealer.Score >= ScoringManager.Instance.WinScore ||
-                nonDealer.Score >= ScoringManager.Instance.WinScore)
+            // A player wins by reaching the win score. If both cross in the same
+            // hand the higher score takes it; if they are tied, play continues.
+            int winScore = ScoringManager.Instance.WinScore;
+            bool someoneCrossed = dealer.Score >= winScore || nonDealer.Score >= winScore;
+
+            if (someoneCrossed && dealer.Score != nonDealer.Score)
             {
                 EndGame();
                 return;
@@ -427,9 +550,11 @@ private void ProcessNextTurn()
         
         GameLogger.Instance.LogCumulativeScores(dealer, nonDealer);
 
-        // Reset for next round
+        // Reset for next round. Sweeps are scored once, in the round they occur.
         dealer.ClearCapturedCards();
         nonDealer.ClearCapturedCards();
+        dealer.ResetSweepCount();
+        nonDealer.ResetSweepCount();
     }
     
     private void AddToScoreBreakdown(GamePlayer player, string category, int points)
@@ -497,7 +622,7 @@ private void ProcessNextTurn()
     
     private void EndGame() {
         currentPhase = GamePhase.GameOver;
-        var winner = dealer.Score >= ScoringManager.Instance.WinScore ? dealer : nonDealer;
+        var winner = dealer.Score > nonDealer.Score ? dealer : nonDealer;
         var loser = winner == dealer ? nonDealer : dealer;
 
         GameLogger.Instance.LogGameOverWithBreakdown(
@@ -529,15 +654,43 @@ private void ProcessNextTurn()
 
     private bool PlayerCanCaptureValue(GamePlayer player, int value)
     {
-        return player.Hand.Any(card => CaptureChecker.GetCardValue(card) == value);
+        return player.Hand.Any(card => CaptureChecker.BuildCaptureValue(card) == value);
     }
 
+    // Legal builds: numeric builds of value 1-10, or same-rank face builds
+    // (Jacks / Queens / Kings). Nothing else.
     private bool CanCreateBuild(GamePlayer player, List<PlayingCard> cards, int declaredValue)
     {
-        // Face cards cannot be used in builds (they have no numeric value)
         if (cards.Any(card => IsFaceCard(card)))
         {
-            Debug.LogWarning($"Cannot create build with face cards! Face cards have no numeric value.");
+            // Face build: every card must share one face rank
+            var rank = cards[0].rank;
+            if (!IsFaceCard(cards[0]) || cards.Any(c => c.rank != rank))
+            {
+                Debug.LogWarning("Face builds must be a single rank: all Jacks, all Queens, or all Kings.");
+                return false;
+            }
+
+            if (declaredValue != CaptureChecker.BuildCaptureValue(cards[0]))
+            {
+                Debug.LogWarning($"Face build declared value {declaredValue} does not match rank {rank}.");
+                return false;
+            }
+
+            // Must hold another card of that rank to capture the build
+            if (!player.Hand.Any(c => c.rank == rank))
+            {
+                Debug.LogWarning($"{player.Name} holds no {rank} to capture this build!");
+                return false;
+            }
+
+            return true;
+        }
+
+        // Numeric build: value must be 1-10
+        if (declaredValue < 1 || declaredValue > 10)
+        {
+            Debug.LogWarning($"Build value {declaredValue} is not capturable - builds are 1-10 or face ranks.");
             return false;
         }
 
@@ -548,11 +701,11 @@ private void ProcessNextTurn()
             return false;
         }
 
-        // Calculate actual sum of cards
-        int actualSum = cards.Sum(card => CaptureChecker.GetCardValue(card));
-        if (actualSum != declaredValue)
+        // The cards must partition into one or more sets each summing to the
+        // declared value (multiple sets = a multi-build, e.g. three 10s)
+        if (!CaptureChecker.CanPartitionExact(new List<PlayingCard>(cards), declaredValue))
         {
-            Debug.LogWarning($"Build sum {actualSum} does not match declared value {declaredValue}!");
+            Debug.LogWarning($"Cards do not form set(s) of {declaredValue}!");
             return false;
         }
 
@@ -584,6 +737,9 @@ private void ProcessNextTurn()
         // Create the build
         var build = new Build(buildCards, declaredValue, player);
         activeBuilds.Add(build);
+
+        if (UIManager.Instance != null)
+            UIManager.Instance.ShowMove($"{Who(player)} build{(player.IsHuman() ? "" : "s")} {(declaredValue > 10 ? ((PlayingCard.Rank)(declaredValue - 1)).ToString() + "s" : declaredValue.ToString())}");
 
         GameLogger.Instance.LogBuildCreated(player, build);
         return true;
@@ -678,39 +834,11 @@ private void ProcessNextTurn()
                 break;
 
             case AIPlayer.AIAction.ActionType.CreateBuild:
-                var handCard = currentPlayer.PlayCard(action.CardIndex);
-                if (handCard != null)
+                if (!TryCreateBuild(currentPlayer, action.CardIndex, action.BuildCards))
                 {
-                    bool buildCreated = CreateBuild(currentPlayer, handCard, action.BuildCards, action.DeclaredValue);
-                    if (buildCreated)
-                    {
-                        cardsPlayedThisRound++;
-
-                        // Refresh UI
-                        if (UIManager.Instance != null)
-                            UIManager.Instance.RefreshUI();
-
-                        // Switch turns
-                        if (cardsPlayedThisRound == HAND_SIZE * 2)
-                        {
-                            EndRound();
-                        }
-                        else
-                        {
-                            currentPlayer = (currentPlayer == dealer) ? nonDealer : dealer;
-                            ProcessNextTurn();
-                        }
-                    }
-                    else
-                    {
-                        // Build creation failed, put card on table as trail
-                        Debug.LogWarning($"AI build creation failed, trailing card instead");
-                        tableCards.Add(handCard);
-                        GameLogger.Instance.LogTrail(currentPlayer, handCard, tableCards);
-                        cardsPlayedThisRound++;
-                        currentPlayer = (currentPlayer == dealer) ? nonDealer : dealer;
-                        ProcessNextTurn();
-                    }
+                    // Build was invalid: play the card normally (capture or trail)
+                    Debug.LogWarning("AI build creation failed, playing card normally");
+                    PlayCard(currentPlayer, action.CardIndex);
                 }
                 break;
 

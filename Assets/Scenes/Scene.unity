@@ -2502,8 +2502,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
   dealerPlayerType: 1
-  dealerAIDifficulty: 0
-  nonDealerPlayerType: 1
+  dealerAIDifficulty: 1
+  nonDealerPlayerType: 0
   nonDealerAIDifficulty: 0
   aiMoveDelay: 0
 --- !u!4 &1353209199

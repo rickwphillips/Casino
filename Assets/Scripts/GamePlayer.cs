@@ -72,6 +72,11 @@ public class GamePlayer
         _sweepCount++;
     }
 
+    public void ResetSweepCount()
+    {
+        _sweepCount = 0;
+    }
+
     public void AddCapturedCard(PlayingCard card)
     {
         _capturedCards.Add(card);

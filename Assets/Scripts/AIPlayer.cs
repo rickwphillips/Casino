@@ -4,7 +4,8 @@ using UnityEngine;
 
 public class AIPlayer {
     public enum Difficulty { Easy, Medium, Hard }
-    public GameLogger Logger = new ();
+    // GameLogger is a MonoBehaviour; use the scene singleton, never 'new'
+    public GameLogger Logger => GameLogger.Instance;
 
 
     public class AIAction {
@@ -57,7 +58,7 @@ public class AIPlayer {
     // Check for build captures first (highest priority)
     var buildCaptureMoves = Enumerable.Range(0, player.HandSize())
         .Where(i => {
-          int cardValue = CaptureChecker.GetCardValue(player.Hand[i]);
+          int cardValue = CaptureChecker.BuildCaptureValue(player.Hand[i]);
           return activeBuilds.Any(b => b.DeclaredValue == cardValue);
         })
         .ToList();
@@ -168,7 +169,7 @@ public class AIPlayer {
 
     private int EvaluateMove(PlayingCard card, List<PlayingCard> tableCards, List<Build> activeBuilds, int cardIndex) {
         var captures = CaptureChecker.GetValidCaptures(card, tableCards);
-        int cardValue = CaptureChecker.GetCardValue(card);
+        int cardValue = CaptureChecker.BuildCaptureValue(card);
 
         // Check if this card can capture any builds
         var buildsToCaptureCount = activeBuilds.Count(b => b.DeclaredValue == cardValue);

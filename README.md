@@ -18,10 +18,11 @@ Casino is a fishing-style card game for two players where you capture cards from
 ### Game Flow
 
 #### Playing a Card
-On your turn, you must play one card from your hand. When you play a card, one of two things happens:
+On your turn, you must play one card from your hand, choosing one of:
 
-1. **Capture**: If your card can capture cards from the table, those cards (plus your played card) go into your captured pile
-2. **Trail**: If your card cannot capture anything, it is added to the table for future captures
+1. **Capture**: Take everything your card can capture from the table (plus your played card) into your captured pile
+2. **Trail**: Place the card on the table instead - allowed even when captures are available, unless you own a build
+3. **Build**: Combine your card with table cards into a build (see below)
 
 #### Making Captures
 
@@ -37,8 +38,8 @@ On your turn, you must play one card from your hand. When you play a card, one o
   - **Combination**: Capture multiple cards that sum to your card's value (e.g., a 5 captures a 2 and a 3)
 
 **Important Notes**:
-- When multiple valid captures exist, the game automatically selects the best combination (prioritizing direct matches, then most cards, then high-value cards)
-- You capture ALL cards in the selected combination
+- A played card captures ALL matching-rank cards AND ALL sets of cards summing to its value, simultaneously (e.g. a 6 takes a 6, and a 5+A, all in one play)
+- The game computes the largest possible capture automatically
 
 #### Advanced: Building
 **Builds** allow you to set up future captures by combining cards on the table with a card from your hand.
