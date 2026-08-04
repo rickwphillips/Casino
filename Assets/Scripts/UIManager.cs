@@ -1256,23 +1256,23 @@ public class UIManager : MonoBehaviour
 
         humanStatsText = CreateText("HumanStats", panel.transform);
         var hu = humanStatsText.rectTransform;
-        hu.anchorMin = new Vector2(0, 0.44f);
+        hu.anchorMin = new Vector2(0, 0.45f);
         hu.anchorMax = new Vector2(1, 0.85f);
         hu.offsetMin = new Vector2(10, 0);
         hu.offsetMax = new Vector2(-10, 0);
-        humanStatsText.fontSize = 14;
+        humanStatsText.fontSize = 12.5f;
         humanStatsText.alignment = TextAlignmentOptions.TopLeft;
-        humanStatsText.color = CasinoTheme.PlayerAccent;
+        humanStatsText.color = CasinoTheme.TextMuted;
 
         aiStatsText = CreateText("AIStats", panel.transform);
         var ai = aiStatsText.rectTransform;
         ai.anchorMin = new Vector2(0, 0.03f);
-        ai.anchorMax = new Vector2(1, 0.44f);
+        ai.anchorMax = new Vector2(1, 0.43f);
         ai.offsetMin = new Vector2(10, 0);
         ai.offsetMax = new Vector2(-10, 0);
-        aiStatsText.fontSize = 14;
+        aiStatsText.fontSize = 12.5f;
         aiStatsText.alignment = TextAlignmentOptions.TopLeft;
-        aiStatsText.color = CasinoTheme.OpponentAccent;
+        aiStatsText.color = CasinoTheme.TextMuted;
     }
     
     private System.Collections.IEnumerator WaitAndRefresh()
@@ -1627,10 +1627,20 @@ public class UIManager : MonoBehaviour
         bool big = captured.Any(c => c.suit == sm.BigCasinoSuit && c.rank == sm.BigCasinoRank);
         bool little = captured.Any(c => c.suit == sm.LittleCasinoSuit && c.rank == sm.LittleCasinoRank);
 
-        return $"{label} ({p.Name})  Score: {p.Score}\n" +
-               $"Cards: {captured.Count}   Spades: {spades}\n" +
-               $"Aces: {aces}   10♦: {(big ? "yes" : "no")}   2♠: {(little ? "yes" : "no")}\n" +
-               $"Sweeps: {p.SweepCount}";
+        // Label left, value right, as in the mockup: a score panel is scanned
+        // for one number, not read as prose. <pos> gives a value column without
+        // needing a row object per stat.
+        string accent = ColorUtility.ToHtmlStringRGB(
+            label == "You" ? CasinoTheme.PlayerAccent : CasinoTheme.OpponentAccent);
+        string Row(string k, string v) => $"\n{k}<pos=68%><b>{v}</b>";
+
+        return $"<color=#{accent}><cspace=0.1em><size=84%>{label.ToUpper()} \u00B7 {p.Name.ToUpper()}</size></cspace></color>"
+             + Row("Score", p.Score.ToString())
+             + Row("Cards", captured.Count.ToString())
+             + Row("Spades", spades.ToString())
+             + Row("Aces", aces.ToString())
+             + Row("Big / Little", $"{(big ? "yes" : "no")} / {(little ? "yes" : "no")}")
+             + Row("Sweeps", p.SweepCount.ToString());
     }
     
     public void OnCardSelected(CardUI cardUI, PlayingCard card)

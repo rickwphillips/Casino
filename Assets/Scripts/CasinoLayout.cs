@@ -86,7 +86,7 @@ public static class CasinoLayout
         Hint         = new Zone(0.5f, 0f, -52, 172, 560, 46),
         PlayerHand   = new Zone(0.5f, 0f, -52, 14, 460, 158),
 
-        Score = new Zone(1f, 1f, -14, -14, 272, 232),
+        Score = new Zone(1f, 1f, -14, -14, 272, 252),
         ActionAnchor = new Vector2(1, 0),
         ActionFirst  = new Vector2(-14, 30),   // clears the version stamp at y 4..22
         ActionStep   = new Vector2(0, 54),
