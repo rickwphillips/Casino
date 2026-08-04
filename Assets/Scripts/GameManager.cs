@@ -86,8 +86,11 @@ public class GameManager : MonoBehaviour
         
         // Notify UI to refresh
         if (UIManager.Instance != null)
+        {
             UIManager.Instance.RefreshUI();
-        
+            UIManager.Instance.AnimateDeal(HAND_SIZE, HAND_SIZE, TABLE_SIZE);
+        }
+
         // Start turn sequence
         ProcessNextTurn();
     }
@@ -409,6 +412,9 @@ public class GameManager : MonoBehaviour
             GameLogger.Instance.LogNewDeal(1);
             nonDealer.AddCards(deck.DrawCards(HAND_SIZE));
             dealer.AddCards(deck.DrawCards(HAND_SIZE));
+
+            if (UIManager.Instance != null)
+                UIManager.Instance.AnimateDeal(HAND_SIZE, HAND_SIZE, TABLE_SIZE);
         }
         else
         {
@@ -420,6 +426,9 @@ public class GameManager : MonoBehaviour
                 GameLogger.Instance.LogNewDeal(1);
                 nonDealer.AddCards(deck.DrawCards(HAND_SIZE));
                 dealer.AddCards(deck.DrawCards(HAND_SIZE));
+
+                if (UIManager.Instance != null)
+                    UIManager.Instance.AnimateDeal(HAND_SIZE, HAND_SIZE, 0);
             }
             else
             {

@@ -17,6 +17,30 @@ public class CardUI : MonoBehaviour
     private bool isSelected = false;
     private bool isFaceDown = false;
     private bool isSuggested = false;
+    private Image backImage;
+
+    // Procedural card back: navy field with a diagonal lattice, generated
+    // once and shared (no art assets in this project).
+    private static Sprite cardBackSprite;
+    public static Sprite CardBackSprite
+    {
+        get
+        {
+            if (cardBackSprite != null) return cardBackSprite;
+            var tex = new Texture2D(64, 96, TextureFormat.RGBA32, false);
+            var navy = new Color(0.10f, 0.16f, 0.38f);
+            var light = new Color(0.22f, 0.32f, 0.60f);
+            for (int y = 0; y < 96; y++)
+                for (int x = 0; x < 64; x++)
+                {
+                    bool stripe = ((x + y) % 12) < 3 || ((x - y + 960) % 12) < 3;
+                    tex.SetPixel(x, y, stripe ? light : navy);
+                }
+            tex.Apply();
+            cardBackSprite = Sprite.Create(tex, new Rect(0, 0, 64, 96), new Vector2(0.5f, 0.5f));
+            return cardBackSprite;
+        }
+    }
     
     private Vector3 originalScale;
     private float animationSpeed = 0.15f;
@@ -50,6 +74,29 @@ public class CardUI : MonoBehaviour
         // Ensure rankSuitText is initialized before using it
         if (rankSuitText == null)
             rankSuitText = GetComponentInChildren<TextMeshProUGUI>();
+
+        // Card back: white border from the base image, patterned inset child
+        if (isFaceDown)
+        {
+            if (backImage == null)
+            {
+                GameObject back = new("CardBack");
+                back.transform.SetParent(transform, false);
+                var r = back.AddComponent<RectTransform>();
+                r.anchorMin = Vector2.zero;
+                r.anchorMax = Vector2.one;
+                r.offsetMin = new Vector2(4, 4);
+                r.offsetMax = new Vector2(-4, -4);
+                backImage = back.AddComponent<Image>();
+                backImage.sprite = CardBackSprite;
+                backImage.raycastTarget = false;
+            }
+            backImage.gameObject.SetActive(true);
+        }
+        else if (backImage != null)
+        {
+            backImage.gameObject.SetActive(false);
+        }
 
         if (rankSuitText != null && card != null)
         {
@@ -128,7 +175,7 @@ public class CardUI : MonoBehaviour
         if (cardImage == null) return;
 
         if (isFaceDown)
-            cardImage.color = new(0.25f, 0.3f, 0.5f);       // card back
+            cardImage.color = Color.white;                   // white border, back child on top
         else if (isSelected)
             cardImage.color = new(0.7f, 0.9f, 1f);          // selected: blue
         else if (isSuggested)
@@ -228,6 +275,11 @@ public class UIManager : MonoBehaviour
     private TextMeshProUGUI capturedTitle;
     private bool pileShowsHuman;
     private int pileShownCount = -1;
+
+    // Draw pile
+    private GameObject drawPile;
+    private TextMeshProUGUI drawPileLabel;
+    private int lastDeckCount = -1;
     
     private void Awake()
     {
@@ -346,6 +398,11 @@ public class UIManager : MonoBehaviour
 
         CreateScorePanel();
         CreatePileViewer();
+        CreateDrawPile();
+
+        // The draw pile replaces the deck-count text
+        if (deckCountText != null)
+            deckCountText.gameObject.SetActive(false);
 
         // The layout pass must never take the game down with it, and the
         // report must be written even when it fails.
@@ -429,7 +486,8 @@ public class UIManager : MonoBehaviour
                 child.name == "BuildButton" || child.name == "SuggestButton" ||
                 child.name == "TrailButton" || child.name == "SweepButton" ||
                 child.name == "HintText" || child.name == "HumanPile" ||
-                child.name == "AIPile" || child.name == "CapturedPanel")
+                child.name == "AIPile" || child.name == "CapturedPanel" ||
+                child.name == "DrawPile")
             {
                 keep.Add(child.gameObject);
             }
@@ -612,6 +670,87 @@ public class UIManager : MonoBehaviour
         capturedPanel.SetActive(false);
     }
 
+    // Visible draw pile bottom-left: a stack of card backs that thins out
+    // as the deck empties.
+    private void CreateDrawPile()
+    {
+        drawPile = new GameObject("DrawPile");
+        drawPile.transform.SetParent(canvasTransform, false);
+        var rect = drawPile.AddComponent<RectTransform>();
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0, 0);
+        rect.anchoredPosition = new Vector2(30, 130);
+        rect.sizeDelta = new Vector2(96, 132);
+
+        drawPileLabel = CreateText("Count", drawPile.transform);
+        var lr = drawPileLabel.rectTransform;
+        lr.anchorMin = new Vector2(0, 0);
+        lr.anchorMax = new Vector2(1, 0);
+        lr.pivot = new Vector2(0.5f, 1);
+        lr.anchoredPosition = new Vector2(0, -4);
+        lr.sizeDelta = new Vector2(96, 22);
+        drawPileLabel.fontSize = 13;
+        drawPileLabel.alignment = TextAlignmentOptions.Center;
+        drawPileLabel.color = new Color(1f, 1f, 1f, 0.85f);
+    }
+
+    private void UpdateDrawPile(int remaining)
+    {
+        if (drawPile == null || remaining == lastDeckCount) return;
+        lastDeckCount = remaining;
+
+        // Clear old layers (keep the label)
+        for (int i = drawPile.transform.childCount - 1; i >= 0; i--)
+        {
+            var child = drawPile.transform.GetChild(i);
+            if (child.name != "Count") Destroy(child.gameObject);
+        }
+
+        // One visual layer per ~8 cards, up to 7 layers
+        int layers = remaining == 0 ? 0 : Mathf.Clamp(1 + (remaining - 1) / 8, 1, 7);
+        for (int i = 0; i < layers; i++)
+        {
+            GameObject layer = new($"Layer{i}");
+            layer.transform.SetParent(drawPile.transform, false);
+            layer.transform.SetSiblingIndex(0); // under the label
+            var r = layer.AddComponent<RectTransform>();
+            r.anchorMin = r.anchorMax = r.pivot = new Vector2(0, 1);
+            r.anchoredPosition = new Vector2(i * 2f, -(layers - i) * 2f);
+            r.sizeDelta = new Vector2(76, 108);
+            var img = layer.AddComponent<Image>();
+            img.sprite = CardUI.CardBackSprite;
+            img.raycastTarget = false;
+        }
+
+        drawPileLabel.text = remaining > 0 ? $"Deck: {remaining}" : "Deck empty";
+    }
+
+    // Deal animation: face-down ghosts fly from the draw pile to each hand
+    // (and the table on the opening deal), staggered like real dealing.
+    public void AnimateDeal(int toNonDealer, int toDealer, int toTable)
+    {
+        StartCoroutine(DealSequence(toNonDealer, toDealer, toTable));
+    }
+
+    private System.Collections.IEnumerator DealSequence(int toNonDealer, int toDealer, int toTable)
+    {
+        if (drawPile == null) yield break;
+        Vector3 from = drawPile.transform.position;
+        var wait = new WaitForSeconds(0.07f);
+
+        for (int i = 0; i < Mathf.Max(toNonDealer, toDealer); i++)
+        {
+            if (i < toNonDealer && nonDealerHandContainer != null)
+            { SpawnGhostCore(null, from, nonDealerHandContainer.position, true); yield return wait; }
+            if (i < toDealer && dealerHandContainer != null)
+            { SpawnGhostCore(null, from, dealerHandContainer.position, true); yield return wait; }
+        }
+        for (int i = 0; i < toTable; i++)
+        {
+            if (tableCardsContainer != null)
+            { SpawnGhostCore(null, from, tableCardsContainer.position, true); yield return wait; }
+        }
+    }
+
     private Button CreatePileButton(string name, Vector2 pos, out TextMeshProUGUI label)
     {
         GameObject go = new(name);
@@ -696,16 +835,23 @@ public class UIManager : MonoBehaviour
 
     private void SpawnGhost(CardUI source, Vector3 targetWorld)
     {
-        if (source == null || cardPrefab == null) return;
+        if (source == null) return;
+        SpawnGhostCore(source.Card, source.transform.position, targetWorld, false);
+    }
+
+    private void SpawnGhostCore(PlayingCard card, Vector3 startWorld, Vector3 targetWorld, bool faceDown)
+    {
+        if (cardPrefab == null) return;
 
         GameObject ghost = Instantiate(cardPrefab, canvasTransform);
         ghost.name = "Ghost";
         var rect = ghost.GetComponent<RectTransform>();
-        rect.position = source.transform.position;
+        rect.position = startWorld;
         rect.sizeDelta = new Vector2(80, 120);
 
         var ui = ghost.GetComponent<CardUI>() ?? ghost.AddComponent<CardUI>();
-        ui.Initialize(source.Card, false);
+        ui.Initialize(card, false);
+        ui.SetFaceDown(faceDown);
 
         var group = ghost.AddComponent<CanvasGroup>();
         group.blocksRaycasts = false;
@@ -1023,6 +1169,8 @@ public class UIManager : MonoBehaviour
         
         if (deckCountText != null)
             deckCountText.text = $"Cards in Deck: {deck.CardsRemaining()}";
+
+        UpdateDrawPile(deck.CardsRemaining());
         
         if (dealerScoreText != null)
             dealerScoreText.text = $"Dealer: {dealer.Name}\nScore: {dealer.Score}";
