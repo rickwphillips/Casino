@@ -42,7 +42,32 @@ public class GameUIManager : MonoBehaviour
 
     private void Start()
     {
+        // The card-based UIManager is the primary UI. This legacy text overlay
+        // duplicates it and prints the AI's hand in plain text, so hide it
+        // whenever the real UI is present.
+        if (UIManager.Instance != null)
+        {
+            // This overlay lives on its own canvas; drop the whole thing.
+            Canvas ownCanvas = GetComponentInParent<Canvas>();
+            if (ownCanvas != null)
+                ownCanvas.gameObject.SetActive(false);
+            else
+                HidePanels();
+            enabled = false;
+            return;
+        }
+
         InvokeRepeating(nameof(UpdateUI), 0.5f, 0.5f);
+    }
+
+    private void HidePanels()
+    {
+        var anchors = new Component[] { player1NameText, player2NameText, tableCardsText, currentTurnText };
+        foreach (var anchor in anchors)
+        {
+            if (anchor != null && anchor.transform.parent != null)
+                anchor.transform.parent.gameObject.SetActive(false);
+        }
     }
 
     public void UpdateUI()
