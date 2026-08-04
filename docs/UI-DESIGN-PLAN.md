@@ -1,8 +1,9 @@
 # Casino UI Design Plan
 
 Working plan for redesigning the game UI using Claude Code's design tooling.
-Written 2026-08-04. Status: **Stages 0-3 done. Awaiting Rick's pick of a
-direction, which unblocks Stage 4 (layout engine rework).**
+Written 2026-08-04. Status: **Direction A (Parlor) chosen. Stages 0-3 done,
+Stage 4 engine + first port landed. Remaining: type (Stage 5), portrait
+verification, card sizing from the profile.**
 
 ## Decisions already made (by Rick, 2026-08-04)
 
@@ -205,6 +206,35 @@ mixed inline content in a single element inside a flex container.
 
 **Stage 4 — Layout engine rework** for breakpoints, then port, then verify by
 diffing the real `layout-report.txt` against the spec numbers.
+
+**Stage 4b — Port of Parlor. LANDED 2026-08-04, partially.**
+
+- `CasinoTheme` repaletted to Parlor: lit felt, brass, gilt-on-bronze, parchment.
+- `CasinoArt.cs` generates the three things that make it a table rather than a
+  green rectangle: a radial felt gradient, a gilt card back with a brass edge, and
+  a 9-sliced rounded rail inset 8 units from the screen edge. All procedural,
+  since the project still has no art assets; Stage 5 replaces them with PNGs.
+- **The state vocabulary collisions are fixed.** `CardUI` now has four
+  independent channels instead of two overloaded ones:
+  `Selected` (ivory + scale 1.15), `Capturable` (gold, a fact about the board),
+  `Suggested` (cool "counsel" blue, advice from the evaluator), and
+  `OpponentTaking` (rust + scale 1.08). `UpdateVisuals` owns the scale, so no
+  state is carried by hue alone, and `ClearHighlights` clears every channel.
+- Builds now tag themselves RAISABLE or LOCKED from `Build.IsMultiBuild`, so the
+  malleable/locked rule is finally visible. Trail states its refusal reason.
+- Card faces have corner indices, the Stage 2 hard requirement. They scale with
+  the card, so build minis are legible without a second code path.
+
+**Still open on the port:**
+
+- **Type is untouched.** Every glyph is still the Unity default sans; Parlor
+  specifies a serif for ranks and display. That needs a TMP font asset, which is
+  Stage 5, and it is the single largest remaining visual lever.
+- `Profile.CardSize` exists but the card creation path does not consume it, so
+  cards are 80x120 at every breakpoint.
+- The four card states are verified to compile and to be wired to the right call
+  sites, but have not been seen on screen; that needs playing a hand with a build
+  on the table.
 
 **Stage 5 — Art assets**, split three ways as described above.
 

@@ -16,32 +16,15 @@ public class CardUI : MonoBehaviour
     public PlayingCard Card => card;
     private bool isSelected = false;
     private bool isFaceDown = false;
-    private bool isSuggested = false;
+    private bool isSuggested = false;    // the game is advising this play
+    private bool isCapturable = false;   // the board makes this takeable
+    private bool isOpponentTaking = false; // the AI is about to take this
     private Image backImage;
+    private TextMeshProUGUI cornerText;
 
-    // Procedural card back: navy field with a diagonal lattice, generated
-    // once and shared (no art assets in this project).
-    private static Sprite cardBackSprite;
-    public static Sprite CardBackSprite
-    {
-        get
-        {
-            if (cardBackSprite != null) return cardBackSprite;
-            var tex = new Texture2D(64, 96, TextureFormat.RGBA32, false);
-            var navy = CasinoTheme.CardBackBase;
-            var light = CasinoTheme.CardBackLattice;
-            for (int y = 0; y < 96; y++)
-                for (int x = 0; x < 64; x++)
-                {
-                    bool stripe = ((x + y) % 12) < 3 || ((x - y + 960) % 12) < 3;
-                    tex.SetPixel(x, y, stripe ? light : navy);
-                }
-            tex.Apply();
-            cardBackSprite = Sprite.Create(tex, new Rect(0, 0, 64, 96), new Vector2(0.5f, 0.5f));
-            return cardBackSprite;
-        }
-    }
-    
+    // Procedural card back, generated once and shared (no art assets yet).
+    public static Sprite CardBackSprite => CasinoArt.CardBack();
+
     private Vector3 originalScale;
     private float animationSpeed = 0.15f;
     
@@ -115,6 +98,8 @@ public class CardUI : MonoBehaviour
             }
         }
 
+        UpdateCornerIndex();
+
         // Ensure button exists and set interactable state
         if (button == null)
             button = GetComponent<Button>();
@@ -123,6 +108,41 @@ public class CardUI : MonoBehaviour
             button.interactable = isSelectable;
 
         UpdateVisuals();
+    }
+
+    // Corner index. Not decoration: cards in a build overlap with only 16 units
+    // showing, so the centred glyph is hidden on every card but the top one. A
+    // build's contents are unreadable without this.
+    private void UpdateCornerIndex()
+    {
+        if (cornerText == null)
+        {
+            GameObject corner = new("Index");
+            corner.transform.SetParent(transform, false);
+            var r = corner.AddComponent<RectTransform>();
+            r.anchorMin = new Vector2(0, 1);
+            r.anchorMax = new Vector2(0, 1);
+            r.pivot = new Vector2(0, 1);
+            r.anchoredPosition = new Vector2(4, -3);
+            r.sizeDelta = new Vector2(26, 30);
+            cornerText = corner.AddComponent<TextMeshProUGUI>();
+            cornerText.raycastTarget = false;
+            cornerText.alignment = TextAlignmentOptions.TopLeft;
+            cornerText.enableWordWrapping = false;
+            cornerText.lineSpacing = -34f;   // stack the suit tight under the rank
+        }
+
+        bool show = !isFaceDown && card != null;
+        cornerText.gameObject.SetActive(show);
+        if (!show) return;
+
+        // Scale with the card, so build minis stay legible without a second path.
+        var rect = transform as RectTransform;
+        float k = rect != null ? Mathf.Clamp(rect.rect.width / 80f, 0.6f, 1.2f) : 1f;
+        cornerText.fontSize = 15f * k;
+        cornerText.rectTransform.anchoredPosition = new Vector2(4f * k, -3f * k);
+        cornerText.color = GetSuitColor(card.suit);
+        cornerText.text = $"{GetRankDisplay(card.rank)}\n<size=80%>{GetSuitEmoji(card.suit)}</size>";
     }
 
     private string GetRankDisplay(PlayingCard.Rank rank)
@@ -170,18 +190,24 @@ public class CardUI : MonoBehaviour
         };
     }
     
+    // One state, one appearance. The order matters: what the opponent is doing
+    // outranks what you picked, which outranks advice, which outranks a plain
+    // fact about the board.
     private void UpdateVisuals()
     {
         if (cardImage == null) return;
 
-        if (isFaceDown)
-            cardImage.color = CasinoTheme.CardFace;          // white border, back child on top
-        else if (isSelected)
-            cardImage.color = CasinoTheme.CardSelected;
-        else if (isSuggested)
-            cardImage.color = CasinoTheme.CardSuggested;
-        else
-            cardImage.color = CasinoTheme.CardFace;
+        cardImage.color =
+            isFaceDown        ? CasinoTheme.CardFace          // back child draws on top
+          : isOpponentTaking  ? CasinoTheme.CardOpponentTaking
+          : isSelected        ? CasinoTheme.CardSelected
+          : isSuggested       ? CasinoTheme.CardSuggested
+          : isCapturable      ? CasinoTheme.CardCapturable
+          : CasinoTheme.CardFace;
+
+        // Scale is the second channel, so no state is carried by hue alone.
+        float scale = isSelected ? 1.15f : isOpponentTaking ? 1.08f : 1f;
+        transform.localScale = Vector3.one * scale;
     }
 
     public void SetFaceDown(bool faceDown)
@@ -190,9 +216,30 @@ public class CardUI : MonoBehaviour
         UpdateDisplay();
     }
 
+    // Advice from the Suggest evaluator. Optional guidance, not a board fact.
     public void SetSuggested(bool suggested)
     {
         isSuggested = suggested;
+        UpdateVisuals();
+    }
+
+    // A fact about the board: this card can be taken by the current selection.
+    public void SetCapturable(bool capturable)
+    {
+        isCapturable = capturable;
+        UpdateVisuals();
+    }
+
+    // The opponent is taking this card. Must never look like your own selection.
+    public void SetOpponentTaking(bool taking)
+    {
+        isOpponentTaking = taking;
+        UpdateVisuals();
+    }
+
+    public void ClearHighlights()
+    {
+        isSuggested = isCapturable = isOpponentTaking = false;
         UpdateVisuals();
     }
     
@@ -211,8 +258,7 @@ public class CardUI : MonoBehaviour
     public void SetSelected(bool selected)
     {
         isSelected = selected;
-        UpdateVisuals();
-        transform.localScale = Vector3.one * (selected ? 1.15f : 1f);
+        UpdateVisuals();   // owns the scale too, so programmatic deselection shrinks
     }
     
     public PlayingCard GetCard()
@@ -370,8 +416,27 @@ public class UIManager : MonoBehaviour
         feltRect.offsetMin = Vector2.zero;
         feltRect.offsetMax = Vector2.zero;
         var feltImage = felt.AddComponent<Image>();
-        feltImage.color = CasinoTheme.TableFelt;
+        feltImage.sprite = CasinoArt.Felt();
+        // White tint lets the sprite's own gradient through; the flat theme color
+        // is only a fallback for when sprite generation fails.
+        feltImage.color = feltImage.sprite != null ? Color.white : CasinoTheme.TableFelt;
         feltImage.raycastTarget = false;
+
+        // Brass rail: the inset frame that makes the board read as a table with
+        // edges rather than a coloured window. 9-sliced so it stays a hairline.
+        GameObject rail = new("TableRail");
+        rail.transform.SetParent(canvasTransform, false);
+        rail.transform.SetSiblingIndex(1);
+        var railRect = rail.AddComponent<RectTransform>();
+        railRect.anchorMin = Vector2.zero;
+        railRect.anchorMax = Vector2.one;
+        railRect.offsetMin = new Vector2(8, 8);
+        railRect.offsetMax = new Vector2(-8, -8);
+        var railImage = rail.AddComponent<Image>();
+        railImage.sprite = CasinoArt.Rail();
+        railImage.type = Image.Type.Sliced;
+        railImage.color = Color.white;
+        railImage.raycastTarget = false;
 
         // The runtime score panel replaces the two floating score texts
         if (dealerScoreText != null) dealerScoreText.gameObject.SetActive(false);
@@ -380,6 +445,7 @@ public class UIManager : MonoBehaviour
         sweepButton = CreateActionButton("SweepButton", "Sweep",
             new Vector2(-16, 16), out sweepButtonLabel);
         sweepButton.GetComponent<Image>().color = CasinoTheme.ButtonPrimary;
+        sweepButtonLabel.color = CasinoTheme.ButtonPrimaryLabel;
         sweepButton.onClick.AddListener(OnSweepClicked);
 
         trailButton = CreateActionButton("TrailButton", "Trail",
@@ -521,7 +587,7 @@ public class UIManager : MonoBehaviour
         // Our runtime objects stay too
         foreach (Transform child in canvasTransform)
         {
-            if (child.name == "TableFelt" || child.name == "ScorePanel" ||
+            if (child.name == "TableFelt" || child.name == "TableRail" || child.name == "ScorePanel" ||
                 child.name == "BuildButton" || child.name == "SuggestButton" ||
                 child.name == "TrailButton" || child.name == "SweepButton" ||
                 child.name == "HintText" || child.name == "HumanPile" ||
@@ -1530,7 +1596,7 @@ public class UIManager : MonoBehaviour
             if (ui == null) continue;
             bool canTake = anySelection && CaptureChecker.IsExactCaptureSetWithBuilds(
                 ui.Card, player, chosen, selectedBuilds.ToList());
-            ui.SetSuggested(canTake);
+            ui.SetCapturable(canTake);
             if (canTake) takers++;
         }
 
@@ -1602,9 +1668,9 @@ public class UIManager : MonoBehaviour
 
     private void ClearSuggestionHighlights()
     {
-        foreach (var ui in dealerCardUIs) if (ui != null) ui.SetSuggested(false);
-        foreach (var ui in nonDealerCardUIs) if (ui != null) ui.SetSuggested(false);
-        foreach (var ui in tableCardUIs) if (ui != null) ui.SetSuggested(false);
+        foreach (var ui in dealerCardUIs) if (ui != null) ui.ClearHighlights();
+        foreach (var ui in nonDealerCardUIs) if (ui != null) ui.ClearHighlights();
+        foreach (var ui in tableCardUIs) if (ui != null) ui.ClearHighlights();
     }
 
     private void UpdateActionButtons()
@@ -1622,7 +1688,7 @@ public class UIManager : MonoBehaviour
             GameManager.Instance.PlayerOwnsBuild(GameManager.Instance.GetCurrentPlayer());
         trailButton.interactable = humanTurn && selectedCard != null && !ownsBuild
                                    && buildSelection.Count == 0;
-        trailButtonLabel.text = ownsBuild ? "Trail (own build)" : "Trail";
+        trailButtonLabel.text = ownsBuild ? "Trail (you own a build)" : "Trail";
 
         // Sweep: takes the chosen cards/builds, or everything that applies
         bool canSweep = false;
@@ -2067,7 +2133,7 @@ public class UIManager : MonoBehaviour
             var matchingCardUI = tableCardUIs.FirstOrDefault(ui => ui.Card == cardToHighlight);
             if (matchingCardUI != null)
             {
-                matchingCardUI.SetSelected(true);
+                matchingCardUI.SetOpponentTaking(true);
                 highlightedCardUIs.Add(matchingCardUI);
             }
         }
@@ -2079,7 +2145,7 @@ public class UIManager : MonoBehaviour
         foreach (var cardUI in highlightedCardUIs)
         {
             if (cardUI != null && cardUI.gameObject != null)
-                cardUI.SetSelected(false);
+                cardUI.SetOpponentTaking(false);
         }
     }
 
