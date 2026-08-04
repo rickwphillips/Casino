@@ -280,6 +280,10 @@ public class UIManager : MonoBehaviour
     private GameObject drawPile;
     private TextMeshProUGUI drawPileLabel;
     private int lastDeckCount = -1;
+
+    // Build selected for raising (single-group builds are malleable)
+    private Build selectedBuild;
+    private GameObject selectedBuildRoot;
     
     private void Awake()
     {
@@ -1219,6 +1223,13 @@ public class UIManager : MonoBehaviour
     {
         GameObject root = new($"Build_{build.DeclaredValue}");
         var rect = root.AddComponent<RectTransform>();
+
+        // Clickable so single-group builds can be selected for raising
+        var hitArea = root.AddComponent<Image>();
+        hitArea.color = new Color(0, 0, 0, 0.01f);
+        var rootButton = root.AddComponent<Button>();
+        rootButton.transition = Selectable.Transition.None;
+        rootButton.onClick.AddListener(() => OnBuildStackClicked(build, root));
         int n = build.Cards.Count;
         const float step = 16f;
         rect.sizeDelta = new Vector2(56 + (n - 1) * step, 92);
@@ -1443,6 +1454,40 @@ public class UIManager : MonoBehaviour
         foreach (var ui in buildSelection)
             if (ui != null) ui.SetSelected(false);
         buildSelection.Clear();
+        DeselectBuild();
+        UpdateActionButtons();
+    }
+
+    private void DeselectBuild()
+    {
+        if (selectedBuildRoot != null)
+            selectedBuildRoot.transform.localScale = Vector3.one;
+        selectedBuild = null;
+        selectedBuildRoot = null;
+    }
+
+    private void OnBuildStackClicked(Build build, GameObject root)
+    {
+        var gm = GameManager.Instance;
+        if (gm == null || !gm.IsWaitingForHumanInput()) return;
+
+        if (selectedBuild == build)
+        {
+            DeselectBuild();
+            UpdateActionButtons();
+            return;
+        }
+
+        DeselectBuild();
+        selectedBuild = build;
+        selectedBuildRoot = root;
+        root.transform.localScale = Vector3.one * 1.1f;
+
+        if (build.IsMultiBuild)
+            hintText.text = "Multi-build: the value is locked. It can only be taken.";
+        else
+            hintText.text = $"Build of {build.DeclaredValue}: select a hand card to raise it.";
+
         UpdateActionButtons();
     }
 
@@ -1492,6 +1537,32 @@ public class UIManager : MonoBehaviour
             ? $"Sweep {SweepName(selectedCard.Card)}" : "Sweep";
 
         bool hasBuildSelection = humanTurn && selectedCard != null && buildSelection.Count > 0;
+
+        // A selected build stack turns the Build button into a raise action
+        if (humanTurn && selectedBuild != null)
+        {
+            var gmr = GameManager.Instance;
+            var raiser = gmr.GetCurrentPlayer();
+            if (selectedBuild.IsMultiBuild || selectedCard == null)
+            {
+                buildButton.interactable = false;
+                buildButtonLabel.text = selectedBuild.IsMultiBuild ? "Locked (multi)" : "Raise: pick a card";
+            }
+            else
+            {
+                int newValue = selectedBuild.Cards.Sum(c => CaptureChecker.GetCardValue(c))
+                               + CaptureChecker.GetCardValue(selectedCard.Card);
+                bool valid = newValue > selectedBuild.DeclaredValue && newValue <= 10 &&
+                             raiser.Hand.Any(c => c != selectedCard.Card &&
+                                 CaptureChecker.GetCardValue(c) == newValue);
+                buildButton.interactable = valid;
+                buildButtonLabel.text = valid ? $"Raise to {newValue}"
+                    : newValue > 10 ? $"{newValue} is too high"
+                    : $"No {newValue} in hand";
+            }
+            UpdatePlayPreview(humanTurn);
+            return;
+        }
 
         if (hasBuildSelection)
         {
@@ -1572,7 +1643,27 @@ public class UIManager : MonoBehaviour
     private void OnBuildClicked()
     {
         GamePlayer player = GameManager.Instance.GetCurrentPlayer();
-        if (!player.IsHuman() || selectedCard == null || buildSelection.Count == 0)
+        if (!player.IsHuman() || selectedCard == null)
+            return;
+
+        // Raise mode: a build stack is selected
+        if (selectedBuild != null)
+        {
+            int idx = HandCardIndex(player, selectedCard.Card);
+            if (idx < 0) return;
+            if (GameManager.Instance.TryRaiseBuild(player, idx, selectedBuild))
+            {
+                hintText.text = "";
+                ClearSelections();
+            }
+            else
+            {
+                hintText.text = "Can't raise: you must hold the new total, and multi-builds are locked.";
+            }
+            return;
+        }
+
+        if (buildSelection.Count == 0)
             return;
 
         int cardIndex = HandCardIndex(player, selectedCard.Card);

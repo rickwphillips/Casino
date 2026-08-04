@@ -348,6 +348,38 @@ public class GameManager : MonoBehaviour
         return true;
     }
 
+    // Raise a single-group build by adding a hand card: the 6s become 8s.
+    // Multi-builds are locked. The raiser takes ownership and must hold the
+    // new capture card (ModifyBuild validates both).
+    public bool TryRaiseBuild(GamePlayer player, int handCardIndex, Build build)
+    {
+        if (player != currentPlayer)
+        {
+            Debug.LogWarning($"It's not {player.Name}'s turn!");
+            return false;
+        }
+        if (handCardIndex < 0 || handCardIndex >= player.HandSize())
+            return false;
+
+        PlayingCard handCard = player.Hand[handCardIndex];
+        int newValue = build.Cards.Sum(c => CaptureChecker.GetCardValue(c))
+                       + CaptureChecker.GetCardValue(handCard);
+
+        handCard = player.PlayCard(handCardIndex);
+        if (!ModifyBuild(player, build, handCard, newValue))
+        {
+            player.AddCard(handCard);
+            return false;
+        }
+
+        if (UIManager.Instance != null)
+            UIManager.Instance.ShowMove(
+                $"{Who(player)} raise{(player.IsHuman() ? "" : "s")} the build to {newValue}");
+
+        AdvanceAfterPlay(player);
+        return true;
+    }
+
     // Hard-AI evaluation of the current player's hand, exposed as a hint for
     // the human player. Read-only: nothing is played.
     public AIPlayer.AIAction GetSuggestionForCurrentPlayer()
@@ -779,8 +811,12 @@ public class GameManager : MonoBehaviour
             tableCards.Remove(card);
         }
 
-        // Create the build
-        var build = new Build(buildCards, declaredValue, player);
+        // Create the build. More than one group locks the value:
+        // numeric multi-builds sum past their declared value; face builds
+        // are never raisable (their value is their rank).
+        bool isMulti = declaredValue > 10 ||
+            buildCards.Sum(c => CaptureChecker.GetCardValue(c)) != declaredValue;
+        var build = new Build(buildCards, declaredValue, player, isMulti);
         activeBuilds.Add(build);
 
         if (UIManager.Instance != null)
