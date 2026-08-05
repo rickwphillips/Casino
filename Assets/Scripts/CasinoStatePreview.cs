@@ -25,10 +25,17 @@ public class CasinoStatePreview : MonoBehaviour
     private static string RankFlagPath =>
         Path.GetFullPath(Path.Combine(Application.dataPath, "..", "rank-preview.flag"));
 
+    // Third mode: a board rigged so the three rules that have never been driven
+    // by hand are all reachable from one position, without waiting for a deal to
+    // produce them (a partial capture with disjoint options, a steal of an
+    // opponent's build, and a raise that transfers ownership).
+    private static string ScenarioFlagPath =>
+        Path.GetFullPath(Path.Combine(Application.dataPath, "..", "scenario-preview.flag"));
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Install()
     {
-        if (!File.Exists(FlagPath) && !File.Exists(RankFlagPath)) return;
+        if (!File.Exists(FlagPath) && !File.Exists(RankFlagPath) && !File.Exists(ScenarioFlagPath)) return;
         var host = new GameObject("CasinoStatePreview");
         host.AddComponent<CasinoStatePreview>();
         DontDestroyOnLoad(host);
@@ -40,12 +47,16 @@ public class CasinoStatePreview : MonoBehaviour
     {
         yield return new WaitForSeconds(Delay);
         bool ranksOnly = File.Exists(RankFlagPath) && !File.Exists(FlagPath);
+        bool scenario = File.Exists(ScenarioFlagPath) && !File.Exists(FlagPath) && !File.Exists(RankFlagPath);
         try { File.Delete(FlagPath); } catch { }
         try { File.Delete(RankFlagPath); } catch { }
+        try { File.Delete(ScenarioFlagPath); } catch { }
 
         var gm = GameManager.Instance;
         var ui = UIManager.Instance;
         if (gm == null || ui == null) { Debug.LogWarning("StatePreview: no GameManager/UIManager"); yield break; }
+
+        if (scenario) { StageScenario(gm, ui); yield break; }
 
         if (ranksOnly)
         {
@@ -77,6 +88,54 @@ public class CasinoStatePreview : MonoBehaviour
         ui.ApplyStatePreview();
 
         Debug.Log("StatePreview: staged two builds and all four card states");
+    }
+
+    // One board, three untested rules, all reachable from the human's first turn.
+    //
+    //   Hand   9♠  6♦  2♠  8♣
+    //   Table  9♣  5♦  4♠  6♥  3♦   plus a DEALER-owned single build of 6 (2♣+4♦)
+    //
+    // 9♠ is the README's own partial-capture example: it can take the lone 9♣,
+    // or 5♦+4♠, or 6♥+3♦, or any combination. The point of the rule is that the
+    // player chooses, so the interesting test is taking only one of those sets
+    // and confirming the rest stay on the table.
+    //
+    // 6♦ takes the opponent's build of 6, and may sweep the loose 6♥ along with
+    // it in the same play. Combining an opponent's build with table cards is the
+    // steal, and it is legal precisely because the build is not yours.
+    //
+    // 2♠ raises that build to 8, which is legal only while it is a single build
+    // and only because 8♣ is in hand to capture the new total. Ownership moves to
+    // the raiser. Playing 6♦ onto it instead adds at value, which locks it as a
+    // multi-build: the same board reaches RAISABLE and LOCKED by two different
+    // plays, which is what makes the tag worth showing.
+    //
+    // Cards are dealt from a shuffled deck first, so a rank staged here can also
+    // sit in the AI's hand. Harmless for driving the UI, wrong for judging play.
+    private static void StageScenario(GameManager gm, UIManager ui)
+    {
+        var table = gm.GetTableCards();
+        var builds = gm.GetActiveBuilds();
+        if (table == null || builds == null)
+        {
+            Debug.LogWarning("StatePreview: no table or builds to stage into");
+            return;
+        }
+
+        Restack(gm.GetNonDealer(), "9S", "6D", "2S", "8C");
+
+        table.Clear();
+        table.AddRange(new[] { Card("9C"), Card("5D"), Card("4S"), Card("6H"), Card("3D") });
+
+        builds.Clear();
+        builds.Add(new Build(new List<PlayingCard> { Card("2C"), Card("4D") },
+                             6, gm.GetDealer(), false));   // single, so raisable and stealable
+
+        ui.RefreshUI();
+        Debug.Log("StatePreview: staged the scenario board. " +
+                  "9♠ = partial capture (9♣ / 5♦+4♠ / 6♥+3♦), " +
+                  "6♦ = steal the 6-build (optionally with 6♥), " +
+                  "2♠ = raise it to 8, 6♦ onto it = add at value and lock as multi.");
     }
 
     private static void Restack(GamePlayer p, params string[] codes)
