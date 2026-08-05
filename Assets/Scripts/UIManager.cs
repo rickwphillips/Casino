@@ -302,6 +302,20 @@ public class CardUI : MonoBehaviour
         UIManager.Instance.OnCardSelected(this, card);
     }
 
+    // Verification hook: a click is these two calls together, and the order
+    // matters. Calling UIManager.OnCardSelected on its own leaves isSelected
+    // stale, so UIManager resolves the selection to null and every downstream
+    // check behaves as though nothing was picked up. A probe that did exactly
+    // that reported the UI as silent when the real fault was the probe.
+    // Returns false when the card refused the click, which is itself worth
+    // asserting: cards are unselectable when it is not your turn.
+    public bool SimulateClick()
+    {
+        if (!isSelectable) return false;
+        OnCardClicked();
+        return true;
+    }
+
     public bool IsSelected => isSelected;
 
     // Selection scale is applied here so programmatic deselection shrinks
@@ -1127,10 +1141,26 @@ public class UIManager : MonoBehaviour
         return btn;
     }
 
-    // Verification hook. The pile viewer is reachable only by clicking a pile
-    // button, so an unattended run cannot photograph it, which is why it went
-    // unchecked while the other two panels were rebuilt around it. Toggles.
+    // ---- Verification surface -------------------------------------------
+    // Everything below exists so an unattended run can drive the UI the way a
+    // player does. CasinoAutoPlay deliberately calls GameManager directly, which
+    // exercises the rules but skips this layer entirely: selection, highlighting,
+    // the hint line, and the refusal messages are all UIManager's, and none of
+    // them were reachable without a human at the keyboard.
+
     public void TogglePileViewer(bool human) => TogglePile(human);
+
+    public IReadOnlyList<CardUI> HumanHandCardUIs => nonDealerCardUIs;
+    public IReadOnlyList<CardUI> TableCardUIs => tableCardUIs;
+
+    public void PressSuggest() => OnSuggestClicked();
+    public void PressBuild() => OnBuildClicked();
+
+    // The hint line is the game's whole explanatory voice: what a selection can
+    // take, why a build was refused, what the evaluator would do. Reading it back
+    // is how a probe asserts the UI said the right thing.
+    public string CurrentHint => hintText != null ? hintText.text : "";
+    // ---------------------------------------------------------------------
 
     private void TogglePile(bool human)
     {
@@ -1953,6 +1983,32 @@ public class UIManager : MonoBehaviour
         UpdateActionButtons();
     }
 
+    // Hand-first guidance: with a card picked up and nothing chosen on the table,
+    // mark what that card could take.
+    //
+    // This is the maximum union, which is the honest answer to "what is
+    // available" under these rules: the player still chooses which of those sets
+    // to take, because sweeps here are chosen and partial rather than automatic.
+    //
+    // Deliberately sets no hint. UpdateActionButtons runs immediately after and
+    // owns that line, with a more specific message ("Play takes: ..." or "Play
+    // will trail ..."), so anything written here is overwritten within the same
+    // frame. UpdateActionButtons already computes this exact capture set for the
+    // Sweep button; it just never showed it on the table.
+    private void ShowWhatThisCardTakes(PlayingCard card)
+    {
+        var gm = GameManager.Instance;
+        if (gm == null || card == null) return;
+
+        var table = gm.GetTableCards();
+        if (table == null) return;
+
+        var takeable = CaptureChecker.GetValidCaptures(card, table);
+        foreach (var ui in tableCardUIs)
+            if (ui != null)
+                ui.SetCapturable(takeable.Contains(ui.Card));
+    }
+
     // Table-first guidance: light up every hand card that can take exactly
     // the current table selection.
     private void HighlightCapturingHandCards()
@@ -1981,6 +2037,14 @@ public class UIManager : MonoBehaviour
                 ? $"{takers} card(s) in your hand can take this - they're highlighted."
                 : "No card in your hand can take this selection.";
         }
+
+        // The other direction. Stage 2 listed "which table cards a held card
+        // could capture" as a state the rules require and the UI did not show,
+        // and it stayed unshown because this method only ever ran table-to-hand.
+        // Picking up a card and being told nothing is the commonest thing a
+        // player does; CasinoInteractionProbe caught it saying nothing at all.
+        if (!anySelection && selectedCard != null)
+            ShowWhatThisCardTakes(selectedCard.Card);
     }
 
     private int HandCardIndex(GamePlayer player, PlayingCard card)
@@ -2212,8 +2276,17 @@ public class UIManager : MonoBehaviour
     private void OnBuildClicked()
     {
         GamePlayer player = GameManager.Instance.GetCurrentPlayer();
-        if (!player.IsHuman() || selectedCard == null)
+        if (!player.IsHuman()) return;
+
+        // Say why. These two guards used to return in silence, so pressing Build
+        // with an incomplete selection did nothing and explained nothing. Found by
+        // CasinoInteractionProbe, which reads the hint line back after each press:
+        // the screenshot looked fine, the hint was the giveaway.
+        if (selectedCard == null)
+        {
+            hintText.text = "Select a card from your hand first, then the table cards to build with.";
             return;
+        }
 
         // Build-stack mode: same value adds a group, higher value raises
         if (selectedBuild != null)
@@ -2241,7 +2314,10 @@ public class UIManager : MonoBehaviour
         }
 
         if (buildSelection.Count == 0)
+        {
+            hintText.text = $"Select the table cards to build with {CardName(selectedCard.Card)}.";
             return;
+        }
 
         int cardIndex = HandCardIndex(player, selectedCard.Card);
         if (cardIndex < 0) return;

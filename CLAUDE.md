@@ -121,6 +121,16 @@ The scene wires buttons in code, not through UnityEvents — `Scene.unity` conta
   `osascript -e 'tell application "Unity" to activate'` — focusing the editor recompiles and
   re-enters Play. `ScreenshotCapture.cs` then writes a settled PNG to `screenshots/` 3s in.
   Drop `screenshot.flag` for an extra shot mid-session, or press F9 (Shift+F9 for 2x).
+- **Two harnesses, and they test different layers.** `autoplay.flag` runs
+  `CasinoAutoPlay`, which plays a full game by calling `GameManager` directly: that
+  proves the rules and the board survive captures, sweeps, round ends and game over,
+  but it never touches selection, highlighting, or the hint line.
+  `interaction-probe.flag` runs `CasinoInteractionProbe`, which clicks like a player
+  and writes the hint text back to `interaction-probe.txt` after each step. Drive
+  cards with `CardUI.SimulateClick()`, never `UIManager.OnCardSelected` alone: a
+  click is `SetSelected` *then* `OnCardSelected`, and calling only the second leaves
+  `isSelected` stale so the whole UI behaves as though nothing was picked up. A
+  probe that got this wrong reported the UI as silent when the probe was the fault.
 - **Keep Unity focused for the whole of an unattended run.** `ProjectSettings.asset`
   has `runInBackground: 0`, so a Play session stops executing the instant the editor
   loses focus. Coroutines freeze mid-wait and resume only when it comes back. This
