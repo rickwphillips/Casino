@@ -70,8 +70,12 @@ public class ScoreVariables : ScriptableObject
     [SerializeField] private int pointsPerKing = 0;
     
     [Header("Achievement Scoring")]
-    [Tooltip("Points awarded for each sweep performed")]
-    [SerializeField] private int pointsPerSweep = 1;
+    // Off by default. Sweeps are dramatic but they are not part of the scoring
+    // Rick's family plays, and a variant that pays for them changes how the whole
+    // game is played: it rewards clearing the table over taking the cards that
+    // actually score. Turn it on deliberately, per variant.
+    [Tooltip("Points awarded for each sweep performed. 0 disables sweep scoring, which is the default.")]
+    [SerializeField] private int pointsPerSweep = 0;
     
     [Header("Game Configuration")]
     [Tooltip("Score required to win the game")]

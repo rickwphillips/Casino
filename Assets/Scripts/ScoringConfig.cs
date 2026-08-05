@@ -210,7 +210,7 @@ public class ScoringConfig
         _pointsPerJack = 0;
         _pointsPerQueen = 0;
         _pointsPerKing = 0;
-        _pointsPerSweep = 1;
+        _pointsPerSweep = 0;   // sweep scoring off unless a variant asks for it
         _winScore = 21;
         _tableCardTiming = ScoreVariables.TableCardAwardTiming.AfterEachHand;
     }

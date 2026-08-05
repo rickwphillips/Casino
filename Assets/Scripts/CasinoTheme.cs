@@ -153,6 +153,23 @@ public static class CasinoTheme
     // A single build can be raised and stolen; a multi-build is locked and can
     // only be taken whole. They rendered identically before, so the tag carries
     // the distinction the rules depend on.
+    // Score badges. A badge is either won or it is not, and the panel should say
+    // which at a glance, so the two states are deliberately far apart: an unearned
+    // badge is a faint outline on the panel, an earned one is struck in brass.
+    // Contested badges (most cards, most spades) use a third, cooler state while
+    // you are ahead but the deck is not finished, because leading is not winning.
+    public static Color BadgeIdle => Palette.PanelInk.WithAlpha(0.55f);
+    public static Color BadgeIdleBorder => Palette.Brass.WithAlpha(0.22f);
+    public static Color BadgeIdleLabel => Palette.Parchment.WithAlpha(0.38f);
+
+    public static Color BadgeWon => Palette.BrassDeep;
+    public static Color BadgeWonBorder => Palette.Gold;
+    public static Color BadgeWonLabel => new(0.133f, 0.102f, 0.024f);
+
+    public static Color BadgeLeading => Palette.PanelInk.WithAlpha(0.92f);
+    public static Color BadgeLeadingBorder => Palette.Counsel.WithAlpha(0.85f);
+    public static Color BadgeLeadingLabel => Palette.Counsel;
+
     public static Color BuildTagLocked => Palette.PanelDeep.WithAlpha(0.9f);
     public static Color BuildTagRaisable => Palette.BrassDeep.WithAlpha(0.9f);
     public static Color BuildTagLabel => Palette.Gold;

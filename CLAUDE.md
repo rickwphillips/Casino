@@ -143,6 +143,20 @@ The scene wires buttons in code, not through UnityEvents — `Scene.unity` conta
   `osascript -e 'tell application "Unity" to activate'` — focusing the editor recompiles and
   re-enters Play. `ScreenshotCapture.cs` then writes a settled PNG to `screenshots/` 3s in.
   Drop `screenshot.flag` for an extra shot mid-session, or press F9 (Shift+F9 for 2x).
+- **Never launch Unity without checking for a running instance first.**
+  `ps aux | grep "[H]ub/Editor/6000"`. A second launch cannot open the project
+  (the `Temp/UnityLockfile` blocks it) but it truncates `~/Library/Logs/Unity/Editor.log`
+  on the way out, destroying the live editor's log. You are then debugging with no
+  log at all, and the symptoms look like the editor hanging or ignoring code
+  changes. This wasted more time today than any actual bug. To bring a running
+  editor forward use `open -a <path to Unity.app>`, never the binary directly.
+- **To check whether code compiled, look at the assembly, not the screen.**
+  `stat -f %m Library/ScriptAssemblies/Assembly-CSharp.dll` against the source
+  file's mtime says definitively whether the editor picked up an edit. Screenshots
+  of the console only work when Unity is frontmost, and silently capture whatever
+  else is there when it is not. For a definitive answer with no editor at all,
+  quit it and run `-quit -batchmode -nographics -logFile compile.txt`, then grep
+  for `error CS`.
 - **Real mouse clicks, when a harness is not enough.** `Tests~/click.swift`
   (`swiftc -O Tests~/click.swift -o /tmp/click`, then `/tmp/click <x> <y>`) posts
   genuine CGEvents. AppleScript's `click at` does NOT work here: it goes through the

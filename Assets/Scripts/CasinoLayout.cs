@@ -46,15 +46,24 @@ public static class CasinoLayout
             ActionSize.x, ActionSize.y);
     }
 
-    public static Profile Active { get; private set; } = Wide;
+    // Resolved on first read rather than in a field initializer.
+    //
+    // `= Wide` here looked equivalent and was not: static field initializers run
+    // in declaration order, and Wide is declared below this line, so Active
+    // captured null. Nothing noticed for as long as every reader ran after
+    // Pick(). The first caller to read Active during Start(), before
+    // EnforceLayout had chosen a profile, took a NullReferenceException that
+    // aborted UI construction halfway, leaving a board with no buttons.
+    private static Profile active;
+    public static Profile Active => active ??= Wide;
 
     public static Profile Pick(float width, float height)
     {
         float aspect = height <= 0 ? 1.777f : width / height;
-        Active = aspect < 0.95f ? Portrait
+        active = aspect < 0.95f ? Portrait
                : aspect < 1.45f ? Compact
                : Wide;
-        return Active;
+        return active;
     }
 
     // -----------------------------------------------------------------

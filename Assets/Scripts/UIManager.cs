@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -1422,9 +1423,111 @@ public class UIManager : MonoBehaviour
 
     // Six rows at 12.5pt plus the side header. The score panel must be at least
     // 38 + 2*this + 8 tall, which is why every Profile's Score zone is >= 246.
-    // Seven lines now, not six: a "THIS DECK" scope label sits between the
-    // cumulative score and the per-deck capture counts.
     private const float StatBlockHeight = 112f;
+
+    // A scoring category, drawn as a badge.
+    //
+    // The old panel was six label/value rows per player, which read as a
+    // spreadsheet: every category always present, always the same weight, and
+    // "Big / Little  no / no" saying nothing worth the space it took. Scoring in
+    // this game is not a running tally, it is a set of prizes that get claimed,
+    // so the panel should show which ones have been claimed.
+    //
+    // Three states, because the categories are not all the same shape. Big and
+    // Little Casino and the aces are simply won or not. Most cards and most
+    // spades are contested until the deck is scored, so they get a third state
+    // for "ahead, but nobody has won this yet", in a cool colour that cannot be
+    // mistaken for the brass of a won badge.
+    private sealed class ScoreBadge
+    {
+        public enum State { Idle, Leading, Won }
+
+        private readonly Image surface;
+        private readonly TextMeshProUGUI label;
+        private readonly RectTransform rect;
+        private State state = State.Idle;
+
+        // Set during the update pass, consumed by the pop pass, so the animation
+        // starts after every badge has settled rather than mid-recalculation.
+        public bool WantsPop;
+
+        public void Show(bool visible) => rect.gameObject.SetActive(visible);
+
+        public ScoreBadge(Transform parent, string name, UIManager owner, Vector2 pos, Vector2 size)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            rect = go.AddComponent<RectTransform>();
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0, 1);
+            rect.anchoredPosition = pos;
+            rect.sizeDelta = size;
+
+            surface = go.AddComponent<Image>();
+            Surface(surface, 5, CasinoTheme.BadgeIdle, CasinoTheme.BadgeIdleBorder);   // static on UIManager
+            surface.raycastTarget = false;
+
+            label = owner.CreateText("Label", go.transform);
+            var lr = label.rectTransform;
+            lr.anchorMin = Vector2.zero;
+            lr.anchorMax = Vector2.one;
+            lr.offsetMin = lr.offsetMax = Vector2.zero;
+            label.alignment = TextAlignmentOptions.Center;
+            label.fontSize = size.y * 0.42f;
+            label.fontStyle = FontStyles.Bold;
+            label.color = CasinoTheme.BadgeIdleLabel;
+            label.raycastTarget = false;
+        }
+
+        // Returns true when the badge has just been won, so the caller can
+        // celebrate it. Claiming a prize is the only moment in this panel worth
+        // animating; a number ticking up is not.
+        public bool Set(string text, State next)
+        {
+            label.text = text;
+            bool justWon = next == State.Won && state != State.Won;
+            if (justWon) WantsPop = true;
+            if (next != state)
+            {
+                state = next;
+                switch (state)
+                {
+                    case State.Won:
+                        surface.color = CasinoTheme.BadgeWon;
+                        label.color = CasinoTheme.BadgeWonLabel;
+                        break;
+                    case State.Leading:
+                        surface.color = CasinoTheme.BadgeLeading;
+                        label.color = CasinoTheme.BadgeLeadingLabel;
+                        break;
+                    default:
+                        surface.color = CasinoTheme.BadgeIdle;
+                        label.color = CasinoTheme.BadgeIdleLabel;
+                        break;
+                }
+            }
+            return justWon;
+        }
+
+        public IEnumerator Pop()
+        {
+            const float dur = 0.34f;
+            for (float t = 0; t < dur; t += Time.deltaTime)
+            {
+                float k = t / dur;
+                // Overshoot then settle, so it reads as a stamp rather than a fade.
+                float s = 1f + 0.32f * Mathf.Sin(k * Mathf.PI) * (1f - k * 0.4f);
+                rect.localScale = Vector3.one * s;
+                yield return null;
+            }
+            rect.localScale = Vector3.one;
+        }
+    }
+
+    // Category order is fixed and shared by both players so the two strips can be
+    // read against each other at a glance.
+    private static readonly string[] BadgeNames = { "CARDS", "SPADES", "ACES", "BIG", "LITTLE", "SWEEPS" };
+    private ScoreBadge[] humanBadges, aiBadges;
+    private TextMeshProUGUI humanScoreValue, aiScoreValue;
 
     private void CreateScorePanel()
     {
@@ -1468,27 +1571,62 @@ public class UIManager : MonoBehaviour
         ruleImg.color = CasinoTheme.Divider;
         ruleImg.raycastTarget = false;
 
-        humanStatsText = CreateText("HumanStats", panel.transform);
-        var hu = humanStatsText.rectTransform;
-        hu.anchorMin = new Vector2(0, 1);
-        hu.anchorMax = new Vector2(1, 1);
-        hu.pivot = new Vector2(0.5f, 1);
-        hu.anchoredPosition = new Vector2(0, -38);
-        hu.sizeDelta = new Vector2(-20, StatBlockHeight);
-        humanStatsText.fontSize = 12.5f;
-        humanStatsText.alignment = TextAlignmentOptions.TopLeft;
-        humanStatsText.color = CasinoTheme.TextMuted;
+        humanBadges = BuildPlayerBlock(panel.transform, "You", -38, CasinoTheme.PlayerAccent,
+                                       out humanStatsText, out humanScoreValue);
+        aiBadges = BuildPlayerBlock(panel.transform, "AI", -(38 + StatBlockHeight + 8), CasinoTheme.OpponentAccent,
+                                    out aiStatsText, out aiScoreValue);
+    }
 
-        aiStatsText = CreateText("AIStats", panel.transform);
-        var ai = aiStatsText.rectTransform;
-        ai.anchorMin = new Vector2(0, 1);
-        ai.anchorMax = new Vector2(1, 1);
-        ai.pivot = new Vector2(0.5f, 1);
-        ai.anchoredPosition = new Vector2(0, -(38 + StatBlockHeight + 8));
-        ai.sizeDelta = new Vector2(-20, StatBlockHeight);
-        aiStatsText.fontSize = 12.5f;
-        aiStatsText.alignment = TextAlignmentOptions.TopLeft;
-        aiStatsText.color = CasinoTheme.TextMuted;
+    // One player's block: a seat line, the running score set large because it is
+    // the only number that decides anything, and the badge strip beneath.
+    private ScoreBadge[] BuildPlayerBlock(Transform panel, string name, float top, Color accent,
+                                          out TextMeshProUGUI seatLabel, out TextMeshProUGUI scoreValue)
+    {
+        float panelWidth = CasinoLayout.Active.Score.Size.x;
+        float inset = 12f;
+        float usable = panelWidth - inset * 2f;
+
+        // Portrait's panel is a wide bar, so the strip runs in one row; the
+        // landscape rail is narrow and takes two rows of three.
+        int perRow = CasinoLayout.Active.Name == "Portrait" ? BadgeNames.Length : 3;
+        int rows = Mathf.CeilToInt(BadgeNames.Length / (float)perRow);
+        float gap = 4f;
+        float bw = (usable - gap * (perRow - 1)) / perRow;
+        float bh = 26f;
+
+        seatLabel = CreateText($"{name}Seat", panel);
+        var sr = seatLabel.rectTransform;
+        sr.anchorMin = new Vector2(0, 1);
+        sr.anchorMax = new Vector2(1, 1);
+        sr.pivot = new Vector2(0.5f, 1);
+        sr.anchoredPosition = new Vector2(0, top);
+        sr.sizeDelta = new Vector2(-inset * 2, 16);
+        seatLabel.fontSize = 10.5f;
+        seatLabel.alignment = TextAlignmentOptions.TopLeft;
+        seatLabel.color = accent;
+
+        scoreValue = CreateText($"{name}Score", panel);
+        var vr = scoreValue.rectTransform;
+        vr.anchorMin = new Vector2(0, 1);
+        vr.anchorMax = new Vector2(1, 1);
+        vr.pivot = new Vector2(0.5f, 1);
+        vr.anchoredPosition = new Vector2(0, top - 2);
+        vr.sizeDelta = new Vector2(-inset * 2, 26);
+        scoreValue.fontSize = 24;
+        scoreValue.fontStyle = FontStyles.Bold;
+        scoreValue.alignment = TextAlignmentOptions.TopRight;
+        scoreValue.color = CasinoTheme.TextPrimary;
+        CasinoType.ApplySerif(scoreValue);
+
+        var badges = new ScoreBadge[BadgeNames.Length];
+        for (int i = 0; i < badges.Length; i++)
+        {
+            int row = i / perRow, col = i % perRow;
+            badges[i] = new ScoreBadge(panel, $"{name}Badge{BadgeNames[i]}", this,
+                new Vector2(inset + col * (bw + gap), top - 28 - row * (bh + gap)),
+                new Vector2(bw, bh));
+        }
+        return badges;
     }
     
     private System.Collections.IEnumerator WaitAndRefresh()
@@ -1862,8 +2000,13 @@ public class UIManager : MonoBehaviour
         GamePlayer human = dealer.IsHuman() ? dealer : nonDealer;
         GamePlayer ai = dealer.IsHuman() ? nonDealer : dealer;
 
-        humanStatsText.text = PlayerStats(human, "You");
-        aiStatsText.text = PlayerStats(ai, "AI");
+        humanStatsText.text = $"YOU · {human.Name.ToUpper()}";
+        aiStatsText.text = $"AI · {ai.Name.ToUpper()}";
+        humanScoreValue.text = human.Score.ToString();
+        aiScoreValue.text = ai.Score.ToString();
+
+        UpdateBadges(humanBadges, human, ai);
+        UpdateBadges(aiBadges, ai, human);
 
         if (humanPileLabel != null)
         {
@@ -1902,42 +2045,54 @@ public class UIManager : MonoBehaviour
           + $"\n\n<size=88%>First to {target}</size>";
     }
 
-    private string PlayerStats(GamePlayer p, string label)
+    // Everything here counts p.CapturedCards, which is emptied when a deck is
+    // scored, so a badge describes the deck in progress rather than the game. The
+    // running total above it is the cumulative one; that split is the whole
+    // reason the old panel needed a "THIS DECK" caption, and badges make it
+    // obvious without one, because a prize you can still lose looks different
+    // from a score you already banked.
+    private void UpdateBadges(ScoreBadge[] badges, GamePlayer p, GamePlayer other)
     {
         var sm = ScoringManager.Instance;
-        var captured = p.CapturedCards;
-        int spades = captured.Count(c => c.suit == PlayingCard.Suit.Spades);
-        int aces = captured.Count(c => c.rank == PlayingCard.Rank.Ace);
-        bool big = captured.Any(c => c.suit == sm.BigCasinoSuit && c.rank == sm.BigCasinoRank);
-        bool little = captured.Any(c => c.suit == sm.LittleCasinoSuit && c.rank == sm.LittleCasinoRank);
+        var mine = p.CapturedCards;
+        var theirs = other.CapturedCards;
 
-        // Label left, value right, as in the mockup: a score panel is scanned
-        // for one number, not read as prose. <pos> gives a value column without
-        // needing a row object per stat.
-        string accent = ColorUtility.ToHtmlStringRGB(
-            label == "You" ? CasinoTheme.PlayerAccent : CasinoTheme.OpponentAccent);
-        // The value column is a percentage of the panel, and the panel is a
-        // 272-wide rail in landscape but a 700-wide bar in portrait, where 68%
-        // stranded every number half a screen from its label. Track the shape.
-        int valueColumn = CasinoLayout.Active.Name == "Portrait" ? 30 : 68;
-        string Row(string k, string v) => $"\n{k}<pos={valueColumn}%><b>{v}</b>";
+        int spades = mine.Count(c => c.suit == PlayingCard.Suit.Spades);
+        int theirSpades = theirs.Count(c => c.suit == PlayingCard.Suit.Spades);
+        int aces = mine.Count(c => c.rank == PlayingCard.Rank.Ace);
+        bool big = mine.Any(c => c.suit == sm.BigCasinoSuit && c.rank == sm.BigCasinoRank);
+        bool little = mine.Any(c => c.suit == sm.LittleCasinoSuit && c.rank == sm.LittleCasinoRank);
 
-        // Score is cumulative across decks; everything under it is emptied when a
-        // deck is scored, because it counts p.CapturedCards. Without a scope label
-        // the panel reads as a career total that has somehow reset: the first full
-        // game ended showing Cards 0 / Spades 0 / Aces 0 beside a score of 13.
-        string faint = ColorUtility.ToHtmlStringRGB(CasinoTheme.TextMuted);
-        string scope = $"\n<size=76%><color=#{faint}><cspace=0.08em>THIS DECK</cspace></color></size>";
+        // Contested until the deck ends, and a tie pays nobody, so a level count
+        // is not "leading".
+        var cardsState = mine.Count > theirs.Count ? ScoreBadge.State.Leading : ScoreBadge.State.Idle;
+        var spadesState = spades > theirSpades ? ScoreBadge.State.Leading : ScoreBadge.State.Idle;
 
-        return $"<color=#{accent}><cspace=0.1em><size=84%>{label.ToUpper()} \u00B7 {p.Name.ToUpper()}</size></cspace></color>"
-             + Row("Score", p.Score.ToString())
-             + scope
-             + Row("Cards", captured.Count.ToString())
-             + Row("Spades", spades.ToString())
-             + Row("Aces", aces.ToString())
-             + Row("Big / Little", $"{(big ? "yes" : "no")} / {(little ? "yes" : "no")}")
-             + Row("Sweeps", p.SweepCount.ToString());
+        bool pop = false;
+        pop |= badges[0].Set($"CARDS {mine.Count}", cardsState);
+        pop |= badges[1].Set($"SPADES {spades}", spadesState);
+        pop |= badges[2].Set(aces > 0 ? $"ACES ×{aces}" : "ACES", aces > 0 ? ScoreBadge.State.Won : ScoreBadge.State.Idle);
+        pop |= badges[3].Set("BIG", big ? ScoreBadge.State.Won : ScoreBadge.State.Idle);
+        pop |= badges[4].Set("LITTLE", little ? ScoreBadge.State.Won : ScoreBadge.State.Idle);
+
+        // Sweeps are off in the shipped ruleset, so the badge would be a
+        // permanently dead slot. Hide the category rather than show a zero.
+        bool sweepsCount = sm.PointsPerSweep > 0;
+        badges[5].Show(sweepsCount);
+        if (sweepsCount)
+            pop |= badges[5].Set($"SWEEP ×{p.SweepCount}",
+                p.SweepCount > 0 ? ScoreBadge.State.Won : ScoreBadge.State.Idle);
+
+        if (pop) StartCoroutine(PopBadges(badges));
     }
+
+    private IEnumerator PopBadges(ScoreBadge[] badges)
+    {
+        foreach (var b in badges)
+            if (b.WantsPop) { StartCoroutine(b.Pop()); b.WantsPop = false; }
+        yield break;
+    }
+
     
     public void OnCardSelected(CardUI cardUI, PlayingCard card)
     {
