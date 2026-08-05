@@ -428,14 +428,10 @@ public class UIManager : MonoBehaviour
 
             // Find restart button within GameOverPanel if not explicitly assigned
             if (restartButton == null)
-            {
                 restartButton = gameOverPanel.GetComponentInChildren<Button>();
-                Debug.Log("Auto-detected restart button: " + (restartButton != null ? restartButton.name : "null"));
-            }
 
             // Hide the panel after finding the button
             gameOverPanel.SetActive(false);
-            Debug.Log("GameOverPanel hidden at start");
         }
 
         // Add listener to restart button after it's been found
@@ -444,10 +440,6 @@ public class UIManager : MonoBehaviour
             // Clear any existing listeners first to avoid duplicates
             restartButton.onClick.RemoveAllListeners();
             restartButton.onClick.AddListener(OnRestartClicked);
-            Debug.Log($"Restart button listener added to: {restartButton.name}, interactable: {restartButton.interactable}");
-
-            // Test log to verify button component
-            Debug.Log($"Restart button component details - GameObject: {restartButton.gameObject.name}, Active: {restartButton.gameObject.activeInHierarchy}");
         }
         else
         {
@@ -1502,7 +1494,6 @@ public class UIManager : MonoBehaviour
     private System.Collections.IEnumerator WaitAndRefresh()
     {
         yield return _waitForSeconds0_1;
-        Debug.Log("WaitAndRefresh: Calling RefreshUI");
         RefreshUI();
     }
     
@@ -1603,8 +1594,6 @@ public class UIManager : MonoBehaviour
 
     private void UpdateHandDisplay(GamePlayer player, Transform container, List<CardUI> cardUIs, bool selectable, bool faceDown = false)
     {
-        Debug.Log("UpdateHandDisplay: player=" + (player != null ? player.Name : "null") + ", hand count=" + (player != null ? player.Hand.Count : 0));
-        
         if (player == null || container == null || cardPrefab == null)
         {
             Debug.LogError("UpdateHandDisplay: Missing required field - player:" + (player == null) + " container:" + (container == null) + " prefab:" + (cardPrefab == null));
@@ -1618,8 +1607,6 @@ public class UIManager : MonoBehaviour
         }
         cardUIs.Clear();
 
-        Debug.Log("Creating " + player.Hand.Count + " cards");
-
         // Create new cards
         for (int i = 0; i < player.Hand.Count; i++)
         {
@@ -1627,16 +1614,7 @@ public class UIManager : MonoBehaviour
             SizeCard(cardObj);
 
             // Get existing CardUI component or add one if it doesn't exist
-            CardUI cardUI = cardObj.GetComponent<CardUI>();
-            if (cardUI == null)
-            {
-                cardUI = cardObj.AddComponent<CardUI>();
-                Debug.Log("Added CardUI component");
-            }
-            else
-            {
-                Debug.Log("Using existing CardUI component");
-            }
+            CardUI cardUI = cardObj.GetComponent<CardUI>() ?? cardObj.AddComponent<CardUI>();
 
             cardUI.Initialize(player.Hand[i], selectable);
             cardUI.SetFaceDown(faceDown);
@@ -1859,7 +1837,6 @@ public class UIManager : MonoBehaviour
                 {
                     gameOverPanel.SetActive(true);
                     RaiseModals();
-                    Debug.Log("Game Over - showing GameOverPanel");
                 }
             }
             else
