@@ -39,6 +39,7 @@ public class CasinoAutoPlay : MonoBehaviour
     private IEnumerator Run()
     {
         try { File.Delete(FlagPath); } catch { }
+        Note("autoplay armed, waiting for the deal");
         yield return new WaitForSeconds(3.2f);   // let the opening deal finish
 
         var gm = GameManager.Instance;
@@ -122,6 +123,7 @@ public class CasinoAutoPlay : MonoBehaviour
     {
         log.AppendLine(line);
         Debug.Log("[autoplay] " + line);
+        Flush();
     }
 
     private void Flush()
