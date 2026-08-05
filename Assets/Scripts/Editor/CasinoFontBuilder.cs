@@ -17,10 +17,38 @@ public static class CasinoFontBuilder
     private const string OutDir = "Assets/Resources/Fonts";
     private const string OutPath = OutDir + "/CasinoSerif.asset";
 
+    // At most one automatic build per editor session, tracked in SessionState so
+    // it survives the domain reloads that a build causes.
+    private const string BuiltKey = "CasinoFontBuilder.builtThisSession";
+
+    // Writing assets from a load-time hook is how you hang an editor. Creating an
+    // asset triggers an import, an import can trigger a domain reload, and a
+    // domain reload runs every InitializeOnLoad hook again, including this one.
+    // If the build does not durably satisfy NeedsBuild() the cycle never closes,
+    // and the editor sits pinned at ~200% CPU with the log stopping mid-write.
+    // That exact loop was reproduced here on 2026-08-05 with a different
+    // load-time hook that called SaveAssets, so this is a real failure mode and
+    // not a hypothetical.
+    //
+    // The latch is the fix: even if NeedsBuild() is wrong or the build genuinely
+    // fails, it can burn one attempt per session instead of spinning forever, and
+    // it says so rather than failing silently.
     [InitializeOnLoadMethod]
     private static void BuildIfMissing()
     {
         if (!NeedsBuild()) return;
+
+        if (SessionState.GetBool(BuiltKey, false))
+        {
+            Debug.LogWarning(
+                "CasinoFontBuilder: the font asset still looks unbuilt after an attempt " +
+                "this session. Not retrying, because rebuilding from a load-time hook in " +
+                "a loop wedges the editor. Run Casino > Fonts > Rebuild TMP font asset by " +
+                "hand and watch what it reports.");
+            return;
+        }
+
+        SessionState.SetBool(BuiltKey, true);
         EditorApplication.delayCall += () => Build(true);
     }
 
@@ -41,8 +69,14 @@ public static class CasinoFontBuilder
         return true;
     }
 
+    // The manual path clears the latch: if you ask for it explicitly, you get it,
+    // and a later automatic pass is allowed to try again.
     [MenuItem("Casino/Fonts/Rebuild TMP font asset")]
-    private static void RebuildFromMenu() => Build(true);
+    private static void RebuildFromMenu()
+    {
+        SessionState.EraseBool(BuiltKey);
+        Build(true);
+    }
 
     private static void Build(bool force)
     {
@@ -81,7 +115,12 @@ public static class CasinoFontBuilder
 
         EditorUtility.SetDirty(asset);
         AssetDatabase.SaveAssets();
-        AssetDatabase.Refresh();
+
+        // Deliberately no AssetDatabase.Refresh(). Everything above went through
+        // the AssetDatabase already, so the asset is registered without it, and
+        // Refresh kicks off an import pass that can trigger a domain reload,
+        // which re-enters this class. It was the loop's accelerator, not a
+        // requirement.
         Debug.Log($"CasinoFontBuilder: built {OutPath} from {Path.GetFileName(SourceTtf)}");
     }
 }
