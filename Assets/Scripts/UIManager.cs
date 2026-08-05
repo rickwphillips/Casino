@@ -1154,7 +1154,31 @@ public class UIManager : MonoBehaviour
     public IReadOnlyList<CardUI> TableCardUIs => tableCardUIs;
 
     public void PressSuggest() => OnSuggestClicked();
-    public void PressBuild() => OnBuildClicked();
+
+    // Presses Build the way the UI allows, and reports whether the press was
+    // possible at all. Calling OnBuildClicked directly is what an earlier probe
+    // did, and it walks straight past the interactable gate, which is not an
+    // implementation detail here: a disabled button IS the refusal. Driving the
+    // handler produced a "silent refusal" bug report for a state no player can
+    // reach by clicking.
+    public bool PressBuild()
+    {
+        if (buildButton == null || !buildButton.interactable) return false;
+        OnBuildClicked();
+        return true;
+    }
+
+    // The action buttons carry most of the game's feedback in their labels, not
+    // in the hint line: "Not a build", "No 9 in hand", "Face builds: one rank",
+    // "Locked (multi)", "Raise to 8". A probe that reads only the hint misses
+    // the channel the player is actually looking at.
+    public string BuildButtonState => ButtonState(buildButton, buildButtonLabel);
+    public string SweepButtonState => ButtonState(sweepButton, sweepButtonLabel);
+    public string TrailButtonState => ButtonState(trailButton, trailButtonLabel);
+
+    private static string ButtonState(Button b, TextMeshProUGUI label) =>
+        b == null ? "(missing)"
+                  : $"\"{(label != null ? label.text : "?")}\" {(b.interactable ? "enabled" : "disabled")}";
 
     // The hint line is the game's whole explanatory voice: what a selection can
     // take, why a build was refused, what the evaluator would do. Reading it back
@@ -2363,7 +2387,8 @@ public class UIManager : MonoBehaviour
                 var ui = tableCardUIs.FirstOrDefault(t => t.Card == buildCard);
                 if (ui != null) ui.SetSuggested(true);
             }
-            hintText.text = $"Suggestion: build {action.DeclaredValue} with {CardName(handCard)}. Capture it next turn with your {action.DeclaredValue}.";
+            SelectSuggested(handUIs[action.CardIndex],
+                $"Suggestion: build {action.DeclaredValue} with {CardName(handCard)}. Capture it next turn with your {action.DeclaredValue}.");
             return;
         }
 
@@ -2381,12 +2406,42 @@ public class UIManager : MonoBehaviour
             string what = string.Join(", ", captures.Select(CardName));
             if (buildCaptures.Count > 0)
                 what += (what.Length > 0 ? " and " : "") + $"{buildCaptures.Count} build(s)";
-            hintText.text = $"Suggestion: play {CardName(handCard)} to capture {what}.";
+            SelectSuggested(handUIs[action.CardIndex],
+                $"Suggestion: play {CardName(handCard)} to capture {what}.");
         }
         else
         {
-            hintText.text = $"Suggestion: no captures available. Trail {CardName(handCard)} (gives up the least).";
+            SelectSuggested(handUIs[action.CardIndex],
+                $"Suggestion: no captures available. Trail {CardName(handCard)} (gives up the least).");
         }
+    }
+
+    // Asking for advice used to leave you unable to take it.
+    //
+    // OnSuggestClicked clears the selection before highlighting its
+    // recommendation, and every action button requires a selected card, so the
+    // buttons all went dead the moment you asked. The probe caught the exact
+    // contradiction: the hint read "Trail K♣ (gives up the least)" while the
+    // Trail button sat disabled.
+    //
+    // Selecting the recommended card leaves the move one press away. The advice
+    // channel stays distinct from the selection channel, as Stage 2 intended:
+    // the card is both suggested and selected, which is honest, because the
+    // evaluator proposed it and the UI has now picked it up on your behalf.
+    //
+    // Order matters. UpdateActionButtons writes its own preview into the hint
+    // ("Play takes: ...", "Play will trail ..."), so the suggestion text has to
+    // be written after it or it is overwritten in the same frame.
+    private void SelectSuggested(CardUI card, string message)
+    {
+        if (card != null)
+        {
+            card.SetSelected(true);
+            selectedCard = card;
+            HighlightCapturingHandCards();
+            UpdateActionButtons();
+        }
+        if (hintText != null) hintText.text = message;
     }
 
     private string CardName(PlayingCard card) => CaptureChecker.Describe(card);

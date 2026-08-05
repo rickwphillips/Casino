@@ -121,6 +121,15 @@ The scene wires buttons in code, not through UnityEvents — `Scene.unity` conta
   `osascript -e 'tell application "Unity" to activate'` — focusing the editor recompiles and
   re-enters Play. `ScreenshotCapture.cs` then writes a settled PNG to `screenshots/` 3s in.
   Drop `screenshot.flag` for an extra shot mid-session, or press F9 (Shift+F9 for 2x).
+- **Real mouse clicks, when a harness is not enough.** `Tests~/click.swift`
+  (`swiftc -O Tests~/click.swift -o /tmp/click`, then `/tmp/click <x> <y>`) posts
+  genuine CGEvents. AppleScript's `click at` does NOT work here: it goes through the
+  accessibility layer and resolves to the nearest element, which for a Unity Game
+  view is the window, so the game never sees the click. Map game coordinates with
+  `screencapture -x` of the desktop plus the Game view's origin and scale.
+  This is the only way to test what a player actually experiences, including
+  whether a button is enabled at all. Driving click handlers directly walks past
+  `interactable`, and a disabled button is often the game's real refusal message.
 - **Two harnesses, and they test different layers.** `autoplay.flag` runs
   `CasinoAutoPlay`, which plays a full game by calling `GameManager` directly: that
   proves the rules and the board survive captures, sweeps, round ends and game over,

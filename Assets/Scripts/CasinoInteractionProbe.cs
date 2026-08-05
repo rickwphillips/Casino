@@ -79,11 +79,12 @@ public class CasinoInteractionProbe : MonoBehaviour
         yield return Settle();
         Shot("probe-3-suggested", ui);
 
-        // 4. Ask to build from whatever is selected. Most selections are not a
-        //    legal build, so the interesting outcome is the refusal message: an
-        //    unexplained rejection is the worst thing this UI can do.
-        Mark("press Build on the current selection");
-        ui.PressBuild();
+        // 4. Try to build from whatever is selected. Most selections are not a
+        //    legal build, and the refusal arrives as a disabled button with a
+        //    label saying why ("Not a build", "No 9 in hand"), not as a hint.
+        //    PressBuild reports false when the button was not pressable, which is
+        //    the normal outcome and not a failure.
+        Mark($"press Build -> pressed={ui.PressBuild()}");
         yield return Settle();
         Shot("probe-4-build-attempt", ui);
 
@@ -95,7 +96,10 @@ public class CasinoInteractionProbe : MonoBehaviour
     private static void Shot(string label, UIManager ui)
     {
         ScreenshotCapture.Capture(label);
-        Mark($"  hint: \"{ui.CurrentHint}\"");
+        Mark($"  hint:   \"{ui.CurrentHint}\"");
+        Mark($"  sweep:  {ui.SweepButtonState}");
+        Mark($"  build:  {ui.BuildButtonState}");
+        Mark($"  trail:  {ui.TrailButtonState}");
     }
 
     private static string Describe(CardUI c) =>
