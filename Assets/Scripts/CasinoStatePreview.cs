@@ -122,7 +122,12 @@ public class CasinoStatePreview : MonoBehaviour
             return;
         }
 
-        Restack(gm.GetNonDealer(), "9S", "6D", "2S", "8C");
+        // Two 6s on purpose. Adding at value requires still holding a card that
+        // captures the build after the played one leaves your hand, so with a
+        // single 6 the game correctly refuses with "Need another to take it" and
+        // the locked multi-build can never be reached from this board. Swap 6♠
+        // for 2♠ to test raising instead, which needs the 8♣ as the capture card.
+        Restack(gm.GetNonDealer(), "9S", "6D", "6S", "8C");
 
         table.Clear();
         table.AddRange(new[] { Card("9C"), Card("5D"), Card("4S"), Card("6H"), Card("3D") });

@@ -29,6 +29,9 @@ proves the code compiles and is wired, but not that it is wired to live state.
 | `parlor-build-inplay.png` | Build badge in owner colour, the `RAISABLE` tag, and a table card tinted rust because the opponent is taking it. All from real play. |
 | `parlor-round-summary.png` | Deck scoring, over a scrim, with opaque panels. Earlier versions let the cards behind read through the panel. |
 | `parlor-gameover.png` | The end of a game: winner, final score, target, themed button. |
+| `parlor-partial-capture.png` | A 9 taking only 6♥+3♦ and leaving 9♣ and 5♦+4♠ behind. An engine that captured the maximum union automatically would have taken all five, so this is the shot that shows these are Rick's rules and not generic Casino. |
+| `parlor-build-raised.png` | An opponent's build of 6 raised to 8, badge flipped to player blue as ownership transferred, and Trail disabled reading "Trail (own build)". |
+| `parlor-build-locked-vs-raisable.png` | Both build states in one frame: a player-owned LOCKED multi-build beside the AI's RAISABLE single. |
 | `parlor-pile-viewer.png` | The captured-pile viewer open, left-edge furniture stepped aside. Also the only shot showing the per-deck stats populated (Cards 15, Spades 4, Big/Little yes/no) rather than zeroed just after a deck was scored. |
 | `parlor-wide-ingame.png`, `parlor-compact-ingame.png`, `parlor-portrait-ingame.png` | The three layout profiles. |
 
