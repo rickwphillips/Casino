@@ -13,15 +13,32 @@ using UnityEngine;
 // it), so nobody has to know this step exists. Casino > Fonts > Rebuild forces it.
 public static class CasinoFontBuilder
 {
-    private const string SourceTtf = "Assets/Fonts/LibreBaskerville-Variable.ttf";
+    private const string SourceTtf = "Assets/Fonts/SourceSerif4-Variable.ttf";
     private const string OutDir = "Assets/Resources/Fonts";
     private const string OutPath = OutDir + "/CasinoSerif.asset";
 
     [InitializeOnLoadMethod]
     private static void BuildIfMissing()
     {
-        if (AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(OutPath) != null) return;
-        EditorApplication.delayCall += () => Build(false);
+        if (!NeedsBuild()) return;
+        EditorApplication.delayCall += () => Build(true);
+    }
+
+    // Existence is not enough. Deleting the .asset and swapping the source TTF
+    // did not take: Unity restored the asset from its cache, still pointing at
+    // the old face, and because a dynamic font asset keeps its baked atlas the
+    // game kept rendering the old glyphs while every file on disk said otherwise.
+    // Check what the asset is actually made of.
+    private static bool NeedsBuild()
+    {
+        var existing = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(OutPath);
+        if (existing == null) return true;
+        string source = existing.sourceFontFile != null
+            ? AssetDatabase.GetAssetPath(existing.sourceFontFile) : null;
+        if (source == SourceTtf) return false;
+        Debug.Log($"CasinoFontBuilder: rebuilding, asset was built from '{source ?? "unknown"}' " +
+                  $"but the source is now {SourceTtf}");
+        return true;
     }
 
     [MenuItem("Casino/Fonts/Rebuild TMP font asset")]
@@ -36,7 +53,7 @@ public static class CasinoFontBuilder
                              "The UI falls back to the TMP default, which is a sans.");
             return;
         }
-        if (!force && AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(OutPath) != null) return;
+        if (!force && !NeedsBuild()) return;
 
         var asset = TMP_FontAsset.CreateFontAsset(source);
         if (asset == null)

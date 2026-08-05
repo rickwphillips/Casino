@@ -196,7 +196,7 @@ public class CardUI : MonoBehaviour
         cornerText.text = $"{GetRankDisplay(card.rank)}\n<size=80%>{GetSuitEmoji(card.suit)}</size>";
     }
 
-    private string GetRankDisplay(PlayingCard.Rank rank)
+    private static string GetRankDisplay(PlayingCard.Rank rank)
     {
         return rank switch
         {
