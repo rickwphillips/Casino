@@ -16,32 +16,17 @@ public class CardUI : MonoBehaviour
     public PlayingCard Card => card;
     private bool isSelected = false;
     private bool isFaceDown = false;
-    private bool isSuggested = false;
+    private bool isSuggested = false;    // the game is advising this play
+    private bool isCapturable = false;   // the board makes this takeable
+    private bool isOpponentTaking = false; // the AI is about to take this
     private Image backImage;
+    private Image faceImage;
+    private Image shadowImage;
+    private TextMeshProUGUI cornerText;
 
-    // Procedural card back: navy field with a diagonal lattice, generated
-    // once and shared (no art assets in this project).
-    private static Sprite cardBackSprite;
-    public static Sprite CardBackSprite
-    {
-        get
-        {
-            if (cardBackSprite != null) return cardBackSprite;
-            var tex = new Texture2D(64, 96, TextureFormat.RGBA32, false);
-            var navy = new Color(0.10f, 0.16f, 0.38f);
-            var light = new Color(0.22f, 0.32f, 0.60f);
-            for (int y = 0; y < 96; y++)
-                for (int x = 0; x < 64; x++)
-                {
-                    bool stripe = ((x + y) % 12) < 3 || ((x - y + 960) % 12) < 3;
-                    tex.SetPixel(x, y, stripe ? light : navy);
-                }
-            tex.Apply();
-            cardBackSprite = Sprite.Create(tex, new Rect(0, 0, 64, 96), new Vector2(0.5f, 0.5f));
-            return cardBackSprite;
-        }
-    }
-    
+    // Procedural card back, generated once and shared (no art assets yet).
+    public static Sprite CardBackSprite => CasinoArt.CardBack();
+
     private Vector3 originalScale;
     private float animationSpeed = 0.15f;
     
@@ -69,8 +54,55 @@ public class CardUI : MonoBehaviour
         UpdateDisplay();
     }
 
+    // Cards are three layers, because one Image cannot be both a soft shadow and
+    // a state-tinted face: the shadow would take the tint. Root stays fully
+    // transparent and carries the click (UGUI raycasts the rect, not the alpha).
+    private void EnsureSurface()
+    {
+        if (cardImage == null) cardImage = GetComponent<Image>();
+        if (cardImage != null)
+        {
+            // Root is the click target only: fully transparent, no sprite. UGUI
+            // raycasts the rect rather than the alpha, so this still receives
+            // clicks. Leaving it opaque put a sharp-cornered rect under the
+            // rounded face and undid the radius.
+            cardImage.sprite = null;
+            cardImage.color = new Color(0, 0, 0, 0);
+        }
+
+        if (shadowImage == null)
+        {
+            GameObject sh = new("Shadow");
+            sh.transform.SetParent(transform, false);
+            sh.transform.SetSiblingIndex(0);
+            var r = sh.AddComponent<RectTransform>();
+            r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one;
+            r.offsetMin = new Vector2(-8, -11);   // room for the blur and the drop
+            r.offsetMax = new Vector2(8, 5);
+            shadowImage = sh.AddComponent<Image>();
+            shadowImage.sprite = CasinoArt.Shadow(6, 8, 3);
+            shadowImage.type = Image.Type.Sliced;
+            shadowImage.raycastTarget = false;
+        }
+
+        if (faceImage == null)
+        {
+            GameObject face = new("Face");
+            face.transform.SetParent(transform, false);
+            face.transform.SetSiblingIndex(1);
+            var r = face.AddComponent<RectTransform>();
+            r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one;
+            r.offsetMin = Vector2.zero; r.offsetMax = Vector2.zero;
+            faceImage = face.AddComponent<Image>();
+            faceImage.sprite = CasinoArt.RoundedFill(5);
+            faceImage.type = Image.Type.Sliced;
+            faceImage.raycastTarget = false;
+        }
+    }
+
     private void UpdateDisplay()
     {
+        EnsureSurface();
         // Ensure rankSuitText is initialized before using it
         if (rankSuitText == null)
             rankSuitText = GetComponentInChildren<TextMeshProUGUI>();
@@ -112,8 +144,11 @@ public class CardUI : MonoBehaviour
 
                 // Set color based on suit - red for Hearts/Diamonds, black for Clubs/Spades
                 rankSuitText.color = GetSuitColor(card.suit);
+                CasinoType.ApplySerif(rankSuitText);
             }
         }
+
+        UpdateCornerIndex();
 
         // Ensure button exists and set interactable state
         if (button == null)
@@ -125,7 +160,43 @@ public class CardUI : MonoBehaviour
         UpdateVisuals();
     }
 
-    private string GetRankDisplay(PlayingCard.Rank rank)
+    // Corner index. Not decoration: cards in a build overlap with only 16 units
+    // showing, so the centred glyph is hidden on every card but the top one. A
+    // build's contents are unreadable without this.
+    private void UpdateCornerIndex()
+    {
+        if (cornerText == null)
+        {
+            GameObject corner = new("Index");
+            corner.transform.SetParent(transform, false);
+            var r = corner.AddComponent<RectTransform>();
+            r.anchorMin = new Vector2(0, 1);
+            r.anchorMax = new Vector2(0, 1);
+            r.pivot = new Vector2(0, 1);
+            r.anchoredPosition = new Vector2(4, -3);
+            r.sizeDelta = new Vector2(26, 30);
+            cornerText = corner.AddComponent<TextMeshProUGUI>();
+            cornerText.raycastTarget = false;
+            cornerText.alignment = TextAlignmentOptions.TopLeft;
+            cornerText.enableWordWrapping = false;
+            cornerText.lineSpacing = -34f;   // stack the suit tight under the rank
+            CasinoType.ApplySerif(cornerText);
+        }
+
+        bool show = !isFaceDown && card != null;
+        cornerText.gameObject.SetActive(show);
+        if (!show) return;
+
+        // Scale with the card, so build minis stay legible without a second path.
+        var rect = transform as RectTransform;
+        float k = rect != null ? Mathf.Clamp(rect.rect.width / 80f, 0.6f, 1.2f) : 1f;
+        cornerText.fontSize = 15f * k;
+        cornerText.rectTransform.anchoredPosition = new Vector2(4f * k, -3f * k);
+        cornerText.color = GetSuitColor(card.suit);
+        cornerText.text = $"{GetRankDisplay(card.rank)}\n<size=80%>{GetSuitEmoji(card.suit)}</size>";
+    }
+
+    private static string GetRankDisplay(PlayingCard.Rank rank)
     {
         return rank switch
         {
@@ -162,26 +233,33 @@ public class CardUI : MonoBehaviour
     {
         return suit switch
         {
-            PlayingCard.Suit.Hearts => new Color(0.9f, 0.1f, 0.1f),      // Red
-            PlayingCard.Suit.Diamonds => new Color(0.9f, 0.1f, 0.1f),    // Red
-            PlayingCard.Suit.Clubs => Color.black,                        // Black
-            PlayingCard.Suit.Spades => Color.black,                       // Black
-            _ => Color.black
+            PlayingCard.Suit.Hearts => CasinoTheme.SuitRed,
+            PlayingCard.Suit.Diamonds => CasinoTheme.SuitRed,
+            PlayingCard.Suit.Clubs => CasinoTheme.SuitBlack,
+            PlayingCard.Suit.Spades => CasinoTheme.SuitBlack,
+            _ => CasinoTheme.SuitBlack
         };
     }
     
+    // One state, one appearance. The order matters: what the opponent is doing
+    // outranks what you picked, which outranks advice, which outranks a plain
+    // fact about the board.
     private void UpdateVisuals()
     {
-        if (cardImage == null) return;
+        EnsureSurface();
+        if (faceImage == null) return;
 
-        if (isFaceDown)
-            cardImage.color = Color.white;                   // white border, back child on top
-        else if (isSelected)
-            cardImage.color = new(0.7f, 0.9f, 1f);          // selected: blue
-        else if (isSuggested)
-            cardImage.color = new(0.7f, 1f, 0.7f);          // suggested: green
-        else
-            cardImage.color = Color.white;
+        faceImage.color =
+            isFaceDown        ? CasinoTheme.CardFace          // back child draws on top
+          : isOpponentTaking  ? CasinoTheme.CardOpponentTaking
+          : isSelected        ? CasinoTheme.CardSelected
+          : isSuggested       ? CasinoTheme.CardSuggested
+          : isCapturable      ? CasinoTheme.CardCapturable
+          : CasinoTheme.CardFace;
+
+        // Scale is the second channel, so no state is carried by hue alone.
+        float scale = isSelected ? 1.15f : isOpponentTaking ? 1.08f : 1f;
+        transform.localScale = Vector3.one * scale;
     }
 
     public void SetFaceDown(bool faceDown)
@@ -190,9 +268,30 @@ public class CardUI : MonoBehaviour
         UpdateDisplay();
     }
 
+    // Advice from the Suggest evaluator. Optional guidance, not a board fact.
     public void SetSuggested(bool suggested)
     {
         isSuggested = suggested;
+        UpdateVisuals();
+    }
+
+    // A fact about the board: this card can be taken by the current selection.
+    public void SetCapturable(bool capturable)
+    {
+        isCapturable = capturable;
+        UpdateVisuals();
+    }
+
+    // The opponent is taking this card. Must never look like your own selection.
+    public void SetOpponentTaking(bool taking)
+    {
+        isOpponentTaking = taking;
+        UpdateVisuals();
+    }
+
+    public void ClearHighlights()
+    {
+        isSuggested = isCapturable = isOpponentTaking = false;
         UpdateVisuals();
     }
     
@@ -211,8 +310,7 @@ public class CardUI : MonoBehaviour
     public void SetSelected(bool selected)
     {
         isSelected = selected;
-        UpdateVisuals();
-        transform.localScale = Vector3.one * (selected ? 1.15f : 1f);
+        UpdateVisuals();   // owns the scale too, so programmatic deselection shrinks
     }
     
     public PlayingCard GetCard()
@@ -242,6 +340,10 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Button restartButton;
     [SerializeField] private GameObject gameOverPanel;
 
+    // Built at runtime into the scene's empty GameOverPanel; see BuildGameOverContents.
+    private TextMeshProUGUI gameOverTitle, gameOverResult;
+    private GameObject modalScrim;
+
     private CardUI selectedCard = null;
     private List<CardUI> dealerCardUIs = new();
     private List<CardUI> nonDealerCardUIs = new();
@@ -265,6 +367,10 @@ public class UIManager : MonoBehaviour
     private TextMeshProUGUI aiStatsText;
     private Transform canvasTransform;
     private bool lastHumanTurn;
+
+    // Screen size the current layout was built for. Drives the resize check in
+    // Update; zero forces a pass on the first frame.
+    private Vector2Int layoutScreen;
 
     // Captured-pile viewer
     private Button humanPileButton;
@@ -366,8 +472,41 @@ public class UIManager : MonoBehaviour
         feltRect.offsetMin = Vector2.zero;
         feltRect.offsetMax = Vector2.zero;
         var feltImage = felt.AddComponent<Image>();
-        feltImage.color = new Color(0.08f, 0.29f, 0.15f);
+        feltImage.sprite = CasinoArt.Felt();
+        // White tint lets the sprite's own gradient through; the flat theme color
+        // is only a fallback for when sprite generation fails.
+        feltImage.color = feltImage.sprite != null ? Color.white : CasinoTheme.TableFelt;
         feltImage.raycastTarget = false;
+
+        // Fabric grain over the felt, tiled so it stays sharp at any screen size.
+        GameObject grain = new("TableGrain");
+        grain.transform.SetParent(canvasTransform, false);
+        grain.transform.SetSiblingIndex(1);
+        var grainRect = grain.AddComponent<RectTransform>();
+        grainRect.anchorMin = Vector2.zero;
+        grainRect.anchorMax = Vector2.one;
+        grainRect.offsetMin = grainRect.offsetMax = Vector2.zero;
+        var grainImage = grain.AddComponent<Image>();
+        grainImage.sprite = CasinoArt.FeltGrain();
+        grainImage.type = Image.Type.Tiled;
+        grainImage.color = Color.white;
+        grainImage.raycastTarget = false;
+
+        // Brass rail: the inset frame that makes the board read as a table with
+        // edges rather than a coloured window. 9-sliced so it stays a hairline.
+        GameObject rail = new("TableRail");
+        rail.transform.SetParent(canvasTransform, false);
+        rail.transform.SetSiblingIndex(1);
+        var railRect = rail.AddComponent<RectTransform>();
+        railRect.anchorMin = Vector2.zero;
+        railRect.anchorMax = Vector2.one;
+        railRect.offsetMin = new Vector2(8, 8);
+        railRect.offsetMax = new Vector2(-8, -8);
+        var railImage = rail.AddComponent<Image>();
+        railImage.sprite = CasinoArt.Rail();
+        railImage.type = Image.Type.Sliced;
+        railImage.color = Color.white;
+        railImage.raycastTarget = false;
 
         // The runtime score panel replaces the two floating score texts
         if (dealerScoreText != null) dealerScoreText.gameObject.SetActive(false);
@@ -375,7 +514,8 @@ public class UIManager : MonoBehaviour
 
         sweepButton = CreateActionButton("SweepButton", "Sweep",
             new Vector2(-16, 16), out sweepButtonLabel);
-        sweepButton.GetComponent<Image>().color = new Color(0.72f, 0.6f, 0.25f, 0.95f);
+        Surface(sweepButton.GetComponent<Image>(), 5, CasinoTheme.ButtonPrimary, CasinoTheme.ButtonPrimaryBorder);
+        sweepButtonLabel.color = CasinoTheme.ButtonPrimaryLabel;
         sweepButton.onClick.AddListener(OnSweepClicked);
 
         trailButton = CreateActionButton("TrailButton", "Trail",
@@ -399,7 +539,9 @@ public class UIManager : MonoBehaviour
         hintRect.sizeDelta = new Vector2(470, 54);
         hintText.fontSize = 15;
         hintText.alignment = TextAlignmentOptions.Center;
-        hintText.color = new Color(1f, 0.95f, 0.6f);
+        CasinoType.ApplySerif(hintText);
+        hintText.fontStyle = FontStyles.Italic;
+        hintText.color = CasinoTheme.HintText;
         hintText.text = "";
 
         versionText = CreateText("VersionText", canvasTransform);
@@ -411,7 +553,7 @@ public class UIManager : MonoBehaviour
         verRect.sizeDelta = new Vector2(120, 18);
         versionText.fontSize = 10;
         versionText.alignment = TextAlignmentOptions.BottomRight;
-        versionText.color = new Color(1f, 1f, 1f, 0.35f);
+        versionText.color = CasinoTheme.TextFaint;
         versionText.text = $"v{Application.version}";
 
         CreateScorePanel();
@@ -464,18 +606,28 @@ public class UIManager : MonoBehaviour
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         var scaler = canvas.GetComponent<CanvasScaler>();
         if (scaler == null) scaler = canvas.gameObject.AddComponent<CanvasScaler>();
+        // 9-sliced sprites divide their border by (sprite PPU / canvas reference
+        // PPU). CasinoArt builds sprites at 100 PPU, so if the canvas disagrees
+        // the borders collapse toward zero, sliced degenerates to the stretched
+        // centre, and every rounded corner renders square. That cost an afternoon.
+        scaler.referencePixelsPerUnit = 100f;
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(800, 600);
+
+        // Every number below comes from the profile, so a new screen shape is a
+        // new Profile in CasinoLayout rather than an edit here.
+        var L = CasinoLayout.Pick(Screen.width, Screen.height);
+        scaler.referenceResolution = L.Reference;
         scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-        scaler.matchWidthOrHeight = 1f; // match height: vertical layout stays put
+        scaler.matchWidthOrHeight = L.Match;
+        layoutScreen = new Vector2Int(Screen.width, Screen.height);
 
         // Reparent the four card containers directly under the canvas
         var keep = new HashSet<GameObject>();
 
-        keep.Add(ReAnchor(dealerHandContainer, new Vector2(0.5f, 1), new Vector2(0, -12), new Vector2(420, 100)));
-        keep.Add(ReAnchor(nonDealerHandContainer, new Vector2(0.5f, 0), new Vector2(0, 14), new Vector2(420, 120)));
+        keep.Add(Place(dealerHandContainer, L.OpponentHand));
+        keep.Add(Place(nonDealerHandContainer, L.PlayerHand));
         // Builds render inline in the table row; no separate builds area
-        keep.Add(ReAnchor(tableCardsContainer, new Vector2(0.5f, 0.5f), new Vector2(20, 10), new Vector2(560, 130)));
+        keep.Add(Place(tableCardsContainer, L.Table));
 
         EnsureRowLayout(dealerHandContainer);
         EnsureRowLayout(nonDealerHandContainer);
@@ -484,29 +636,43 @@ public class UIManager : MonoBehaviour
         // The scene's generic Play button is replaced by the explicit
         // Sweep / Trail / Build actions - leave it out of keep so it hides.
 
-        // Status texts: bottom-left stack (the only corner nothing else uses)
-        keep.Add(ReAnchorText(currentPlayerText, new Vector2(14, 84), 14));
-        keep.Add(ReAnchorText(deckCountText, new Vector2(14, 54), 13));
-        keep.Add(ReAnchorText(gameStatusText, new Vector2(14, 24), 13));
+        keep.Add(PlaceText(currentPlayerText, L.TurnText, 14));
+        keep.Add(PlaceText(gameStatusText, L.StatusText, 13));
+        if (deckCountText != null) deckCountText.gameObject.SetActive(false);
+
+        // Runtime-created furniture. These used to keep whatever position their
+        // constructor gave them, which is why the score panel and the action
+        // rail drifted apart on a wide canvas: nothing owned them after creation.
+        PlaceByName("ScorePanel", L.Score);
+        PlaceByName("HumanPile", L.PlayerPile);
+        PlaceByName("AIPile", L.AiPile);
+        PlaceByName("DrawPile", L.DrawPile);
+        PlaceByName("HintText", L.Hint);
+        PlaceByName("VersionText", L.Version);
+
+        string[] actions = { "SweepButton", "TrailButton", "BuildButton", "SuggestButton" };
+        for (int i = 0; i < actions.Length; i++) PlaceByName(actions[i], L.Action(i));
 
         // Game over panel: centered card
         if (gameOverPanel != null)
         {
-            keep.Add(ReAnchor(gameOverPanel.transform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(420, 230)));
+            keep.Add(Place(gameOverPanel.transform, L.GameOver));
             var img = gameOverPanel.GetComponent<Image>();
-            if (img != null) img.color = new Color(0.05f, 0.08f, 0.12f, 0.96f);
+            if (img != null) Surface(img, 8, CasinoTheme.GameOverPanel, CasinoTheme.PanelBorder);
+            BuildGameOverContents();
         }
 
         // Our runtime objects stay too
         foreach (Transform child in canvasTransform)
         {
-            if (child.name == "TableFelt" || child.name == "ScorePanel" ||
+            if (child.name == "TableFelt" || child.name == "TableGrain" || child.name == "TableRail" || child.name == "ScorePanel" ||
                 child.name == "BuildButton" || child.name == "SuggestButton" ||
                 child.name == "TrailButton" || child.name == "SweepButton" ||
                 child.name == "HintText" || child.name == "HumanPile" ||
                 child.name == "AIPile" || child.name == "CapturedPanel" ||
                 child.name == "DrawPile" || child.name == "ScoreSummary" ||
-                child.name == "MoveBanner" || child.name == "VersionText")
+                child.name == "MoveBanner" || child.name == "VersionText" ||
+                child.name == "ModalScrim")
             {
                 keep.Add(child.gameObject);
             }
@@ -577,8 +743,57 @@ public class UIManager : MonoBehaviour
         var go = ReAnchor(text.transform, new Vector2(0, 0), pos, new Vector2(170, 26));
         text.fontSize = fontSize;
         text.alignment = TextAlignmentOptions.BottomLeft;
-        text.color = new Color(1f, 1f, 1f, 0.85f);
+        text.color = CasinoTheme.TextMuted;
         return go;
+    }
+
+    // --- Profile-driven placement -----------------------------------
+    // Same job as ReAnchor, but taking a Zone so the caller never spells out
+    // coordinates. Anchor and pivot are deliberately equal: a Zone reads as
+    // "this corner, this far in, this big", which is what layout-report shows.
+
+    // Cards come from a prefab whose size is baked in, so every instantiation
+    // site has to be told the profile's size or portrait keeps desktop cards.
+    // Build minis are 0.7 of a full card, which is the 56x80-to-80x120 ratio the
+    // stack fan was originally drawn at.
+    // Give a flat Image the Parlor surface treatment: rounded, hairline brass
+    // border, colour baked into the sprite so the Image itself stays untinted.
+    private static void Surface(Image img, int radius, Color fill, Color stroke, float strokeWidth = 1f)
+    {
+        if (img == null) return;
+        img.sprite = CasinoArt.Panel(radius, fill, stroke, strokeWidth);
+        img.type = Image.Type.Sliced;
+        img.color = Color.white;
+    }
+
+    private static Vector2 CardSize(float scale = 1f) => CasinoLayout.Active.CardSize * scale;
+
+    private static void SizeCard(GameObject card, float scale = 1f)
+    {
+        var r = card != null ? card.GetComponent<RectTransform>() : null;
+        if (r != null) r.sizeDelta = CardSize(scale);
+    }
+
+    private GameObject Place(Transform t, CasinoLayout.Zone z) =>
+        ReAnchor(t, z.Anchor, z.Pos, z.Size);
+
+    private GameObject PlaceText(TextMeshProUGUI text, CasinoLayout.Zone z, float fontSize)
+    {
+        if (text == null) return null;
+        var go = Place(text.transform, z);
+        text.fontSize = fontSize;
+        text.alignment = TextAlignmentOptions.BottomLeft;
+        text.color = CasinoTheme.TextMuted;
+        return go;
+    }
+
+    // The runtime furniture is found by name rather than held in fields, because
+    // that is already how EnforceLayout decides what to keep. Missing is fine:
+    // a layout pass can run before every piece exists.
+    private void PlaceByName(string name, CasinoLayout.Zone z)
+    {
+        var child = canvasTransform.Find(name);
+        if (child != null) Place(child, z);
     }
 
     private void EnsureRowLayout(Transform container)
@@ -595,7 +810,7 @@ public class UIManager : MonoBehaviour
         if (layout == null)
             layout = container.gameObject.AddComponent<HorizontalLayoutGroup>();
         if (layout == null) return;
-        layout.spacing = 8;
+        layout.spacing = CasinoLayout.Active.RowSpacing;
         layout.childAlignment = TextAnchor.MiddleCenter;
         layout.childControlWidth = false;
         layout.childControlHeight = false;
@@ -616,7 +831,7 @@ public class UIManager : MonoBehaviour
         rect.sizeDelta = new Vector2(160, 48);
 
         var image = go.AddComponent<Image>();
-        image.color = new Color(0.18f, 0.42f, 0.3f, 0.95f);
+        Surface(image, 5, CasinoTheme.ButtonSecondary, CasinoTheme.ButtonBorder);
 
         var button = go.AddComponent<Button>();
 
@@ -629,9 +844,127 @@ public class UIManager : MonoBehaviour
         labelText.text = label;
         labelText.fontSize = 20;
         labelText.alignment = TextAlignmentOptions.Center;
-        labelText.color = Color.white;
+        labelText.color = CasinoTheme.ButtonLabel;
+        CasinoType.ApplySerif(labelText);
 
         return button;
+    }
+
+    // The scene's GameOverPanel ships as an empty box with a stock Button in it.
+    // The first full autoplay run ended on a panel that said nothing at all: no
+    // title, no winner, no final score, with the result exiled to 13pt status
+    // text in the bottom-left corner. This gives the panel the three things the
+    // end of a game has to state, and drags the stock button into the theme.
+    //
+    // Built here rather than in the scene because UIManager owns the whole layout
+    // in code; anything hand-placed in Scene.unity gets overwritten at runtime.
+    private void BuildGameOverContents()
+    {
+        var panel = gameOverPanel.transform;
+
+        if (gameOverTitle == null)
+        {
+            gameOverTitle = CreateText("Title", panel);
+            gameOverTitle.fontSize = 30;
+            gameOverTitle.fontStyle = FontStyles.Bold;
+            gameOverTitle.alignment = TextAlignmentOptions.Center;
+            gameOverTitle.color = CasinoTheme.Headline;
+            CasinoType.ApplySerif(gameOverTitle);
+            gameOverTitle.text = "Game Over";
+        }
+        Pin(gameOverTitle.rectTransform, new Vector2(0.5f, 1f), new Vector2(0, -22), new Vector2(-32, 38));
+
+        if (gameOverResult == null)
+        {
+            gameOverResult = CreateText("Result", panel);
+            gameOverResult.fontSize = 16;
+            gameOverResult.alignment = TextAlignmentOptions.Center;
+            gameOverResult.color = CasinoTheme.TextPrimary;
+            gameOverResult.richText = true;
+        }
+        Pin(gameOverResult.rectTransform, new Vector2(0.5f, 1f), new Vector2(0, -68), new Vector2(-40, 96));
+
+        // The stock button is the only surface in the game that never got a
+        // Parlor treatment; it was still default white.
+        if (restartButton != null)
+        {
+            Pin(restartButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0, 24), new Vector2(180, 44));
+            var bimg = restartButton.GetComponent<Image>();
+            if (bimg != null) Surface(bimg, 6, CasinoTheme.ButtonPrimary, CasinoTheme.ButtonPrimaryBorder);
+            var blabel = restartButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (blabel != null)
+            {
+                blabel.text = "Play again";
+                blabel.color = CasinoTheme.ButtonPrimaryLabel;
+                blabel.fontSize = 16;
+                blabel.alignment = TextAlignmentOptions.Center;
+            }
+        }
+    }
+
+    // Modals need two things, and I fixed the wrong one twice before getting here.
+    //
+    // Sibling order is the first: paint order on a canvas is sibling order, and
+    // both modals are created long before the cards and animation ghosts that
+    // have to sit behind them, so they must re-raise whenever anything new is
+    // parented to the canvas.
+    //
+    // Opacity is the second, and it was the actual cause of cards appearing
+    // "over" the summary. The panel is 0.97 alpha, and a white card under a
+    // near-opaque dark panel still reads as a grey card-shaped smudge. Sorting
+    // was never going to fix something that was already behind. A scrim covers
+    // the board outright, and blocks clicks to a board that must not accept them
+    // while a modal is up.
+    private void RaiseModals()
+    {
+        bool open = (summaryPanel != null && summaryPanel.activeSelf)
+                 || (gameOverPanel != null && gameOverPanel.activeSelf);
+
+        EnsureScrim();
+        modalScrim.SetActive(open);
+        if (!open) return;
+
+        // Scrim first, then the panels, so the panels land above it.
+        modalScrim.transform.SetAsLastSibling();
+        if (summaryPanel != null && summaryPanel.activeSelf)
+            summaryPanel.transform.SetAsLastSibling();
+        if (gameOverPanel != null && gameOverPanel.activeSelf)
+            gameOverPanel.transform.SetAsLastSibling();
+    }
+
+    private void EnsureScrim()
+    {
+        if (modalScrim != null) return;
+
+        modalScrim = new GameObject("ModalScrim");
+        modalScrim.transform.SetParent(canvasTransform, false);
+        var r = modalScrim.AddComponent<RectTransform>();
+        r.anchorMin = Vector2.zero;
+        r.anchorMax = Vector2.one;
+        r.offsetMin = r.offsetMax = Vector2.zero;
+
+        var img = modalScrim.AddComponent<Image>();
+        img.color = CasinoTheme.ModalScrim;
+        img.raycastTarget = true;      // swallow clicks aimed at the board behind
+        modalScrim.SetActive(false);
+    }
+
+    // anchor == pivot, so the offset reads as "this far in from that edge",
+    // matching how CasinoLayout.Zone describes everything else.
+    private static void Pin(RectTransform r, Vector2 anchor, Vector2 pos, Vector2 size)
+    {
+        if (r == null) return;
+        r.anchorMin = r.anchorMax = r.pivot = anchor;
+        // A stretched width is expressed as a negative sizeDelta, which only
+        // works when the anchors are separated; keep those cases stretched.
+        if (size.x < 0)
+        {
+            r.anchorMin = new Vector2(0, anchor.y);
+            r.anchorMax = new Vector2(1, anchor.y);
+            r.pivot = new Vector2(0.5f, anchor.y);
+        }
+        r.anchoredPosition = pos;
+        r.sizeDelta = size;
     }
 
     private TextMeshProUGUI CreateText(string name, Transform parent)
@@ -660,7 +993,7 @@ public class UIManager : MonoBehaviour
         rect.anchoredPosition = new Vector2(10, 20);
         rect.sizeDelta = new Vector2(180, 500);
         var bg = capturedPanel.AddComponent<Image>();
-        bg.color = new Color(0.04f, 0.06f, 0.09f, 0.96f);
+        Surface(bg, 8, CasinoTheme.PileViewerPanel, CasinoTheme.PanelBorder);
 
         capturedTitle = CreateText("Title", capturedPanel.transform);
         var tr = capturedTitle.rectTransform;
@@ -671,7 +1004,7 @@ public class UIManager : MonoBehaviour
         capturedTitle.fontSize = 16;
         capturedTitle.fontStyle = FontStyles.Bold;
         capturedTitle.alignment = TextAlignmentOptions.Center;
-        capturedTitle.color = Color.white;
+        capturedTitle.color = CasinoTheme.TextPrimary;
 
         GameObject grid = new("Grid");
         grid.transform.SetParent(capturedPanel.transform, false);
@@ -709,7 +1042,7 @@ public class UIManager : MonoBehaviour
         lr.sizeDelta = new Vector2(96, 22);
         drawPileLabel.fontSize = 13;
         drawPileLabel.alignment = TextAlignmentOptions.Center;
-        drawPileLabel.color = new Color(1f, 1f, 1f, 0.85f);
+        drawPileLabel.color = CasinoTheme.TextMuted;
     }
 
     private void UpdateDrawPile(int remaining)
@@ -779,7 +1112,7 @@ public class UIManager : MonoBehaviour
         rect.anchoredPosition = pos;
         rect.sizeDelta = new Vector2(250, 36);
         var img = go.AddComponent<Image>();
-        img.color = new Color(0.12f, 0.16f, 0.22f, 0.92f);
+        Surface(img, 4, CasinoTheme.PileButton, CasinoTheme.PileBorder);
         var btn = go.AddComponent<Button>();
 
         label = CreateText("Label", go.transform);
@@ -788,9 +1121,9 @@ public class UIManager : MonoBehaviour
         lr.anchorMax = Vector2.one;
         lr.offsetMin = new Vector2(8, 0);
         lr.offsetMax = new Vector2(-8, 0);
-        label.fontSize = 14;
+        label.fontSize = 13;
         label.alignment = TextAlignmentOptions.Left;
-        label.color = Color.white;
+        label.color = CasinoTheme.TextPrimary;
         return btn;
     }
 
@@ -849,6 +1182,19 @@ public class UIManager : MonoBehaviour
     private TextMeshProUGUI summaryTitle;
     private System.Action summaryContinue;
 
+    public bool IsSummaryOpen => summaryPanel != null && summaryPanel.activeSelf;
+
+    // What the Continue button does. Split out so automation can advance a round
+    // without synthesising a click.
+    public void ContinueSummary()
+    {
+        if (summaryPanel != null) summaryPanel.SetActive(false);
+        RaiseModals();   // drops the scrim once nothing is open
+        var action = summaryContinue;
+        summaryContinue = null;
+        action?.Invoke();
+    }
+
     public void ShowRoundSummary(GamePlayer dealer, GamePlayer nonDealer,
         Dictionary<string, int> dealerRound, Dictionary<string, int> nonDealerRound,
         System.Action onContinue)
@@ -867,6 +1213,12 @@ public class UIManager : MonoBehaviour
 
         summaryContinue = onContinue;
         summaryPanel.SetActive(true);
+
+        // The prompt is wider than the panel, so it stuck out either side of an
+        // open summary reading "Your turn. Select a card, t...nd Build."
+        if (hintText != null) hintText.text = "";
+
+        RaiseModals();
     }
 
     private string SummaryColumn(string label, GamePlayer p, Dictionary<string, int> round)
@@ -887,7 +1239,7 @@ public class UIManager : MonoBehaviour
         rect.anchoredPosition = Vector2.zero;
         rect.sizeDelta = new Vector2(520, 380);
         var bg = summaryPanel.AddComponent<Image>();
-        bg.color = new Color(0.04f, 0.06f, 0.09f, 0.97f);
+        Surface(bg, 8, CasinoTheme.RoundSummaryPanel, CasinoTheme.PanelBorder);
 
         summaryTitle = CreateText("Title", summaryPanel.transform);
         var tr = summaryTitle.rectTransform;
@@ -898,7 +1250,8 @@ public class UIManager : MonoBehaviour
         summaryTitle.fontSize = 18;
         summaryTitle.fontStyle = FontStyles.Bold;
         summaryTitle.alignment = TextAlignmentOptions.Center;
-        summaryTitle.color = new Color(1f, 0.9f, 0.5f);
+        CasinoType.ApplySerif(summaryTitle);
+        summaryTitle.color = CasinoTheme.Headline;
 
         summaryLeft = CreateText("Left", summaryPanel.transform);
         var lr = summaryLeft.rectTransform;
@@ -907,7 +1260,7 @@ public class UIManager : MonoBehaviour
         lr.offsetMin = lr.offsetMax = Vector2.zero;
         summaryLeft.fontSize = 15;
         summaryLeft.alignment = TextAlignmentOptions.TopLeft;
-        summaryLeft.color = new Color(0.75f, 1f, 0.8f);
+        summaryLeft.color = CasinoTheme.PlayerAccent;
 
         summaryRight = CreateText("Right", summaryPanel.transform);
         var rr = summaryRight.rectTransform;
@@ -916,7 +1269,7 @@ public class UIManager : MonoBehaviour
         rr.offsetMin = rr.offsetMax = Vector2.zero;
         summaryRight.fontSize = 15;
         summaryRight.alignment = TextAlignmentOptions.TopLeft;
-        summaryRight.color = new Color(1f, 0.8f, 0.75f);
+        summaryRight.color = CasinoTheme.OpponentAccent;
 
         // Continue button
         GameObject go = new("Continue");
@@ -928,15 +1281,9 @@ public class UIManager : MonoBehaviour
         br.anchoredPosition = new Vector2(0, 14);
         br.sizeDelta = new Vector2(190, 46);
         var img = go.AddComponent<Image>();
-        img.color = new Color(0.72f, 0.6f, 0.25f, 0.95f);
+        Surface(img, 5, CasinoTheme.ButtonPrimary, CasinoTheme.ButtonPrimaryBorder);
         var btn = go.AddComponent<Button>();
-        btn.onClick.AddListener(() =>
-        {
-            summaryPanel.SetActive(false);
-            var action = summaryContinue;
-            summaryContinue = null;
-            action?.Invoke();
-        });
+        btn.onClick.AddListener(ContinueSummary);
 
         var label = CreateText("Label", go.transform);
         var lbr = label.rectTransform;
@@ -946,7 +1293,7 @@ public class UIManager : MonoBehaviour
         label.text = "Continue";
         label.fontSize = 20;
         label.alignment = TextAlignmentOptions.Center;
-        label.color = Color.white;
+        label.color = CasinoTheme.ButtonLabel;
 
         summaryPanel.SetActive(false);
     }
@@ -987,11 +1334,17 @@ public class UIManager : MonoBehaviour
         ghost.name = "Ghost";
         var rect = ghost.GetComponent<RectTransform>();
         rect.position = startWorld;
-        rect.sizeDelta = new Vector2(80, 120);
+        rect.sizeDelta = CardSize();
 
         var ui = ghost.GetComponent<CardUI>() ?? ghost.AddComponent<CardUI>();
         ui.Initialize(card, false);
         ui.SetFaceDown(faceDown);
+
+        // A ghost parents to the canvas, so it lands as the last sibling and
+        // paints over everything, including an open modal. Raising the modal when
+        // it opens is not enough: deal and trail animations keep firing while the
+        // summary is up, so each new ghost jumps back above it. Re-raise instead.
+        RaiseModals();
 
         var group = ghost.AddComponent<CanvasGroup>();
         group.blocksRaycasts = false;
@@ -1016,6 +1369,12 @@ public class UIManager : MonoBehaviour
         if (ghost != null) Destroy(ghost.gameObject);
     }
 
+    // Six rows at 12.5pt plus the side header. The score panel must be at least
+    // 38 + 2*this + 8 tall, which is why every Profile's Score zone is >= 246.
+    // Seven lines now, not six: a "THIS DECK" scope label sits between the
+    // cumulative score and the per-deck capture counts.
+    private const float StatBlockHeight = 112f;
+
     private void CreateScorePanel()
     {
         GameObject panel = new("ScorePanel");
@@ -1028,39 +1387,57 @@ public class UIManager : MonoBehaviour
         rect.sizeDelta = new Vector2(250, 240);
 
         var bg = panel.AddComponent<Image>();
-        bg.color = new Color(0.05f, 0.07f, 0.1f, 0.92f);
+        Surface(bg, 6, CasinoTheme.ScorePanel, CasinoTheme.PanelBorder);
         bg.raycastTarget = false;
 
         scoreHeaderText = CreateText("Header", panel.transform);
         var hr = scoreHeaderText.rectTransform;
-        hr.anchorMin = new Vector2(0, 0.85f);
-        hr.anchorMax = Vector2.one;
-        hr.offsetMin = new Vector2(8, 0);
-        hr.offsetMax = new Vector2(-8, -4);
+        hr.anchorMin = new Vector2(0, 1);
+        hr.anchorMax = new Vector2(1, 1);
+        hr.pivot = new Vector2(0.5f, 1);
+        hr.anchoredPosition = new Vector2(0, -4);
+        hr.sizeDelta = new Vector2(-16, 26);
         scoreHeaderText.fontSize = 17;
         scoreHeaderText.fontStyle = FontStyles.Bold;
         scoreHeaderText.alignment = TextAlignmentOptions.Center;
-        scoreHeaderText.color = Color.white;
+        CasinoType.ApplySerif(scoreHeaderText);
+        scoreHeaderText.color = CasinoTheme.Headline;
+
+        // Hairline rule under the title, as in the mockup: it separates the
+        // heading from the two stat blocks without needing a second panel.
+        GameObject rule = new("Rule");
+        rule.transform.SetParent(panel.transform, false);
+        var rr = rule.AddComponent<RectTransform>();
+        rr.anchorMin = new Vector2(0, 1);
+        rr.anchorMax = new Vector2(1, 1);
+        rr.pivot = new Vector2(0.5f, 1);
+        rr.anchoredPosition = new Vector2(0, -32);
+        rr.sizeDelta = new Vector2(-24, 1);
+        var ruleImg = rule.AddComponent<Image>();
+        ruleImg.color = CasinoTheme.Divider;
+        ruleImg.raycastTarget = false;
 
         humanStatsText = CreateText("HumanStats", panel.transform);
         var hu = humanStatsText.rectTransform;
-        hu.anchorMin = new Vector2(0, 0.44f);
-        hu.anchorMax = new Vector2(1, 0.85f);
-        hu.offsetMin = new Vector2(10, 0);
-        hu.offsetMax = new Vector2(-10, 0);
-        humanStatsText.fontSize = 14;
+        hu.anchorMin = new Vector2(0, 1);
+        hu.anchorMax = new Vector2(1, 1);
+        hu.pivot = new Vector2(0.5f, 1);
+        hu.anchoredPosition = new Vector2(0, -38);
+        hu.sizeDelta = new Vector2(-20, StatBlockHeight);
+        humanStatsText.fontSize = 12.5f;
         humanStatsText.alignment = TextAlignmentOptions.TopLeft;
-        humanStatsText.color = new Color(0.75f, 1f, 0.8f);
+        humanStatsText.color = CasinoTheme.TextMuted;
 
         aiStatsText = CreateText("AIStats", panel.transform);
         var ai = aiStatsText.rectTransform;
-        ai.anchorMin = new Vector2(0, 0.03f);
-        ai.anchorMax = new Vector2(1, 0.44f);
-        ai.offsetMin = new Vector2(10, 0);
-        ai.offsetMax = new Vector2(-10, 0);
-        aiStatsText.fontSize = 14;
+        ai.anchorMin = new Vector2(0, 1);
+        ai.anchorMax = new Vector2(1, 1);
+        ai.pivot = new Vector2(0.5f, 1);
+        ai.anchoredPosition = new Vector2(0, -(38 + StatBlockHeight + 8));
+        ai.sizeDelta = new Vector2(-20, StatBlockHeight);
+        aiStatsText.fontSize = 12.5f;
         aiStatsText.alignment = TextAlignmentOptions.TopLeft;
-        aiStatsText.color = new Color(1f, 0.8f, 0.75f);
+        aiStatsText.color = CasinoTheme.TextMuted;
     }
     
     private System.Collections.IEnumerator WaitAndRefresh()
@@ -1072,6 +1449,17 @@ public class UIManager : MonoBehaviour
     
     private void Update()
     {
+        // A window resize can cross a breakpoint, which changes the whole
+        // arrangement, not just its scale. Re-run the layout when the screen
+        // actually changes size; comparing two ints per frame is free, and
+        // EnforceLayout is not cheap enough to run unconditionally.
+        if (canvasTransform != null &&
+            (Screen.width != layoutScreen.x || Screen.height != layoutScreen.y))
+        {
+            try { EnforceLayout(); }
+            catch (System.Exception e) { Debug.LogError($"EnforceLayout on resize failed: {e}"); }
+        }
+
         // Refresh UI every frame to show current state
         if (GameManager.Instance != null && GameManager.Instance.GetCurrentPlayer() != null)
         {
@@ -1085,12 +1473,31 @@ public class UIManager : MonoBehaviour
                 UpdatePlayerHands();
                 UpdateTableCards();
                 UpdateActionButtons();
-                if (humanTurn && hintText != null)
+                // Not once the game is over: the seat is still nominally the
+                // human's, so without this the "Your turn" prompt sits under the
+                // game-over panel inviting a move that cannot be made.
+                if (humanTurn && hintText != null &&
+                    GameManager.Instance.GetCurrentPhase() != GameManager.GamePhase.GameOver)
                     hintText.text = "Your turn. Select a card, then Play, or add table cards and Build.";
             }
         }
     }
     
+    // Design-verification hook for CasinoStatePreview. Puts one card in each of
+    // the four states side by side so they can be compared directly; an ordinary
+    // board never shows more than one or two at once. Presentational only.
+    public void ApplyStatePreview()
+    {
+        var hand = nonDealerCardUIs;   // human is non-dealer, bottom row
+        if (hand == null || hand.Count < 4) return;
+        hand[0].SetCapturable(true);
+        hand[1].SetSuggested(true);
+        hand[2].SetOpponentTaking(true);
+        hand[3].SetSelected(true);
+        if (hintText != null)
+            hintText.text = "State preview:  capturable / suggested / opponent taking / selected";
+    }
+
     public void RefreshUI()
     {
         UpdatePlayerHands();
@@ -1158,7 +1565,7 @@ public class UIManager : MonoBehaviour
         for (int i = 0; i < player.Hand.Count; i++)
         {
             GameObject cardObj = Instantiate(cardPrefab, container);
-            Debug.Log("Created card object " + i);
+            SizeCard(cardObj);
 
             // Get existing CardUI component or add one if it doesn't exist
             CardUI cardUI = cardObj.GetComponent<CardUI>();
@@ -1200,6 +1607,7 @@ public class UIManager : MonoBehaviour
             for (int i = 0; i < tableCards.Count; i++)
             {
                 GameObject cardObj = Instantiate(cardPrefab, tableCardsContainer);
+                SizeCard(cardObj);
 
                 // Get existing CardUI component or add one if it doesn't exist
                 CardUI cardUI = cardObj.GetComponent<CardUI>();
@@ -1260,13 +1668,14 @@ public class UIManager : MonoBehaviour
 
         // Clickable so single-group builds can be selected for raising
         var hitArea = root.AddComponent<Image>();
-        hitArea.color = new Color(0, 0, 0, 0.01f);
+        hitArea.color = CasinoTheme.InvisibleHitArea;
         var rootButton = root.AddComponent<Button>();
         rootButton.transition = Selectable.Transition.None;
         rootButton.onClick.AddListener(() => OnBuildStackClicked(build, root));
         int n = build.Cards.Count;
-        const float step = 16f;
-        rect.sizeDelta = new Vector2(56 + (n - 1) * step, 92);
+        Vector2 miniSize = CardSize(0.7f);
+        float step = miniSize.x * (16f / 56f);   // same overlap ratio the fan was drawn at
+        rect.sizeDelta = new Vector2(miniSize.x + (n - 1) * step, miniSize.y + 26f);
 
         for (int i = 0; i < n; i++)
         {
@@ -1282,9 +1691,9 @@ public class UIManager : MonoBehaviour
 
             var r = mini.GetComponent<RectTransform>();
             r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
-            r.sizeDelta = new Vector2(56, 80);
+            r.sizeDelta = miniSize;
             r.anchoredPosition = new Vector2(
-                -(rect.sizeDelta.x - 56) / 2f + i * step, (i % 2) * -3f);
+                -(rect.sizeDelta.x - miniSize.x) / 2f + i * step, (i % 2) * -3f);
             r.localRotation = Quaternion.Euler(0, 0, (i - (n - 1) / 2f) * -2f);
         }
 
@@ -1298,8 +1707,12 @@ public class UIManager : MonoBehaviour
         br.anchoredPosition = new Vector2(8, 8);
         br.sizeDelta = new Vector2(30, 30);
         var bi = badge.AddComponent<Image>();
-        bi.color = mine ? new Color(0.2f, 0.45f, 0.85f, 0.95f)
-                        : new Color(0.75f, 0.25f, 0.2f, 0.95f);
+        // RoundedFill is white, so Image.color still carries the owner colour.
+        // Radius half the badge size makes it a disc, as drawn.
+        bi.sprite = CasinoArt.RoundedFill(15);
+        bi.type = Image.Type.Sliced;
+        bi.color = mine ? CasinoTheme.BuildOwnedByPlayer
+                        : CasinoTheme.BuildOwnedByOpponent;
         bi.raycastTarget = false;
 
         var badgeText = CreateText("Value", badge.transform);
@@ -1310,12 +1723,40 @@ public class UIManager : MonoBehaviour
         badgeText.fontSize = 16;
         badgeText.fontStyle = FontStyles.Bold;
         badgeText.alignment = TextAlignmentOptions.Center;
-        badgeText.color = Color.white;
+        badgeText.color = CasinoTheme.BuildBadgeLabel;
         badgeText.raycastTarget = false;
         badgeText.text = build.DeclaredValue switch
         {
             11 => "J", 12 => "Q", 13 => "K", _ => build.DeclaredValue.ToString()
         };
+
+        // A single build is malleable: raisable, and stealable by the opponent.
+        // A multi-build is locked and can only be taken whole. Without this they
+        // render identically and the rule is invisible on the board.
+        GameObject tag = new("Lock");
+        tag.transform.SetParent(root.transform, false);
+        var tr = tag.AddComponent<RectTransform>();
+        tr.anchorMin = tr.anchorMax = new Vector2(0.5f, 0);
+        tr.pivot = new Vector2(0.5f, 0);
+        tr.anchoredPosition = new Vector2(0, -3);
+        tr.sizeDelta = new Vector2(62, 15);
+        var ti = tag.AddComponent<Image>();
+        Surface(ti, 3,
+            build.IsMultiBuild ? CasinoTheme.BuildTagLocked : CasinoTheme.BuildTagRaisable,
+            CasinoTheme.PileBorder);
+        ti.raycastTarget = false;
+
+        var tagText = CreateText("Text", tag.transform);
+        var ttr = tagText.rectTransform;
+        ttr.anchorMin = Vector2.zero;
+        ttr.anchorMax = Vector2.one;
+        ttr.offsetMin = ttr.offsetMax = Vector2.zero;
+        tagText.fontSize = 9;
+        tagText.characterSpacing = 6f;
+        tagText.alignment = TextAlignmentOptions.Center;
+        tagText.color = CasinoTheme.BuildTagLabel;
+        tagText.raycastTarget = false;
+        tagText.text = build.IsMultiBuild ? "LOCKED" : "RAISABLE";
 
         return root;
     }
@@ -1347,25 +1788,29 @@ public class UIManager : MonoBehaviour
             if (phase == GameManager.GamePhase.GameOver)
             {
                 GamePlayer winner = dealer.Score > nonDealer.Score ? dealer : nonDealer;
-                gameStatusText.text = $"Game Over!\n{winner.Name} Wins!";
+
+                // The panel now states the result in full, so repeating it in the
+                // corner just says the same thing twice, and said it in seat names
+                // ("Non-Dealer Wins!") while the panel said "You win".
+                gameStatusText.text = "";
                 playCardButton.interactable = false;
+                ShowGameOverResult(dealer, nonDealer, winner);
+                if (hintText != null) hintText.text = "";
                 if (gameOverPanel != null && !gameOverPanel.activeSelf)
                 {
                     gameOverPanel.SetActive(true);
+                    RaiseModals();
                     Debug.Log("Game Over - showing GameOverPanel");
-
-                    // Verify restart button state when panel is shown
-                    if (restartButton != null)
-                    {
-                        Debug.Log($"Restart button state: interactable={restartButton.interactable}, enabled={restartButton.enabled}, gameObject.active={restartButton.gameObject.activeInHierarchy}");
-                    }
                 }
             }
             else
             {
                 gameStatusText.text = "Playing...";
-                if (gameOverPanel != null)
+                if (gameOverPanel != null && gameOverPanel.activeSelf)
+                {
                     gameOverPanel.SetActive(false);
+                    RaiseModals();
+                }
             }
         }
 
@@ -1386,11 +1831,39 @@ public class UIManager : MonoBehaviour
 
         if (humanPileLabel != null)
         {
-            humanPileLabel.text = $"Your pile: {human.CapturedCards.Count} cards  (view)";
-            aiPileLabel.text = $"AI pile: {ai.CapturedCards.Count} cards  (view)";
+            humanPileLabel.text = $"Your pile  {human.CapturedCards.Count}";
+            aiPileLabel.text = $"AI pile  {ai.CapturedCards.Count}";
         }
         if (capturedPanel != null && capturedPanel.activeSelf)
             RebuildPilePanel();
+    }
+
+    // Who won, by how much, and against what target.
+    //
+    // The target is stated because a final score routinely overshoots it: a deck
+    // pays out all its points at once (11 under Rick's New England), so crossing
+    // 11 usually lands well above it. Do not try to explain the overshoot here.
+    // An earlier version blamed it on a tied deck, which sounded plausible and
+    // was simply false: the final state cannot distinguish a tie-extended game
+    // from an ordinary one, and the first game it rendered on (13 to 9, two
+    // decks, no tie) it was wrong.
+    private void ShowGameOverResult(GamePlayer dealer, GamePlayer nonDealer, GamePlayer winner)
+    {
+        if (gameOverResult == null) return;
+
+        GamePlayer human = dealer.IsHuman() ? dealer : nonDealer;
+        GamePlayer ai = dealer.IsHuman() ? nonDealer : dealer;
+        int target = ScoringManager.Instance != null ? ScoringManager.Instance.WinScore : 0;
+
+        string you = ColorUtility.ToHtmlStringRGB(CasinoTheme.PlayerAccent);
+        string them = ColorUtility.ToHtmlStringRGB(CasinoTheme.OpponentAccent);
+        string headline = winner.IsHuman() ? "You win" : "The AI wins";
+
+        gameOverTitle.text = headline;
+        gameOverResult.text =
+            $"<size=120%><color=#{you}>You {human.Score}</color>"
+          + $"   <color=#{them}>AI {ai.Score}</color></size>"
+          + $"\n\n<size=88%>First to {target}</size>";
     }
 
     private string PlayerStats(GamePlayer p, string label)
@@ -1402,10 +1875,32 @@ public class UIManager : MonoBehaviour
         bool big = captured.Any(c => c.suit == sm.BigCasinoSuit && c.rank == sm.BigCasinoRank);
         bool little = captured.Any(c => c.suit == sm.LittleCasinoSuit && c.rank == sm.LittleCasinoRank);
 
-        return $"{label} ({p.Name})  Score: {p.Score}\n" +
-               $"Cards: {captured.Count}   Spades: {spades}\n" +
-               $"Aces: {aces}   10♦: {(big ? "yes" : "no")}   2♠: {(little ? "yes" : "no")}\n" +
-               $"Sweeps: {p.SweepCount}";
+        // Label left, value right, as in the mockup: a score panel is scanned
+        // for one number, not read as prose. <pos> gives a value column without
+        // needing a row object per stat.
+        string accent = ColorUtility.ToHtmlStringRGB(
+            label == "You" ? CasinoTheme.PlayerAccent : CasinoTheme.OpponentAccent);
+        // The value column is a percentage of the panel, and the panel is a
+        // 272-wide rail in landscape but a 700-wide bar in portrait, where 68%
+        // stranded every number half a screen from its label. Track the shape.
+        int valueColumn = CasinoLayout.Active.Name == "Portrait" ? 30 : 68;
+        string Row(string k, string v) => $"\n{k}<pos={valueColumn}%><b>{v}</b>";
+
+        // Score is cumulative across decks; everything under it is emptied when a
+        // deck is scored, because it counts p.CapturedCards. Without a scope label
+        // the panel reads as a career total that has somehow reset: the first full
+        // game ended showing Cards 0 / Spades 0 / Aces 0 beside a score of 13.
+        string faint = ColorUtility.ToHtmlStringRGB(CasinoTheme.TextMuted);
+        string scope = $"\n<size=76%><color=#{faint}><cspace=0.08em>THIS DECK</cspace></color></size>";
+
+        return $"<color=#{accent}><cspace=0.1em><size=84%>{label.ToUpper()} \u00B7 {p.Name.ToUpper()}</size></cspace></color>"
+             + Row("Score", p.Score.ToString())
+             + scope
+             + Row("Cards", captured.Count.ToString())
+             + Row("Spades", spades.ToString())
+             + Row("Aces", aces.ToString())
+             + Row("Big / Little", $"{(big ? "yes" : "no")} / {(little ? "yes" : "no")}")
+             + Row("Sweeps", p.SweepCount.ToString());
     }
     
     public void OnCardSelected(CardUI cardUI, PlayingCard card)
@@ -1471,7 +1966,7 @@ public class UIManager : MonoBehaviour
             if (ui == null) continue;
             bool canTake = anySelection && CaptureChecker.IsExactCaptureSetWithBuilds(
                 ui.Card, player, chosen, selectedBuilds.ToList());
-            ui.SetSuggested(canTake);
+            ui.SetCapturable(canTake);
             if (canTake) takers++;
         }
 
@@ -1543,9 +2038,9 @@ public class UIManager : MonoBehaviour
 
     private void ClearSuggestionHighlights()
     {
-        foreach (var ui in dealerCardUIs) if (ui != null) ui.SetSuggested(false);
-        foreach (var ui in nonDealerCardUIs) if (ui != null) ui.SetSuggested(false);
-        foreach (var ui in tableCardUIs) if (ui != null) ui.SetSuggested(false);
+        foreach (var ui in dealerCardUIs) if (ui != null) ui.ClearHighlights();
+        foreach (var ui in nonDealerCardUIs) if (ui != null) ui.ClearHighlights();
+        foreach (var ui in tableCardUIs) if (ui != null) ui.ClearHighlights();
     }
 
     private void UpdateActionButtons()
@@ -1832,7 +2327,8 @@ public class UIManager : MonoBehaviour
             moveBanner.fontSize = 21;
             moveBanner.fontStyle = FontStyles.Bold;
             moveBanner.alignment = TextAlignmentOptions.Center;
-            moveBanner.color = new Color(1f, 0.9f, 0.5f);
+            moveBanner.color = CasinoTheme.Headline;
+            CasinoType.ApplySerif(moveBanner);
         }
         moveBanner.text = text;
         moveBanner.alpha = 1f;
@@ -2008,7 +2504,7 @@ public class UIManager : MonoBehaviour
             var matchingCardUI = tableCardUIs.FirstOrDefault(ui => ui.Card == cardToHighlight);
             if (matchingCardUI != null)
             {
-                matchingCardUI.SetSelected(true);
+                matchingCardUI.SetOpponentTaking(true);
                 highlightedCardUIs.Add(matchingCardUI);
             }
         }
@@ -2020,55 +2516,24 @@ public class UIManager : MonoBehaviour
         foreach (var cardUI in highlightedCardUIs)
         {
             if (cardUI != null && cardUI.gameObject != null)
-                cardUI.SetSelected(false);
+                cardUI.SetOpponentTaking(false);
         }
-    }
-
-    /// <summary>
-    /// Public test method to manually trigger restart from Inspector or debug
-    /// </summary>
-    [ContextMenu("Test Restart Button")]
-    public void TestRestartButton()
-    {
-        Debug.Log("TestRestartButton called manually!");
-        OnRestartClicked();
     }
 
     private void OnRestartClicked()
     {
-        Debug.Log("════════════════════════════════════════");
-        Debug.Log("OnRestartClicked CALLED!");
-        Debug.Log("════════════════════════════════════════");
-
         if (gameOverPanel != null)
-        {
-            Debug.Log($"Hiding game over panel (was active: {gameOverPanel.activeSelf})");
             gameOverPanel.SetActive(false);
-        }
-        else
-        {
-            Debug.LogWarning("gameOverPanel is null!");
-        }
+        RaiseModals();
 
         if (GameManager.Instance != null)
-        {
-            Debug.Log("Calling GameManager.Instance.InitializeGame()");
             GameManager.Instance.InitializeGame();
-        }
         else
-        {
-            Debug.LogError("GameManager.Instance is null!");
-        }
+            Debug.LogError("Restart failed: GameManager.Instance is null");
 
         if (playCardButton != null)
-        {
             playCardButton.interactable = true;
-            Debug.Log("Play card button set to interactable");
-        }
 
         RefreshUI();
-        Debug.Log("════════════════════════════════════════");
-        Debug.Log("OnRestartClicked COMPLETE!");
-        Debug.Log("════════════════════════════════════════");
     }
 }

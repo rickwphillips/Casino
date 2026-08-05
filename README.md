@@ -1,215 +1,127 @@
-# Casino Card Game
+# Casino
 
-A Unity implementation of the classic Casino card game with AI opponents and configurable scoring variants.
+A Unity implementation of Casino, the fishing card game — one human player against an
+AI opponent, with configurable scoring variants.
 
-## Game Overview
+The rules below are **Rick's family rules**, which is what the engine actually implements.
+They differ from the generic Casino rules you'll find elsewhere, most notably in that
+captures are *chosen* rather than automatic.
 
-Casino is a fishing-style card game for two players where you capture cards from the table by matching or combining them with cards from your hand. Points are scored for capturing specific cards and meeting certain criteria.
+## The game
 
-## How to Play
+A standard 52-card deck. One player is the **Dealer**, the other the **Non-Dealer**;
+in the shipped 1-player setup you are the Non-Dealer and the AI deals.
 
-### Setup
-- The game uses a standard 52-card deck
-- One player is designated as the **Dealer**, the other as the **Non-Dealer**
-- Each player is dealt 4 cards
-- 4 cards are dealt face-up to the table
-- The Non-Dealer plays first
+Each deck is dealt 4 cards to you, 4 to the AI, and 4 face-up to the table. The
+Non-Dealer plays first. When both hands are empty another 4 and 4 are dealt — no further
+cards are added to the table — until the deck runs out.
 
-### Game Flow
+### Three plays per turn
 
-#### Playing a Card
-On your turn, you must play one card from your hand, choosing one of:
+On your turn you play exactly one card from your hand as a **Sweep**, a **Trail**,
+or a **Build**.
 
-1. **Capture**: Take everything your card can capture from the table (plus your played card) into your captured pile
-2. **Trail**: Place the card on the table instead - allowed even when captures are available, unless you own a build
-3. **Build**: Combine your card with table cards into a build (see below)
+**Sweep** — capture from the table. A played card *can* take every table card of matching
+rank plus every set of cards summing to its value, all at once. It does not have to:
+**you choose which cards and sets to take**, and a partial capture is legal. Play a 9 into
+a table holding `9 ♣, 5 ♦, 4 ♠, 6 ♥, 3 ♦` and you may take the lone 9, or the 5+4, or the
+6+3, or any combination of them, or all three groups together.
 
-#### Making Captures
+Aces count 1, number cards their face value. Face cards capture only their own rank —
+a Jack takes Jacks and nothing else.
 
-**Face Cards (Jack, Queen, King)**
-- Face cards can only capture matching face cards
-- Example: A Jack can only capture other Jacks from the table
+**Trail** — lay the card on the table. Always available *except* when you own a build:
+a build owner must sweep or build.
 
-**Numbered Cards & Aces**
-- Aces are worth 1
-- Number cards (2-10) are worth their face value
-- You can capture cards in two ways:
-  - **Direct Match**: Capture cards with the same rank (e.g., a 5 captures another 5)
-  - **Combination**: Capture multiple cards that sum to your card's value (e.g., a 5 captures a 2 and a 3)
+**Build** — combine your card with table cards and declare a value. Numeric builds run
+1–10; face cards may build only with matching ranks (J=11, Q=12, K=13 for capture matching).
+You must be holding a card that captures the declared value, and you must **keep** holding
+one — the engine rejects any play that would leave one of your builds uncapturable.
 
-**Important Notes**:
-- A played card captures ALL matching-rank cards AND ALL sets of cards summing to its value, simultaneously (e.g. a 6 takes a 6, and a 5+A, all in one play)
-- The game computes the largest possible capture automatically
+### Builds in detail
 
-#### Advanced: Building
-**Builds** allow you to set up future captures by combining cards on the table with a card from your hand.
+A build starts as a **single build** and can be modified:
 
-**How to Create a Build:**
-1. Play a card from your hand onto one or more cards on the table
-2. Announce the total value (e.g., "Building Sevens")
-3. You **MUST** have a card in your hand that can capture that value
-4. The build is now "owned" by you
+- **Raise it** — add a card to increase the declared value. Ownership transfers to whoever
+  raised it. You must hold the new capture value.
+- **Add at value** — add another set worth the same value. This converts the build into a
+  **multi-build** and transfers ownership.
 
-**Example:**
-- You have a 3, 7, and King in your hand
-- There's a 4 on the table
-- You play your 3 onto the 4 and say "Building Sevens"
-- On your next turn, you can capture the build with your 7
+**Multi-builds are locked**: once a build is multi, no one can raise it or add to it. It
+can only be captured.
 
-**Build Rules:**
-- You **MUST** capture your own build on your next turn (unless you can make a different capture or create another build)
-- You **CANNOT** trail (play a card to the table without capturing) if you have a pending build
-- Your opponent can capture your build if they have the appropriate card
-- The build value must equal the sum of all cards in the build (no cheating!)
+An opponent's single build is **sweep material** — you can capture it, and you can combine
+it with loose table cards in the same sweep to steal the whole thing. You may never combine
+your *own* build with other cards; you capture it as-is.
 
-**Modifying Opponent Builds (Singular Builds Only):**
-Your opponent can **increase the value** of your build by adding a card from their hand:
-- **Example**: You create a build of 7 (3 + 4). Your opponent has a 2 and a 9 in hand
-  - They can add their 2 to your build, making it a build of 9 (3 + 4 + 2)
-  - They declare "Building Nines" and now **own** the build
-  - They must have the 9 in hand to capture it on their next turn
-- **Multi-Builds Cannot Be Modified**: If a build contains multiple separate combinations (e.g., a build of 7 with both "6 + A" AND "5 + 2"), it becomes a multi-build and **cannot** be modified by opponents
-- The new value must be **greater** than the original build value
-- Ownership transfers to the player who last modified the build
+### Sweeps, table cards, and winning
 
-**Strategic Advantage:**
-- Builds protect valuable combinations from your opponent
-- Builds can help you capture more cards at once
-- Creating builds when you don't have the capture card is illegal and will be rejected
-- Modifying opponent builds lets you steal their setup while increasing the capture value
+Clearing the table completely — every card and every build — scores a sweep. Sweep counts
+reset each deck.
 
-#### Special: Sweeps
-- If you capture ALL cards from the table AND all builds (leaving everything empty), you score a **Sweep**
-- Sweeps are worth bonus points at the end of the round
+Remaining table cards are awarded once, at deck exhaustion, to the last player who captured.
+(The Connecticut variant awards them after each 4-card hand instead.)
 
-#### Dealing Additional Cards
-- After both players have played their 4 cards, each player is dealt 4 more cards
-- Play continues until the deck is empty
-- No additional cards are dealt to the table after the initial deal
+Scores accumulate across decks. When a deck is scored, the dealer role swaps and a new deck
+is dealt. **The first player to reach the win score (11) wins.** If both cross in the same
+deck the higher score takes it; if they cross tied, play continues.
 
-#### End of Hand/Round Rules
+## Scoring variants
 
-**Remaining Table Cards:**
-The game can be configured to award remaining table cards in two ways:
+Three presets ship in `Assets/ScorePresets/`. The active one is selected on the
+`ScoringManager` component in the scene — currently **Rick's New England**.
 
-1. **After Each Hand (Traditional)**:
-   - After each 4-card hand, remaining table cards go to the last player who made a capture
-   - This happens 6 times per full game (52 cards ÷ 4 cards per hand ÷ 2 players)
-   - Builds also awarded to their owners after each hand
+| | Rick's New England | Standard | Connecticut |
+|---|---|---|---|
+| Most cards | 1 | 3 | 3 |
+| Most spades | 1 | 1 | 1 |
+| Big Casino (10 ♦) | 3 | 2 | 2 |
+| Little Casino (2 ♠) | 2 | 1 | 1 |
+| Each ace | 1 | 1 | 1 |
+| Each sweep | 0 | 1 | 1 |
+| Win score | 11 | 11 | 11 |
+| Table cards awarded | at deck end | at deck end | after each hand |
 
-2. **Only at Game End (Variant)**:
-   - Table cards remain on the table throughout all hands
-   - Only when the entire deck is exhausted do remaining cards go to the last capturer
-   - Builds persist across hands until the game ends
-   - This creates a longer strategic game with persistent table state
+"Most cards" and "most spades" pay nothing on a tie. Rick's New England distributes exactly
+11 points per deck, so a deck can win the game outright.
 
-The timing is configurable via the scoring variant settings.
+Every value above — including which card is Big or Little Casino — is a field on a
+`ScoreVariables` ScriptableObject, so new variants are assets, not code.
 
-**When Scoring Occurs:**
-- Scoring happens when the entire deck is exhausted (all 52 cards played)
-- After scoring, if no one has won, the dealer role swaps and a new game begins
+## AI
 
-### Scoring
+Difficulty is set per player on the `GameManager` component (default **Medium**).
 
-At the end of each round, points are awarded for:
+- **Easy** — random valid moves.
+- **Medium** — prefers captures, weights aces, Big/Little Casino and spades, and will add
+  to builds. Prefers stealing an opponent's build when one is available.
+- **Hard** — strategic evaluation with lookahead: sweeps first, then the scoring cards,
+  then card count; adds to *and* raises builds, and minimizes what it gives away when
+  trailing.
 
-#### Standard Scoring Rules
+The Hard evaluator also drives the **Suggest** button, so hints are as good as the Hard AI.
 
-| Achievement | Points | Description |
-|-------------|--------|-------------|
-| **Most Cards** | 3 | Player who captured the most cards (no points if tied) |
-| **Most Spades** | 1 | Player who captured the most spades (no points if tied) |
-| **Big Casino** | 2 | Capturing the 10 of Diamonds |
-| **Little Casino** | 1 | Capturing the 2 of Spades |
-| **Aces** | 1 each | Each Ace captured is worth 1 point |
-| **Sweeps** | 1 each | Each sweep performed during the round |
+## Playing
 
-#### Connecticut Variant
-The game includes a Connecticut variant with different scoring. Check the ScoringManager settings to see the active variant.
+Click a hand card and any table cards you want, then press **Sweep**, **Trail**, or
+**Build**. Selection is table-first: picking table cards highlights the hand cards that
+can act on them. **Suggest** asks the Hard AI what it would do. The captured-pile viewer
+docks to either side; the draw pile shows what's left.
 
-### Winning the Game
+The build version is stamped in the bottom-right corner as `v1.0.0`.
 
-- The first player to reach **21 points** (or the configured win score) wins the game
-- After each scoring round:
-  - If no one has won, the dealer role swaps
-  - A new deck is created and shuffled
-  - Play continues with new hands
+## Development
 
-## Game Strategy Tips
+The rules engine is pure C# with no Unity dependencies, so it tests without launching
+the editor:
 
-### High-Value Cards to Prioritize
-1. **10 of Diamonds** (Big Casino) - Worth 2 points
-2. **2 of Spades** (Little Casino) - Worth 1 point
-3. **All Aces** - Worth 1 point each
-4. **Spades** - Count toward "Most Spades" bonus
-5. **Any Cards** - Count toward "Most Cards" bonus (3 points)
+```bash
+bash Tests~/run-tests.sh
+```
 
-### Strategic Considerations
-- **Going for Sweeps**: Clearing the table is valuable but can be risky
-- **Trailing Strategically**: Sometimes trailing a low-value card is better than giving your opponent capture opportunities
-- **Counting Cards**: Keep track of what's been played to maximize your capture potential
-- **Most Cards Bonus**: Capturing 27+ cards (more than half the deck) guarantees this 3-point bonus
+This compiles `PlayingCard`, `CaptureChecker`, `Build` and `GamePlayer` with the Unity
+editor's bundled Roslyn and runs the capture, build, and sweep suites as console
+executables. Set `UNITY_EDITOR` to pick a specific editor install.
 
-## AI Difficulty Levels
-
-### Easy
-- Plays random valid moves
-- Good for learning the game
-
-### Medium
-- Prioritizes captures over trails
-- Prefers capturing high-value cards (Aces, Big/Little Casino, Spades)
-- Makes tactical decisions
-
-### Hard
-- Uses strategic evaluation with lookahead
-- Scores each possible move considering:
-  - Potential sweeps (highest priority)
-  - Big Casino and Little Casino captures
-  - Ace captures
-  - Spade captures (for "Most Spades")
-  - Card count (for "Most Cards")
-- Minimizes value lost when trailing
-
-## Controls
-
-- **Select a Card**: Click on a card in your hand
-- **Play Card**: Click the "Play Card" button after selecting
-- **Restart Game**: Click "Restart" when the game ends
-
-## Configuration
-
-### Changing AI Difficulty
-You can configure AI difficulty for each player independently in the GameManager inspector:
-- `Dealer AI Difficulty`
-- `Non-Dealer AI Difficulty`
-
-### Scoring Variants
-The game supports multiple scoring variants configured via ScriptableObjects:
-- **Standard**: Traditional Casino scoring
-- **Connecticut**: Connecticut variant rules
-- **Custom**: Create your own variant
-
-Each variant can be configured with:
-- **Point values** for all scoring categories
-- **Win score** (default 21)
-- **Table Card Award Timing**:
-  - `AfterEachHand` (Traditional): Award remaining cards after each 4-card hand
-  - `OnlyAtGameEnd` (Variant): Keep cards on table until entire deck is played
-
-To change variants, modify the ScoringManager settings in the Unity inspector.
-
-## Technical Details
-
-- **Game Engine**: Unity
-- **Language**: C#
-- **Architecture**: Singleton-based managers with clean separation of concerns
-- **AI**: Multi-level difficulty system with strategic evaluation
-
-## Credits
-
-Generated with [Claude Code](https://claude.com/claude-code)
-
----
-
-*Enjoy the game! Try to master the strategy and beat the Hard AI!*
+Built with Unity 6000.2.10f1. See `CLAUDE.md` for architecture notes and `CHANGELOG.md`
+for release history.

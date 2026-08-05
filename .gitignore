@@ -66,3 +66,13 @@ Thumbs.db
 # Generated at runtime by UIManager / automation
 /layout-report.txt
 /auto-verify.flag
+/screenshot.flag
+/screenshots/
+
+# Agent tooling (local only)
+/.claude/
+/gameview.txt
+/state-preview.flag
+/autoplay.flag
+/autoplay-log.txt
+/rank-preview.flag
