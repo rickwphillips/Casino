@@ -86,7 +86,7 @@ public static class CasinoLayout
         Hint         = new Zone(0.5f, 0f, -52, 172, 560, 46),
         PlayerHand   = new Zone(0.5f, 0f, -52, 14, 460, 158),
 
-        Score = new Zone(1f, 1f, -14, -14, 272, 252),
+        Score = new Zone(1f, 1f, -14, -14, 272, 278),
         ActionAnchor = new Vector2(1, 0),
         ActionFirst  = new Vector2(-14, 30),   // clears the version stamp at y 4..22
         ActionStep   = new Vector2(0, 54),
@@ -118,7 +118,7 @@ public static class CasinoLayout
         Hint         = new Zone(0.5f, 0f, -48, 152, 500, 44),
         PlayerHand   = new Zone(0.5f, 0f, -48, 12, 420, 140),
 
-        Score = new Zone(1f, 1f, -12, -12, 236, 246),
+        Score = new Zone(1f, 1f, -12, -12, 236, 272),
         ActionAnchor = new Vector2(1, 0),
         ActionFirst  = new Vector2(-12, 28),
         ActionStep   = new Vector2(0, 50),
@@ -151,13 +151,15 @@ public static class CasinoLayout
         // 220 tall, not 92: the score panel's internal layout is authored for a
         // column of eight stat lines and is not itself profile-aware, so a short
         // wide bar makes its children collide. Give it the height it needs.
-        Score        = new Zone(0.5f, 1f, 0, -10, 700, 246),
-        OpponentHand = new Zone(0.5f, 1f, 0, -266, 684, 120),
-        PlayerPile   = new Zone(0f, 1f, 14, -394, 336, 34),
-        AiPile       = new Zone(1f, 1f, -14, -394, 336, 34),
+        Score        = new Zone(0.5f, 1f, 0, -10, 700, 272),
+        OpponentHand = new Zone(0.5f, 1f, 0, -292, 684, 120),
+        PlayerPile   = new Zone(0f, 1f, 14, -420, 336, 34),
+        AiPile       = new Zone(1f, 1f, -14, -420, 336, 34),
 
-        Table      = new Zone(0.5f, 0.5f, 0, 60, 684, 300),
-        Hint       = new Zone(0.5f, 0f, 0, 470, 660, 56),
+        // The taller score bar pushes the whole upper stack down, so the table
+        // drops with it and the hint tucks in just above the action bar.
+        Table      = new Zone(0.5f, 0.5f, 0, 20, 684, 300),
+        Hint       = new Zone(0.5f, 0f, 0, 450, 660, 56),
 
         ActionAnchor = new Vector2(0.5f, 0),
         ActionFirst  = new Vector2(-258, 396),

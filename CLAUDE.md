@@ -120,6 +120,13 @@ The scene wires buttons in code, not through UnityEvents — `Scene.unity` conta
   `osascript -e 'tell application "Unity" to activate'` — focusing the editor recompiles and
   re-enters Play. `ScreenshotCapture.cs` then writes a settled PNG to `screenshots/` 3s in.
   Drop `screenshot.flag` for an extra shot mid-session, or press F9 (Shift+F9 for 2x).
+- **Keep Unity focused for the whole of an unattended run.** `ProjectSettings.asset`
+  has `runInBackground: 0`, so a Play session stops executing the instant the editor
+  loses focus. Coroutines freeze mid-wait and resume only when it comes back. This
+  reads exactly like a hang: the flag is consumed at scene load (still focused), then
+  the transcript never grows again. Two sessions were lost to diagnosing it as an
+  infinite loop in the AI evaluator. If a harness must survive losing focus, flip
+  the setting rather than assuming the code is at fault.
 - **Pin the Game view before trusting a screenshot.** `Editor/GameViewSizePin.cs` forces a fixed
   1280x720 on editor load (menu: **Casino > Pin Game View to 1280x720**), which makes canvas
   units equal screen pixels. On Free Aspect the canvas width floats with the window (observed

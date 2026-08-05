@@ -230,8 +230,11 @@ diffing the real `layout-report.txt` against the spec numbers.
 - **Type is untouched.** Every glyph is still the Unity default sans; Parlor
   specifies a serif for ranks and display. That needs a TMP font asset, which is
   Stage 5, and it is the single largest remaining visual lever.
-- `Profile.CardSize` exists but the card creation path does not consume it, so
-  cards are 80x120 at every breakpoint.
+- ~~`Profile.CardSize` exists but the card creation path does not consume it~~
+  Resolved. `UIManager.CardSize(scale)` reads `CasinoLayout.Active.CardSize` and
+  every path that makes a card goes through it or `SizeCard`: hand and table cards
+  (`UIManager.cs:1426,1468`), deal ghosts (`:1207`), and build minis, which derive
+  from `CardSize(0.7f)` rather than a second hardcoded number (`:1534`).
 - The four card states are verified to compile and to be wired to the right call
   sites, but have not been seen on screen; that needs playing a hand with a build
   on the table.

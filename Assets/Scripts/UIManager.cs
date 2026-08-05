@@ -340,6 +340,9 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Button restartButton;
     [SerializeField] private GameObject gameOverPanel;
 
+    // Built at runtime into the scene's empty GameOverPanel; see BuildGameOverContents.
+    private TextMeshProUGUI gameOverTitle, gameOverResult;
+
     private CardUI selectedCard = null;
     private List<CardUI> dealerCardUIs = new();
     private List<CardUI> nonDealerCardUIs = new();
@@ -655,6 +658,7 @@ public class UIManager : MonoBehaviour
             keep.Add(Place(gameOverPanel.transform, L.GameOver));
             var img = gameOverPanel.GetComponent<Image>();
             if (img != null) Surface(img, 8, CasinoTheme.GameOverPanel, CasinoTheme.PanelBorder);
+            BuildGameOverContents();
         }
 
         // Our runtime objects stay too
@@ -842,6 +846,87 @@ public class UIManager : MonoBehaviour
         CasinoType.ApplySerif(labelText);
 
         return button;
+    }
+
+    // The scene's GameOverPanel ships as an empty box with a stock Button in it.
+    // The first full autoplay run ended on a panel that said nothing at all: no
+    // title, no winner, no final score, with the result exiled to 13pt status
+    // text in the bottom-left corner. This gives the panel the three things the
+    // end of a game has to state, and drags the stock button into the theme.
+    //
+    // Built here rather than in the scene because UIManager owns the whole layout
+    // in code; anything hand-placed in Scene.unity gets overwritten at runtime.
+    private void BuildGameOverContents()
+    {
+        var panel = gameOverPanel.transform;
+
+        if (gameOverTitle == null)
+        {
+            gameOverTitle = CreateText("Title", panel);
+            gameOverTitle.fontSize = 30;
+            gameOverTitle.fontStyle = FontStyles.Bold;
+            gameOverTitle.alignment = TextAlignmentOptions.Center;
+            gameOverTitle.color = CasinoTheme.Headline;
+            CasinoType.ApplySerif(gameOverTitle);
+            gameOverTitle.text = "Game Over";
+        }
+        Pin(gameOverTitle.rectTransform, new Vector2(0.5f, 1f), new Vector2(0, -22), new Vector2(-32, 38));
+
+        if (gameOverResult == null)
+        {
+            gameOverResult = CreateText("Result", panel);
+            gameOverResult.fontSize = 16;
+            gameOverResult.alignment = TextAlignmentOptions.Center;
+            gameOverResult.color = CasinoTheme.TextPrimary;
+            gameOverResult.richText = true;
+        }
+        Pin(gameOverResult.rectTransform, new Vector2(0.5f, 1f), new Vector2(0, -68), new Vector2(-40, 96));
+
+        // The stock button is the only surface in the game that never got a
+        // Parlor treatment; it was still default white.
+        if (restartButton != null)
+        {
+            Pin(restartButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0, 24), new Vector2(180, 44));
+            var bimg = restartButton.GetComponent<Image>();
+            if (bimg != null) Surface(bimg, 6, CasinoTheme.ButtonPrimary, CasinoTheme.ButtonPrimaryBorder);
+            var blabel = restartButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (blabel != null)
+            {
+                blabel.text = "Play again";
+                blabel.color = CasinoTheme.ButtonPrimaryLabel;
+                blabel.fontSize = 16;
+                blabel.alignment = TextAlignmentOptions.Center;
+            }
+        }
+    }
+
+    // Paint order on a canvas is sibling order, and both modals are created long
+    // before the cards and ghosts that have to sit behind them. Call this whenever
+    // a modal opens AND whenever something new is parented to the canvas.
+    private void RaiseModals()
+    {
+        if (summaryPanel != null && summaryPanel.activeSelf)
+            summaryPanel.transform.SetAsLastSibling();
+        if (gameOverPanel != null && gameOverPanel.activeSelf)
+            gameOverPanel.transform.SetAsLastSibling();
+    }
+
+    // anchor == pivot, so the offset reads as "this far in from that edge",
+    // matching how CasinoLayout.Zone describes everything else.
+    private static void Pin(RectTransform r, Vector2 anchor, Vector2 pos, Vector2 size)
+    {
+        if (r == null) return;
+        r.anchorMin = r.anchorMax = r.pivot = anchor;
+        // A stretched width is expressed as a negative sizeDelta, which only
+        // works when the anchors are separated; keep those cases stretched.
+        if (size.x < 0)
+        {
+            r.anchorMin = new Vector2(0, anchor.y);
+            r.anchorMax = new Vector2(1, anchor.y);
+            r.pivot = new Vector2(0.5f, anchor.y);
+        }
+        r.anchoredPosition = pos;
+        r.sizeDelta = size;
     }
 
     private TextMeshProUGUI CreateText(string name, Transform parent)
@@ -1089,6 +1174,12 @@ public class UIManager : MonoBehaviour
 
         summaryContinue = onContinue;
         summaryPanel.SetActive(true);
+
+        // The prompt is wider than the panel, so it stuck out either side of an
+        // open summary reading "Your turn. Select a card, t...nd Build."
+        if (hintText != null) hintText.text = "";
+
+        RaiseModals();
     }
 
     private string SummaryColumn(string label, GamePlayer p, Dictionary<string, int> round)
@@ -1210,6 +1301,12 @@ public class UIManager : MonoBehaviour
         ui.Initialize(card, false);
         ui.SetFaceDown(faceDown);
 
+        // A ghost parents to the canvas, so it lands as the last sibling and
+        // paints over everything, including an open modal. Raising the modal when
+        // it opens is not enough: deal and trail animations keep firing while the
+        // summary is up, so each new ghost jumps back above it. Re-raise instead.
+        RaiseModals();
+
         var group = ghost.AddComponent<CanvasGroup>();
         group.blocksRaycasts = false;
 
@@ -1235,7 +1332,9 @@ public class UIManager : MonoBehaviour
 
     // Six rows at 12.5pt plus the side header. The score panel must be at least
     // 38 + 2*this + 8 tall, which is why every Profile's Score zone is >= 246.
-    private const float StatBlockHeight = 96f;
+    // Seven lines now, not six: a "THIS DECK" scope label sits between the
+    // cumulative score and the per-deck capture counts.
+    private const float StatBlockHeight = 112f;
 
     private void CreateScorePanel()
     {
@@ -1335,7 +1434,11 @@ public class UIManager : MonoBehaviour
                 UpdatePlayerHands();
                 UpdateTableCards();
                 UpdateActionButtons();
-                if (humanTurn && hintText != null)
+                // Not once the game is over: the seat is still nominally the
+                // human's, so without this the "Your turn" prompt sits under the
+                // game-over panel inviting a move that cannot be made.
+                if (humanTurn && hintText != null &&
+                    GameManager.Instance.GetCurrentPhase() != GameManager.GamePhase.GameOver)
                     hintText.text = "Your turn. Select a card, then Play, or add table cards and Build.";
             }
         }
@@ -1648,16 +1751,13 @@ public class UIManager : MonoBehaviour
                 GamePlayer winner = dealer.Score > nonDealer.Score ? dealer : nonDealer;
                 gameStatusText.text = $"Game Over!\n{winner.Name} Wins!";
                 playCardButton.interactable = false;
+                ShowGameOverResult(dealer, nonDealer, winner);
+                if (hintText != null) hintText.text = "";
                 if (gameOverPanel != null && !gameOverPanel.activeSelf)
                 {
                     gameOverPanel.SetActive(true);
+                    RaiseModals();
                     Debug.Log("Game Over - showing GameOverPanel");
-
-                    // Verify restart button state when panel is shown
-                    if (restartButton != null)
-                    {
-                        Debug.Log($"Restart button state: interactable={restartButton.interactable}, enabled={restartButton.enabled}, gameObject.active={restartButton.gameObject.activeInHierarchy}");
-                    }
                 }
             }
             else
@@ -1692,6 +1792,34 @@ public class UIManager : MonoBehaviour
             RebuildPilePanel();
     }
 
+    // Who won, by how much, and against what target.
+    //
+    // The target is stated because a final score routinely overshoots it: a deck
+    // pays out all its points at once (11 under Rick's New England), so crossing
+    // 11 usually lands well above it. Do not try to explain the overshoot here.
+    // An earlier version blamed it on a tied deck, which sounded plausible and
+    // was simply false: the final state cannot distinguish a tie-extended game
+    // from an ordinary one, and the first game it rendered on (13 to 9, two
+    // decks, no tie) it was wrong.
+    private void ShowGameOverResult(GamePlayer dealer, GamePlayer nonDealer, GamePlayer winner)
+    {
+        if (gameOverResult == null) return;
+
+        GamePlayer human = dealer.IsHuman() ? dealer : nonDealer;
+        GamePlayer ai = dealer.IsHuman() ? nonDealer : dealer;
+        int target = ScoringManager.Instance != null ? ScoringManager.Instance.WinScore : 0;
+
+        string you = ColorUtility.ToHtmlStringRGB(CasinoTheme.PlayerAccent);
+        string them = ColorUtility.ToHtmlStringRGB(CasinoTheme.OpponentAccent);
+        string headline = winner.IsHuman() ? "You win" : "The AI wins";
+
+        gameOverTitle.text = headline;
+        gameOverResult.text =
+            $"<size=120%><color=#{you}>You {human.Score}</color>"
+          + $"   <color=#{them}>AI {ai.Score}</color></size>"
+          + $"\n\n<size=88%>First to {target}</size>";
+    }
+
     private string PlayerStats(GamePlayer p, string label)
     {
         var sm = ScoringManager.Instance;
@@ -1708,8 +1836,16 @@ public class UIManager : MonoBehaviour
             label == "You" ? CasinoTheme.PlayerAccent : CasinoTheme.OpponentAccent);
         string Row(string k, string v) => $"\n{k}<pos=68%><b>{v}</b>";
 
+        // Score is cumulative across decks; everything under it is emptied when a
+        // deck is scored, because it counts p.CapturedCards. Without a scope label
+        // the panel reads as a career total that has somehow reset: the first full
+        // game ended showing Cards 0 / Spades 0 / Aces 0 beside a score of 13.
+        string faint = ColorUtility.ToHtmlStringRGB(CasinoTheme.TextMuted);
+        string scope = $"\n<size=76%><color=#{faint}><cspace=0.08em>THIS DECK</cspace></color></size>";
+
         return $"<color=#{accent}><cspace=0.1em><size=84%>{label.ToUpper()} \u00B7 {p.Name.ToUpper()}</size></cspace></color>"
              + Row("Score", p.Score.ToString())
+             + scope
              + Row("Cards", captured.Count.ToString())
              + Row("Spades", spades.ToString())
              + Row("Aces", aces.ToString())
