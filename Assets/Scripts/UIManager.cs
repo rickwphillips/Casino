@@ -342,6 +342,7 @@ public class UIManager : MonoBehaviour
 
     // Built at runtime into the scene's empty GameOverPanel; see BuildGameOverContents.
     private TextMeshProUGUI gameOverTitle, gameOverResult;
+    private GameObject modalScrim;
 
     private CardUI selectedCard = null;
     private List<CardUI> dealerCardUIs = new();
@@ -670,7 +671,8 @@ public class UIManager : MonoBehaviour
                 child.name == "HintText" || child.name == "HumanPile" ||
                 child.name == "AIPile" || child.name == "CapturedPanel" ||
                 child.name == "DrawPile" || child.name == "ScoreSummary" ||
-                child.name == "MoveBanner" || child.name == "VersionText")
+                child.name == "MoveBanner" || child.name == "VersionText" ||
+                child.name == "ModalScrim")
             {
                 keep.Add(child.gameObject);
             }
@@ -900,15 +902,51 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    // Paint order on a canvas is sibling order, and both modals are created long
-    // before the cards and ghosts that have to sit behind them. Call this whenever
-    // a modal opens AND whenever something new is parented to the canvas.
+    // Modals need two things, and I fixed the wrong one twice before getting here.
+    //
+    // Sibling order is the first: paint order on a canvas is sibling order, and
+    // both modals are created long before the cards and animation ghosts that
+    // have to sit behind them, so they must re-raise whenever anything new is
+    // parented to the canvas.
+    //
+    // Opacity is the second, and it was the actual cause of cards appearing
+    // "over" the summary. The panel is 0.97 alpha, and a white card under a
+    // near-opaque dark panel still reads as a grey card-shaped smudge. Sorting
+    // was never going to fix something that was already behind. A scrim covers
+    // the board outright, and blocks clicks to a board that must not accept them
+    // while a modal is up.
     private void RaiseModals()
     {
+        bool open = (summaryPanel != null && summaryPanel.activeSelf)
+                 || (gameOverPanel != null && gameOverPanel.activeSelf);
+
+        EnsureScrim();
+        modalScrim.SetActive(open);
+        if (!open) return;
+
+        // Scrim first, then the panels, so the panels land above it.
+        modalScrim.transform.SetAsLastSibling();
         if (summaryPanel != null && summaryPanel.activeSelf)
             summaryPanel.transform.SetAsLastSibling();
         if (gameOverPanel != null && gameOverPanel.activeSelf)
             gameOverPanel.transform.SetAsLastSibling();
+    }
+
+    private void EnsureScrim()
+    {
+        if (modalScrim != null) return;
+
+        modalScrim = new GameObject("ModalScrim");
+        modalScrim.transform.SetParent(canvasTransform, false);
+        var r = modalScrim.AddComponent<RectTransform>();
+        r.anchorMin = Vector2.zero;
+        r.anchorMax = Vector2.one;
+        r.offsetMin = r.offsetMax = Vector2.zero;
+
+        var img = modalScrim.AddComponent<Image>();
+        img.color = CasinoTheme.ModalScrim;
+        img.raycastTarget = true;      // swallow clicks aimed at the board behind
+        modalScrim.SetActive(false);
     }
 
     // anchor == pivot, so the offset reads as "this far in from that edge",
@@ -1151,6 +1189,7 @@ public class UIManager : MonoBehaviour
     public void ContinueSummary()
     {
         if (summaryPanel != null) summaryPanel.SetActive(false);
+        RaiseModals();   // drops the scrim once nothing is open
         var action = summaryContinue;
         summaryContinue = null;
         action?.Invoke();
@@ -1749,7 +1788,11 @@ public class UIManager : MonoBehaviour
             if (phase == GameManager.GamePhase.GameOver)
             {
                 GamePlayer winner = dealer.Score > nonDealer.Score ? dealer : nonDealer;
-                gameStatusText.text = $"Game Over!\n{winner.Name} Wins!";
+
+                // The panel now states the result in full, so repeating it in the
+                // corner just says the same thing twice, and said it in seat names
+                // ("Non-Dealer Wins!") while the panel said "You win".
+                gameStatusText.text = "";
                 playCardButton.interactable = false;
                 ShowGameOverResult(dealer, nonDealer, winner);
                 if (hintText != null) hintText.text = "";
@@ -1763,8 +1806,11 @@ public class UIManager : MonoBehaviour
             else
             {
                 gameStatusText.text = "Playing...";
-                if (gameOverPanel != null)
+                if (gameOverPanel != null && gameOverPanel.activeSelf)
+                {
                     gameOverPanel.SetActive(false);
+                    RaiseModals();
+                }
             }
         }
 
@@ -1834,7 +1880,11 @@ public class UIManager : MonoBehaviour
         // needing a row object per stat.
         string accent = ColorUtility.ToHtmlStringRGB(
             label == "You" ? CasinoTheme.PlayerAccent : CasinoTheme.OpponentAccent);
-        string Row(string k, string v) => $"\n{k}<pos=68%><b>{v}</b>";
+        // The value column is a percentage of the panel, and the panel is a
+        // 272-wide rail in landscape but a 700-wide bar in portrait, where 68%
+        // stranded every number half a screen from its label. Track the shape.
+        int valueColumn = CasinoLayout.Active.Name == "Portrait" ? 30 : 68;
+        string Row(string k, string v) => $"\n{k}<pos={valueColumn}%><b>{v}</b>";
 
         // Score is cumulative across decks; everything under it is emptied when a
         // deck is scored, because it counts p.CapturedCards. Without a scope label
@@ -2474,6 +2524,7 @@ public class UIManager : MonoBehaviour
     {
         if (gameOverPanel != null)
             gameOverPanel.SetActive(false);
+        RaiseModals();
 
         if (GameManager.Instance != null)
             GameManager.Instance.InitializeGame();

@@ -38,10 +38,11 @@ To exercise the game itself: `touch auto-verify.flag` in the repo root, then foc
 
 ## The rules the code implements
 
-These are Rick's family rules, not the generic Casino rules and **not** what the older parts of
-`README.md` describe (README still says win at 21 and "largest possible capture automatically" —
-both are stale; `CHANGELOG.md` 1.0.0 is the accurate summary). When rules and README disagree,
-the engine + `Tests~/` win.
+These are Rick's family rules, not the generic Casino rules. `README.md` was rewritten and now
+matches: it documents win at 11 and captures as chosen rather than automatic. (This note used to
+warn that the README still said 21 and "largest possible capture automatically"; that warning
+outlived the problem and was itself the stale thing, which cost a pass of chasing a bug that had
+already been fixed.) When rules and prose disagree, the engine + `Tests~/` win.
 
 - **Three plays per turn: Sweep, Trail, or Build.**
 - **Sweep (capture)** is optional and partial: the played card *can* take all matching-rank cards

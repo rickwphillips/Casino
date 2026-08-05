@@ -167,9 +167,11 @@ public static class CasinoLayout
         ActionSize   = new Vector2(166, 52),
 
         PlayerHand = new Zone(0.5f, 0f, 0, 230, 684, 150),
-        DrawPile   = new Zone(0f, 0f, 20, 92, 76, 104),
-        TurnText   = new Zone(0f, 0f, 110, 138, 260, 24),
-        StatusText = new Zone(0f, 0f, 110, 112, 260, 24),
+        // 92 put the pile's count label hard against the bottom edge, where it
+        // rendered clipped. The zone is the card; the label hangs below it.
+        DrawPile   = new Zone(0f, 0f, 20, 118, 76, 104),
+        TurnText   = new Zone(0f, 0f, 110, 164, 260, 24),
+        StatusText = new Zone(0f, 0f, 110, 138, 260, 24),
         Version    = new Zone(1f, 0f, -10, 6, 120, 18),
         GameOver   = new Zone(0.5f, 0.5f, 0, 0, 640, 300),
     };

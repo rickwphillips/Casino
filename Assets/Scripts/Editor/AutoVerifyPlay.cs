@@ -27,6 +27,7 @@ public static class AutoVerifyPlay
     private const string PendingKey = "AutoVerifyPlay.pending";
     private const double PollSeconds = 0.5;
     private const double RetrySeconds = 2.0;
+    private const double CooldownSeconds = 4.0;   // after a play-mode transition
 
     static string Marker => Path.Combine(Application.dataPath, "..", "auto-verify.flag");
 
@@ -40,6 +41,19 @@ public static class AutoVerifyPlay
         nextPoll = EditorApplication.timeSinceStartup + PollSeconds;
 
         if (EditorApplication.isCompiling || EditorApplication.isUpdating) return;
+
+        // Bug 4. Entering Play while the editor is still tearing down the last
+        // session, and resizing the Game view in the same breath, wedged the
+        // editor hard: one thread at ~200% with the log stopping mid-transition
+        // and no way out but a kill. isPlaying alone does not cover it, because
+        // it is false during the window where the mode change is already in
+        // flight. Wait for the transition to finish, then leave a cooldown so a
+        // stop and a start never land back to back.
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            nextAttempt = EditorApplication.timeSinceStartup + CooldownSeconds;
+            if (!EditorApplication.isPlaying) return;
+        }
 
         if (!File.Exists(Marker))
         {
@@ -60,6 +74,7 @@ public static class AutoVerifyPlay
                 // Someone else's session is running; restart it so the run is fresh.
                 Debug.Log("AutoVerifyPlay: stopping stale Play session first");
                 EditorApplication.ExitPlaymode();
+                nextAttempt = EditorApplication.timeSinceStartup + CooldownSeconds;
             }
             return;
         }
@@ -68,6 +83,8 @@ public static class AutoVerifyPlay
         nextAttempt = EditorApplication.timeSinceStartup + RetrySeconds;
 
         // Pin the Game view first: entering Play at the wrong size wastes the run.
+        // Resizing it during a play-mode transition is what wedged the editor, so
+        // this only runs on a settled, stopped editor thanks to the guard above.
         GameViewSizePin.ApplyRequested();
         SessionState.SetBool(PendingKey, true);
         Debug.Log("AutoVerifyPlay: requesting Play mode");

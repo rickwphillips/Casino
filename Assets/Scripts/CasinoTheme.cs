@@ -71,9 +71,20 @@ public static class CasinoTheme
     public static Color PileBorder => Palette.Brass.WithAlpha(0.30f);
     public static Color Divider => Palette.Brass.WithAlpha(0.35f);
 
-    public static Color GameOverPanel => Palette.PanelDeep.WithAlpha(0.96f);
+    // Behind an open modal. Dark enough that a white card underneath stops
+    // reading through the panel, which is what made cards look like they were
+    // floating on top of the round summary.
+    public static Color ModalScrim => Palette.PanelDeep.WithAlpha(0.82f);
+
+    // Opaque, not 0.96. These sit over the board, and a white card behind a
+    // near-opaque dark panel still leaves a legible card-shaped patch: the round
+    // summary looked like it had loose cards lying on top of the scoring columns
+    // through three separate attempts to fix it as a sorting problem. The scrim
+    // supplies the sense of depth that the transparency used to.
+    public static Color GameOverPanel => Palette.PanelDeep;
+    public static Color RoundSummaryPanel => Palette.PanelDeep;
+
     public static Color PileViewerPanel => Palette.PanelDeep.WithAlpha(0.96f);
-    public static Color RoundSummaryPanel => Palette.PanelDeep.WithAlpha(0.97f);
     public static Color ScorePanel => Palette.PanelInk.WithAlpha(0.94f);
     public static Color PileButton => Palette.PanelInk.WithAlpha(0.88f);
 
