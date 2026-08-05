@@ -29,7 +29,29 @@ bash Tests~/run-tests.sh
 UNITY_EDITOR=/Applications/Unity/Hub/Editor/6000.2.10f1/Unity.app/Contents bash Tests~/run-tests.sh
 ```
 
-There is no build/lint command in the repo — building is done through the Unity editor.
+```bash
+# macOS player. Quit the editor first: batch mode refuses while the project
+# lock (Temp/UnityLockfile) is held.
+/Applications/Unity/Hub/Editor/6000.2.10f1/Unity.app/Contents/MacOS/Unity \
+  -quit -batchmode -nographics -projectPath "$PWD" \
+  -buildOSXUniversalPlayer "$PWD/build/Casino.app" -logFile "$PWD/build-log.txt"
+```
+
+A player build catches what the editor cannot, and the first one ever run here
+found two things. `EditorBuildSettings.asset` still listed the template's
+`SampleScene.unity`, which does not exist, so the build would have shipped an
+empty player. And `GameLogger.cs` had a stray `using UnityEditor.VersionControl`,
+which compiles happily in the editor and fails every player build, because
+`UnityEditor` is not available outside it. Editor-only namespaces in runtime
+scripts are invisible until you build.
+
+Player log (not the editor log) is at
+`~/Library/Logs/DefaultCompany/Conn-Casino/Player.log`; screenshots land in
+`~/Library/Application Support/com.DefaultCompany.2D-URP/screenshots/`. Both
+paths come from `productName`/`applicationIdentifier`, which are still template
+leftovers ("Conn-Casino", `com.DefaultCompany.2D-URP`); changing them moves the
+save/log paths, so do it deliberately.
+
 `Tests~/` is a Unity-ignored folder (trailing `~`), which is why these tests live outside
 the asset pipeline and compile standalone.
 

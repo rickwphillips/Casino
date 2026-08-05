@@ -78,3 +78,5 @@ Thumbs.db
 /rank-preview.flag
 /interaction-probe.txt
 /scenario-preview.flag
+/build/
+/build-log.txt
