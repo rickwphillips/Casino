@@ -29,6 +29,7 @@ proves the code compiles and is wired, but not that it is wired to live state.
 | `parlor-build-inplay.png` | Build badge in owner colour, the `RAISABLE` tag, and a table card tinted rust because the opponent is taking it. All from real play. |
 | `parlor-round-summary.png` | Deck scoring, over a scrim, with opaque panels. Earlier versions let the cards behind read through the panel. |
 | `parlor-gameover.png` | The end of a game: winner, final score, target, themed button. |
+| `parlor-pile-viewer.png` | The captured-pile viewer open, left-edge furniture stepped aside. Also the only shot showing the per-deck stats populated (Cards 15, Spades 4, Big/Little yes/no) rather than zeroed just after a deck was scored. |
 | `parlor-wide-ingame.png`, `parlor-compact-ingame.png`, `parlor-portrait-ingame.png` | The three layout profiles. |
 
 To retake any of them: `echo full > autoplay.flag; echo run > auto-verify.flag`,

@@ -53,7 +53,7 @@ public class CasinoAutoPlay : MonoBehaviour
 
     private static bool probeOnly;
     private int moves, rounds;
-    private bool shotBuild;
+    private bool shotBuild, shotPile;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Install()
@@ -149,6 +149,21 @@ public class CasinoAutoPlay : MonoBehaviour
                     yield return new WaitForSecondsRealtime(1.2f);
                     ScreenshotCapture.Capture("autoplay-build");
                 }
+            }
+
+            // Once there is something in a pile worth looking at, open the viewer
+            // and photograph it. It is the one panel that survived the modal work
+            // untouched, purely because nothing automated could reach it.
+            if (!shotPile && moves >= 10)
+            {
+                shotPile = true;
+                Mark("opening the pile viewer");
+                ui.TogglePileViewer(true);
+                yield return new WaitForSecondsRealtime(1f);
+                ScreenshotCapture.Capture("autoplay-pileviewer");
+                yield return new WaitForSecondsRealtime(1f);
+                ui.TogglePileViewer(true);       // same seat toggles it shut
+                Mark("closed the pile viewer");
             }
 
             if (!gm.IsWaitingForHumanInput())

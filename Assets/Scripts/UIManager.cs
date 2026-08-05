@@ -1127,6 +1127,11 @@ public class UIManager : MonoBehaviour
         return btn;
     }
 
+    // Verification hook. The pile viewer is reachable only by clicking a pile
+    // button, so an unattended run cannot photograph it, which is why it went
+    // unchecked while the other two panels were rebuilt around it. Toggles.
+    public void TogglePileViewer(bool human) => TogglePile(human);
+
     private void TogglePile(bool human)
     {
         if (capturedPanel.activeSelf && pileShowsHuman == human)
