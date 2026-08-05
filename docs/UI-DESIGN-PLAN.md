@@ -1,9 +1,28 @@
 # Casino UI Design Plan
 
 Working plan for redesigning the game UI using Claude Code's design tooling.
-Written 2026-08-04. Status: **Direction A (Parlor) chosen. Stages 0-3 done,
-Stage 4 engine + first port landed. Remaining: type (Stage 5), portrait
-verification, card sizing from the profile.**
+Written 2026-08-04, status updated 2026-08-05.
+
+**Status: Direction A (Parlor) chosen. Stages 0 through 5 are done. Stage 6 is
+parked deliberately (see below). The UI has now been driven through complete
+games rather than opening deals, which is what surfaced the remaining defects.**
+
+What changed on 2026-08-05, once `CasinoAutoPlay` could finish a game:
+
+- The end of a game had never been seen. The game-over panel was an empty box
+  with a stock white button, and the result lived in 13pt corner text.
+- Modal panels at 0.96 alpha let the white cards behind them read through as
+  card-shaped patches. Both are opaque now, over a scrim.
+- The score panel's per-deck counts read as a career total that had reset;
+  they carry a `THIS DECK` label, which cost a row and a taller panel in all
+  three profiles.
+- Portrait's stat value column was a percentage tuned for a landscape rail, so
+  every number sat half a screen from its label.
+
+Two editor traps were fixed and are documented in `CLAUDE.md`: `runInBackground`
+was off (Play stops when the editor loses focus, which looks exactly like a
+hang), and `AutoVerifyPlay` could wedge the editor by restarting Play while a
+mode change was still in flight.
 
 ## Decisions already made (by Rick, 2026-08-04)
 
@@ -235,9 +254,14 @@ diffing the real `layout-report.txt` against the spec numbers.
   every path that makes a card goes through it or `SizeCard`: hand and table cards
   (`UIManager.cs:1426,1468`), deal ghosts (`:1207`), and build minis, which derive
   from `CardSize(0.7f)` rather than a second hardcoded number (`:1534`).
-- The four card states are verified to compile and to be wired to the right call
-  sites, but have not been seen on screen; that needs playing a hand with a build
-  on the table.
+- ~~The four card states have not been seen on screen~~ Resolved 2026-08-05 by
+  `CasinoAutoPlay`, which now screenshots the first build of a game once its
+  tweens settle. `docs/design/parlor-build-inplay.png` shows, in genuine play
+  rather than a staged board: a player-owned build badge in blue (the AI's is
+  red, captured in the same session), the `RAISABLE` tag distinguishing a single
+  build from a locked multi, and a table card tinted rust because the opponent is
+  about to take it. Staged previews proved these compiled; only a real game
+  proves they are wired to live state.
 
 **Stage 5 — Art assets. LANDED 2026-08-04, procedurally.**
 
@@ -263,9 +287,17 @@ a raster at fixed resolution.
 Remaining, if wanted: title art (there is no title screen), and a felt weave with
 direction rather than isotropic noise.
 
-**Stage 6 — DesignSync library**, only once the component vocabulary stops moving.
-Maintaining HTML components mirroring Unity components is real duplication cost and
-is only worth paying against a settled vocabulary.
+**Stage 6 — DesignSync library. PARKED, deliberately, 2026-08-05.**
+
+The condition for starting was that the component vocabulary stops moving. It has
+not. In a single day the modal panels went opaque and gained a scrim, the stat
+block grew a row and a scope label, the score zone changed height in all three
+profiles, and the game-over panel went from an empty box to three elements plus a
+themed button. Mirroring that in HTML now means maintaining two copies of a design
+still in flux, and the mirror would have been wrong four times over.
+
+Revisit after a stretch where a full autoplay game turns up no layout or state
+defects. That, rather than a date, is the signal that the vocabulary has settled.
 
 ## Known risk
 

@@ -53,6 +53,7 @@ public class CasinoAutoPlay : MonoBehaviour
 
     private static bool probeOnly;
     private int moves, rounds;
+    private bool shotBuild;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Install()
@@ -129,6 +130,25 @@ public class CasinoAutoPlay : MonoBehaviour
                 ui.ContinueSummary();
                 yield return new WaitForSecondsRealtime(MoveDelay);
                 continue;
+            }
+
+            // The build tags (RAISABLE / LOCKED) and the card-state colours have
+            // only ever been photographed on a board staged by CasinoStatePreview.
+            // A real build, made by real play, is the thing that proves they are
+            // wired to the live state and not just to the preview harness.
+            if (!shotBuild)
+            {
+                var builds = gm.GetActiveBuilds();
+                if (builds != null && builds.Count > 0)
+                {
+                    shotBuild = true;
+                    Mark($"first build on the table ({builds.Count}); capturing");
+                    // Let the tweens land. Firing the instant the build exists
+                    // caught table cards mid-scale, which is honest but useless
+                    // as a reference shot of the build tags.
+                    yield return new WaitForSecondsRealtime(1.2f);
+                    ScreenshotCapture.Capture("autoplay-build");
+                }
             }
 
             if (!gm.IsWaitingForHumanInput())
