@@ -45,6 +45,22 @@ public class Build
         _isMultiBuild = true;
     }
 
+    // The build a newly declared group of this value must join, or null to start
+    // a fresh one. Two builds of a single value never coexist on the table, so a
+    // second 9 joins the first rather than standing beside it.
+    public static Build FindMergeTarget(IEnumerable<Build> builds, int declaredValue) =>
+        builds?.FirstOrDefault(b => b.DeclaredValue == declaredValue);
+
+    // Merge a whole group of the same declared value into this build. The stack
+    // grows, which locks the build as multi (no longer raisable by either side)
+    // and passes ownership to the builder.
+    public void MergeGroup(List<PlayingCard> cards, GamePlayer newOwner)
+    {
+        _cards.AddRange(cards);
+        _owner = newOwner;
+        _isMultiBuild = true;
+    }
+
     public void ModifyBuild(PlayingCard card, int newValue, GamePlayer newOwner)
     {
         if (_isMultiBuild)

@@ -47,6 +47,12 @@ A build starts as a **single build** and can be modified:
 - **Add at value** — add another set worth the same value. This converts the build into a
   **multi-build** and transfers ownership.
 
+**Two builds of the same value never coexist.** Declaring a build worth the same as one
+already on the table joins that stack instead of starting a second one, exactly as if you
+had added at value: the build becomes a multi-build and ownership transfers to you. So
+building 7+2 as a 9 and later 6+3 as a 9 leaves one locked 9-build of four cards, not two
+raisable 9s.
+
 **Multi-builds are locked**: once a build is multi, no one can raise it or add to it. It
 can only be captured.
 
@@ -108,7 +114,7 @@ Click a hand card and any table cards you want, then press **Sweep**, **Trail**,
 can act on them. **Suggest** asks the Hard AI what it would do. The captured-pile viewer
 docks to either side; the draw pile shows what's left.
 
-The build version is stamped in the bottom-right corner as `v1.0.0`.
+The build version is stamped in the bottom-right corner as `v1.1.0`.
 
 ## Development
 

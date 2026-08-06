@@ -904,6 +904,22 @@ public class GameManager : MonoBehaviour
             tableCards.Remove(card);
         }
 
+        // A build of this value already on the table absorbs the new group
+        // rather than standing beside it: same-value builds are one stack, and
+        // stacking locks it as multi so neither side can raise it afterwards.
+        var existing = Build.FindMergeTarget(activeBuilds, declaredValue);
+        if (existing != null)
+        {
+            existing.MergeGroup(buildCards, player);
+
+            if (UIManager.Instance != null)
+                UIManager.Instance.ShowMove(
+                    $"{Who(player)} add{(player.IsHuman() ? "" : "s")} {CaptureChecker.Describe(handCard)} to the build");
+
+            GameLogger.Instance.LogBuildModified(player, existing, handCard, declaredValue);
+            return true;
+        }
+
         // Create the build. More than one group locks the value:
         // numeric multi-builds sum past their declared value; face builds
         // are never raisable (their value is their rank).

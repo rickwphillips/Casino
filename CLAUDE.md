@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 A Unity 6000.2.10f1 (arm64) implementation of Casino, the fishing card game. Single scene
 (`Assets/Scenes/Scene.unity`), C#, ScriptableObject scoring presets. Currently a 1-player game:
 Human (non-dealer) vs AI (dealer). Version lives in `ProjectSettings/ProjectSettings.asset`
-(`bundleVersion`, currently 1.0.0) and renders bottom-right in-game as `v{Application.version}`,
+(`bundleVersion`, currently 1.1.0) and renders bottom-right in-game as `v{Application.version}`,
 so every screenshot identifies its build. Releases are tagged `v<version>` with a `CHANGELOG.md` entry.
 
 Docs/planning for the project live outside this repo at
@@ -75,6 +75,9 @@ already been fixed.) When rules and prose disagree, the engine + `Tests~/` win.
   You must hold the capture card. Multi-builds stack several sets of one value.
 - Single builds are malleable (raisable; ownership transfers to the raiser). Multi-builds are
   locked. Adding at value locks a build as multi.
+- **Two builds of one value never coexist.** Declaring a build at a value already on the table
+  merges into that stack (`Build.FindMergeTarget` / `MergeGroup`), locking it multi and
+  transferring ownership, rather than creating a second raisable build of the same value.
 - An **opponent's** single build is sweep material and may be combined with table cards (a steal);
   owners may never combine their own build.
 - Win at 11 (configurable per preset). If both cross in the same hand the higher score wins;
