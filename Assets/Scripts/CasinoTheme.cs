@@ -158,16 +158,21 @@ public static class CasinoTheme
     // badge is a faint outline on the panel, an earned one is struck in brass.
     // Contested badges (most cards, most spades) use a third, cooler state while
     // you are ahead but the deck is not finished, because leading is not winning.
-    public static Color BadgeIdle => Palette.PanelInk.WithAlpha(0.55f);
-    public static Color BadgeIdleBorder => Palette.Brass.WithAlpha(0.22f);
-    public static Color BadgeIdleLabel => Palette.Parchment.WithAlpha(0.38f);
+    // Idle is a slot, not a ghost. The first version used 0.55 fill and a 0.38
+    // label on a panel that is already near-black, which made an unwon badge
+    // invisible rather than merely quiet, and at deck end every badge resets to
+    // idle, so the whole panel looked empty at exactly the moment someone wants
+    // to read it. An unwon prize still has to be legible as a prize on offer.
+    public static Color BadgeIdle => new(0.09f, 0.15f, 0.12f);
+    public static Color BadgeIdleBorder => Palette.Brass.WithAlpha(0.45f);
+    public static Color BadgeIdleLabel => Palette.Parchment.WithAlpha(0.72f);
 
     public static Color BadgeWon => Palette.BrassDeep;
     public static Color BadgeWonBorder => Palette.Gold;
     public static Color BadgeWonLabel => new(0.133f, 0.102f, 0.024f);
 
-    public static Color BadgeLeading => Palette.PanelInk.WithAlpha(0.92f);
-    public static Color BadgeLeadingBorder => Palette.Counsel.WithAlpha(0.85f);
+    public static Color BadgeLeading => new(0.08f, 0.17f, 0.22f);
+    public static Color BadgeLeadingBorder => Palette.Counsel;
     public static Color BadgeLeadingLabel => Palette.Counsel;
 
     public static Color BuildTagLocked => Palette.PanelDeep.WithAlpha(0.9f);

@@ -1442,7 +1442,7 @@ public class UIManager : MonoBehaviour
     {
         public enum State { Idle, Leading, Won }
 
-        private readonly Image surface;
+        private readonly Image surface, border;
         private readonly TextMeshProUGUI label;
         private readonly RectTransform rect;
         private State state = State.Idle;
@@ -1462,8 +1462,29 @@ public class UIManager : MonoBehaviour
             rect.anchoredPosition = pos;
             rect.sizeDelta = size;
 
-            surface = go.AddComponent<Image>();
-            Surface(surface, 5, CasinoTheme.BadgeIdle, CasinoTheme.BadgeIdleBorder);   // static on UIManager
+            // Two white sprites, tinted, rather than one sprite with the colours
+            // baked in. Surface() bakes fill and stroke into the texture, so
+            // re-tinting it per state multiplies against that fill and every
+            // state collapses toward black: a won badge came out dark brown with
+            // an unreadable label, and leading was indistinguishable from idle.
+            // CardUI already had this right; the badge did not.
+            border = go.AddComponent<Image>();
+            border.sprite = CasinoArt.RoundedFill(5);
+            border.type = Image.Type.Sliced;
+            border.color = CasinoTheme.BadgeIdleBorder;
+            border.raycastTarget = false;
+
+            var fillGo = new GameObject("Fill");
+            fillGo.transform.SetParent(go.transform, false);
+            var fr = fillGo.AddComponent<RectTransform>();
+            fr.anchorMin = Vector2.zero;
+            fr.anchorMax = Vector2.one;
+            fr.offsetMin = new Vector2(1.5f, 1.5f);
+            fr.offsetMax = new Vector2(-1.5f, -1.5f);
+            surface = fillGo.AddComponent<Image>();
+            surface.sprite = CasinoArt.RoundedFill(4);
+            surface.type = Image.Type.Sliced;
+            surface.color = CasinoTheme.BadgeIdle;
             surface.raycastTarget = false;
 
             label = owner.CreateText("Label", go.transform);
@@ -1472,7 +1493,7 @@ public class UIManager : MonoBehaviour
             lr.anchorMax = Vector2.one;
             lr.offsetMin = lr.offsetMax = Vector2.zero;
             label.alignment = TextAlignmentOptions.Center;
-            label.fontSize = size.y * 0.42f;
+            label.fontSize = size.y * 0.46f;
             label.fontStyle = FontStyles.Bold;
             label.color = CasinoTheme.BadgeIdleLabel;
             label.raycastTarget = false;
@@ -1493,14 +1514,17 @@ public class UIManager : MonoBehaviour
                 {
                     case State.Won:
                         surface.color = CasinoTheme.BadgeWon;
+                        border.color = CasinoTheme.BadgeWonBorder;
                         label.color = CasinoTheme.BadgeWonLabel;
                         break;
                     case State.Leading:
                         surface.color = CasinoTheme.BadgeLeading;
+                        border.color = CasinoTheme.BadgeLeadingBorder;
                         label.color = CasinoTheme.BadgeLeadingLabel;
                         break;
                     default:
                         surface.color = CasinoTheme.BadgeIdle;
+                        border.color = CasinoTheme.BadgeIdleBorder;
                         label.color = CasinoTheme.BadgeIdleLabel;
                         break;
                 }
@@ -1590,9 +1614,9 @@ public class UIManager : MonoBehaviour
         // landscape rail is narrow and takes two rows of three.
         int perRow = CasinoLayout.Active.Name == "Portrait" ? BadgeNames.Length : 3;
         int rows = Mathf.CeilToInt(BadgeNames.Length / (float)perRow);
-        float gap = 4f;
+        float gap = 5f;
         float bw = (usable - gap * (perRow - 1)) / perRow;
-        float bh = 26f;
+        float bh = 29f;
 
         seatLabel = CreateText($"{name}Seat", panel);
         var sr = seatLabel.rectTransform;
