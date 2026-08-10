@@ -33,6 +33,9 @@ public static class CasinoLayout
         public float RowSpacing;
 
         public Zone OpponentHand, Table, PlayerHand;
+        // A pool of light behind your hand while the turn is yours. Bigger than
+        // the hand on every side, because a glow with a visible edge is a box.
+        public Zone HandGlow;
         // One scoreboard for both sides. There were two zones here, one per
         // player, which is what put the same fact in two corners.
         public Zone Score;
@@ -105,27 +108,35 @@ public static class CasinoLayout
         // centre; the -52 offsets predate that and still read fine, so the play
         // area sits slightly left of its column rather than dead centre in it.
 
-        OpponentHand = new Zone(0.5f, 1f, -52, -14, 460, 112),
+        // 132, not 112: the hand containers carried a 0.75 scale that made
+        // their cards draw smaller than the zone implied. With that gone a
+        // 120-tall card needs a zone that can actually hold one.
+        OpponentHand = new Zone(0.5f, 1f, -52, -14, 460, 132),
         Table        = new Zone(0.5f, 0.5f, -52, 46, 620, 150),
-        PlayerHand   = new Zone(0.5f, 0f, -52, 14, 460, 158),
+        // Sunk below the bottom edge on purpose: the hand is held, not laid
+        // out, and cards you are holding run off the bottom of the view. The
+        // fan drops the outer cards further, so they clip more than the middle.
+        PlayerHand   = new Zone(0.5f, 0f, -52, -30, 460, 158),
+        HandGlow     = new Zone(0.5f, 0f, -52, -104, 660, 300),
 
         // The plaque takes the top-left corner, the first thing read on a page.
         Score = new Zone(0f, 1f, 14, -14, 196, 210),
-        // Directly under the plaque: the toast, and the button that opens the
-        // log beneath it. Both hug the same left margin so the column reads as
-        // one voice rather than three unrelated widgets.
-        Message   = new Zone(0f, 1f, 14, -232, 242, 56),
-        LogButton = new Zone(0f, 1f, 264, -232, 34, 34),
-        LogPanel  = new Zone(0f, 1f, 14, -296, 284, 340),
+        // The toast sits directly under the plaque, so the top-left column is
+        // the game talking: totals, then what just happened.
+        Message   = new Zone(0f, 1f, 14, -232, 284, 56),
 
         // ActionCenter is only the fallback anchor (a build selected with no
         // hand card); normally the stack sits over the selected card itself.
         ActionCenter = new Vector2(-52, 180),
         ActionHeight = 44, ActionGap = 8,
 
-        // Advice, not a move: a circled "?" in the one corner nothing else
-        // wants, now that the takes own the right rail.
-        Suggest = new Zone(0f, 0f, 14, 14, 40, 40),
+        // The two round utility buttons pair up in the bottom-left corner, and
+        // the log opens upward out of its own button. The log button used to
+        // float beside the toast, where it read as punctuation on a line that
+        // is usually empty rather than as a control.
+        Suggest   = new Zone(0f, 0f, 14, 14, 40, 40),
+        LogButton = new Zone(0f, 0f, 64, 14, 40, 40),
+        LogPanel  = new Zone(0f, 0f, 14, 64, 300, 360),
 
         // Each side's take, face up and stacked, on that side's end of the
         // right rail: the AI's above, yours below, the same seating order the
@@ -149,7 +160,7 @@ public static class CasinoLayout
         DrawPileAi    = new Zone(0f, 1f, 254, -14, 96, 132),
         DrawPileHuman = new Zone(0f, 0f, 254, 14, 96, 132),
 
-        Version  = new Zone(0f, 0f, 62, 6, 120, 18),
+        Version  = new Zone(0f, 0f, 116, 6, 120, 18),
         GameOver = new Zone(0.5f, 0.5f, 0, 0, 440, 240),
         };
 
@@ -164,16 +175,17 @@ public static class CasinoLayout
         // Same Parlor grid, tighter: columns 280 | 1fr | 108, padding 12.
         OpponentHand = new Zone(0.5f, 1f, -48, -12, 420, 104),
         Table        = new Zone(0.5f, 0.5f, -48, 40, 560, 140),
-        PlayerHand   = new Zone(0.5f, 0f, -48, 12, 420, 140),
+        PlayerHand   = new Zone(0.5f, 0f, -48, -26, 420, 140),
+        HandGlow     = new Zone(0.5f, 0f, -48, -96, 600, 270),
 
         Score = new Zone(0f, 1f, 12, -12, 180, 196),
-        Message   = new Zone(0f, 1f, 12, -216, 224, 52),
-        LogButton = new Zone(0f, 1f, 244, -216, 32, 32),
-        LogPanel  = new Zone(0f, 1f, 12, -276, 264, 320),
+        Message   = new Zone(0f, 1f, 12, -216, 260, 52),
 
         ActionCenter = new Vector2(-48, 158),
         ActionHeight = 42, ActionGap = 8,
-        Suggest = new Zone(0f, 0f, 12, 12, 38, 38),
+        Suggest   = new Zone(0f, 0f, 12, 12, 38, 38),
+        LogButton = new Zone(0f, 0f, 58, 12, 38, 38),
+        LogPanel  = new Zone(0f, 0f, 12, 58, 280, 340),
 
         AiCaptured     = new Zone(1f, 1f, -12, -12, 94, 200),
         PlayerCaptured = new Zone(1f, 0f, -12, 12, 94, 200),
@@ -184,7 +196,7 @@ public static class CasinoLayout
         DrawPileAi    = new Zone(0f, 1f, 200, -12, 88, 120),
         DrawPileHuman = new Zone(0f, 0f, 186, 12, 84, 114),
 
-        Version  = new Zone(0f, 0f, 58, 4, 120, 18),
+        Version  = new Zone(0f, 0f, 106, 4, 120, 18),
         GameOver = new Zone(0.5f, 0.5f, 0, 0, 420, 230),
         };
 
@@ -206,9 +218,7 @@ public static class CasinoLayout
         // the space beside it. Untested on a device like the rest of this
         // profile.
         Score     = new Zone(0f, 1f, 14, -14, 176, 196),
-        Message   = new Zone(1f, 1f, -14, -14, 470, 56),
-        LogButton = new Zone(1f, 1f, -14, -80, 40, 40),
-        LogPanel  = new Zone(1f, 1f, -14, -128, 470, 300),
+        Message   = new Zone(1f, 1f, -14, -14, 500, 60),
 
         OpponentHand = new Zone(0.5f, 1f, 0, -292, 684, 120),
 
@@ -219,8 +229,10 @@ public static class CasinoLayout
 
         ActionCenter = new Vector2(0, 396),
         ActionHeight = 52, ActionGap = 10,
-        // Thumb-sized, clear of the version stamp.
-        Suggest = new Zone(0f, 0f, 14, 34, 48, 48),
+        // Thumb-sized, clear of the version stamp, paired with the log button.
+        Suggest   = new Zone(0f, 0f, 14, 34, 48, 48),
+        LogButton = new Zone(0f, 0f, 72, 34, 48, 48),
+        LogPanel  = new Zone(0f, 0f, 14, 92, 480, 400),
 
         // No right rail here, so the takes sit at the outer ends of the two
         // hand rows rather than in a column of their own.
@@ -230,7 +242,10 @@ public static class CasinoLayout
         PlayerAces = new Zone(1f, 0f, -92, 96, 200, 60),
         AiAces     = new Zone(0f, 1f, 14, -420, 200, 56),
 
+        // Portrait keeps the hand fully on screen: there is no spare height
+        // below it to clip into, only the action stack and the thumb rail.
         PlayerHand = new Zone(0.5f, 0f, 0, 230, 684, 150),
+        HandGlow   = new Zone(0.5f, 0f, 0, 170, 720, 280),
         DrawPileAi    = new Zone(0f, 1f, 20, -440, 76, 104),
         DrawPileHuman = new Zone(0f, 0f, 20, 118, 76, 104),
         Version    = new Zone(1f, 0f, -10, 6, 120, 18),

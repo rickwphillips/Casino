@@ -2,11 +2,12 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using TMPro;
 
 [RequireComponent(typeof(Button))]
-public class CardUI : MonoBehaviour
+public class CardUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     private PlayingCard card;
     private Button button;
@@ -20,6 +21,7 @@ public class CardUI : MonoBehaviour
     private bool isSuggested = false;    // the game is advising this play
     private bool isCapturable = false;   // the board makes this takeable
     private bool isOpponentTaking = false; // the AI is about to take this
+    private bool isHovered = false;        // the cursor is over it right now
     private Image backImage;
     private Image faceImage;
     private Image shadowImage;
@@ -158,6 +160,10 @@ public class CardUI : MonoBehaviour
         if (button != null)
             button.interactable = isSelectable;
 
+        // A card that stops being selectable while the cursor sits on it never
+        // gets a pointer-exit, and would keep its hover lift for good.
+        if (!isSelectable) isHovered = false;
+
         UpdateVisuals();
     }
 
@@ -256,11 +262,61 @@ public class CardUI : MonoBehaviour
           : isSelected        ? CasinoTheme.CardSelected
           : isSuggested       ? CasinoTheme.CardSuggested
           : isCapturable      ? CasinoTheme.CardCapturable
+          // Hover ranks below every one of those: it says where the cursor is,
+          // and it must never repaint over what the board is telling you.
+          : isHovered         ? CasinoTheme.CardHover
           : CasinoTheme.CardFace;
 
         // Scale is the second channel, so no state is carried by hue alone.
-        float scale = isSelected ? 1.15f : isOpponentTaking ? 1.08f : 1f;
+        float scale = isSelected ? 1.15f : isOpponentTaking ? 1.08f : isHovered ? 1.11f : 1f;
         transform.localScale = Vector3.one * scale;
+
+        ApplyPose();
+    }
+
+    // ---- fan pose and hover lift ----------------------------------------
+    // Cards in the human hand are fanned: each one carries a tilt and an offset
+    // that UIManager computed, and hovering or selecting lifts it out of the
+    // fan and stands it upright, the way you would pull a card forward in a
+    // real hand. Cards anywhere else have no resting pose and only scale.
+    private bool hasRestingPose;
+    private Vector2 restingPos;
+    private Quaternion restingRot;
+    private int restingSibling;
+
+    private const float HoverLift = 22f;
+
+    public void SetRestingPose(Vector2 pos, Quaternion rot)
+    {
+        hasRestingPose = true;
+        restingPos = pos;
+        restingRot = rot;
+        restingSibling = transform.GetSiblingIndex();
+        ApplyPose();
+    }
+
+    private void ApplyPose()
+    {
+        if (!hasRestingPose || transform is not RectTransform r) return;
+
+        bool raised = isHovered || isSelected;
+        r.anchoredPosition = raised ? restingPos + new Vector2(0, HoverLift) : restingPos;
+        r.localRotation = raised ? Quaternion.identity : restingRot;
+        // A lifted card that still draws under its neighbour looks like a bug
+        // rather than a lift, and in a fan every card has a neighbour on top.
+        transform.SetSiblingIndex(raised ? transform.parent.childCount - 1 : restingSibling);
+    }
+
+    public void OnPointerEnter(PointerEventData _) => SetHovered(true);
+    public void OnPointerExit(PointerEventData _) => SetHovered(false);
+
+    private void SetHovered(bool hovered)
+    {
+        // An unselectable card is not offering anything, so it does not react.
+        if (!isSelectable) hovered = false;
+        if (hovered == isHovered) return;
+        isHovered = hovered;
+        UpdateVisuals();
     }
 
     public void SetFaceDown(bool faceDown)
@@ -411,6 +467,9 @@ public class UIManager : MonoBehaviour
     private TextMeshProUGUI capturedTitle;
     private bool pileShowsHuman;
     private int pileShownCount = -1;
+
+    // Lit felt under your hand while the turn is yours.
+    private GameObject handGlow;
 
     // Draw pile
     private GameObject drawPile;
@@ -821,8 +880,12 @@ public class UIManager : MonoBehaviour
         keep.Add(Place(tableCardsContainer, L.Table));
 
         EnsureRowLayout(dealerHandContainer);
-        EnsureRowLayout(nonDealerHandContainer);
         EnsureRowLayout(tableCardsContainer);
+        // Not the human hand: it fans, and a HorizontalLayoutGroup would
+        // overwrite every position and rotation ApplyHandFan sets.
+        StripRowLayout(nonDealerHandContainer);
+
+        EnsureHandGlow(L);
 
         // The scene's generic Play button is replaced by the explicit
         // Sweep / Trail / Build actions - leave it out of keep so it hides.
@@ -935,6 +998,22 @@ public class UIManager : MonoBehaviour
                 sb.AppendLine($"{child.gameObject.name,-24} active={child.gameObject.activeSelf,-5} " +
                     (r != null ? $"anchors=({r.anchorMin.x:F1},{r.anchorMin.y:F1})-({r.anchorMax.x:F1},{r.anchorMax.y:F1}) pos={r.anchoredPosition} size={r.sizeDelta}" : ""));
             }
+            // The hand fans, so where its cards actually land is no longer
+            // implied by the container: it is the fan's arithmetic, in world
+            // corners. Diagnosing "how far is the hand clipping" from anchors
+            // and offsets alone cost a pass; this answers it outright.
+            sb.AppendLine("--- human hand cards (world corners, y up from screen bottom) ---");
+            var corners = new Vector3[4];
+            foreach (var ui in nonDealerCardUIs)
+            {
+                if (ui == null) continue;
+                var r = ui.GetComponent<RectTransform>();
+                r.GetWorldCorners(corners);
+                sb.AppendLine($"{ui.name,-16} pos={r.anchoredPosition} size={r.sizeDelta} " +
+                    $"scale={r.localScale.x:F2} rotZ={r.localEulerAngles.z:F1} " +
+                    $"bottom={corners[0].y:F0} top={corners[1].y:F0} left={corners[0].x:F0} right={corners[2].x:F0}");
+            }
+
             System.IO.File.WriteAllText(
                 System.IO.Path.Combine(Application.dataPath, "..", "layout-report.txt"),
                 sb.ToString());
@@ -957,6 +1036,12 @@ public class UIManager : MonoBehaviour
             rect.pivot = anchor;
             rect.anchoredPosition = pos;
             rect.sizeDelta = size;
+            // The scene left a 0.75 localScale on both hand containers, so hand
+            // cards had always drawn three-quarter size while table cards drew
+            // full size, and every card measurement taken off a screenshot was
+            // quietly wrong. This pass owns the whole arrangement; scale is
+            // part of the arrangement.
+            rect.localScale = Vector3.one;
         }
         return t.gameObject;
     }
@@ -1040,6 +1125,48 @@ public class UIManager : MonoBehaviour
         layout.childControlHeight = false;
         layout.childForceExpandWidth = false;
         layout.childForceExpandHeight = false;
+    }
+
+    // The human hand was a row until it became a fan. A LayoutGroup left on the
+    // container silently reasserts itself every rebuild, so the fan has to own
+    // the container outright rather than merely be applied after.
+    private void StripRowLayout(Transform container)
+    {
+        if (container == null) return;
+        var existing = container.GetComponent<LayoutGroup>();
+        if (existing != null) DestroyImmediate(existing);
+    }
+
+    // A soft pool of light under your hand, on only while the turn is yours.
+    // It lives behind everything (sibling 0) so cards and ghosts draw over it.
+    private void EnsureHandGlow(CasinoLayout.Profile L)
+    {
+        if (handGlow == null)
+        {
+            handGlow = new GameObject("HandGlow");
+            handGlow.transform.SetParent(canvasTransform, false);
+            handGlow.AddComponent<RectTransform>();
+            var img = handGlow.AddComponent<Image>();
+            img.sprite = CasinoArt.Glow(Mathf.RoundToInt(L.HandGlow.Size.y / 2f),
+                                        Mathf.RoundToInt(L.HandGlow.Size.y * 0.42f));
+            img.type = Image.Type.Sliced;
+            img.color = CasinoTheme.TurnGlow;
+            img.raycastTarget = false;
+            handGlow.SetActive(false);
+        }
+        Place(handGlow.transform, L.HandGlow);
+        handGlow.transform.SetSiblingIndex(GlowSiblingIndex());
+    }
+
+    // Just above the felt and its grain, below every card.
+    private int GlowSiblingIndex()
+    {
+        int i = 0;
+        foreach (Transform child in canvasTransform)
+        {
+            if (child.name is "TableFelt" or "TableGrain" or "TableRail") i = child.GetSiblingIndex() + 1;
+        }
+        return i;
     }
 
 
@@ -2156,7 +2283,54 @@ public class UIManager : MonoBehaviour
 
         UpdateOneHand(top, dealerHandContainer, dealerCardUIs);
         UpdateOneHand(bottom, nonDealerHandContainer, nonDealerCardUIs);
+
+        ApplyHandFan();
+
+        // The glow is the turn, not the hand: it follows whose move it is.
+        if (handGlow != null)
+            handGlow.SetActive(GameManager.Instance.IsWaitingForHumanInput());
     }
+
+    // Your hand is held, not laid out: cards splay from a point below the
+    // bottom edge, tilting further and sitting lower the further they are from
+    // the middle. The AI's hand stays a straight row, because a fan is a
+    // gesture of holding cards and the AI is not holding them at you.
+    //
+    // Angles and offsets are set on the RectTransform directly, which is why
+    // the container cannot keep a LayoutGroup (see StripRowLayout).
+    private void ApplyHandFan()
+    {
+        int n = nonDealerCardUIs.Count;
+        if (n == 0) return;
+
+        var L = CasinoLayout.Active;
+        float middle = (n - 1) / 2f;
+        // One card needs no fan, and dividing by a zero span would be a NaN.
+        float span = Mathf.Max(1f, middle);
+        float spacing = L.CardSize.x + L.RowSpacing;
+
+        for (int i = 0; i < n; i++)
+        {
+            var ui = nonDealerCardUIs[i];
+            if (ui == null) continue;
+            float offset = i - middle;
+
+            var r = ui.GetComponent<RectTransform>();
+            r.anchorMin = r.anchorMax = r.pivot = new Vector2(0.5f, 0.5f);
+            // Squared falloff, normalised by the span, so the drop at the outer
+            // edge is FanDrop whether the hand holds four cards or one.
+            float drop = FanDrop * (offset / span) * (offset / span);
+            r.anchoredPosition = new Vector2(offset * spacing, -drop);
+            r.localRotation = Quaternion.Euler(0, 0, -offset * FanAngleStep);
+
+            ui.SetRestingPose(r.anchoredPosition, r.localRotation);
+        }
+    }
+
+    // Degrees of tilt per card away from the middle, and how far the outermost
+    // card sits below it.
+    private const float FanAngleStep = 5.5f;
+    private const float FanDrop = 26f;
 
     // Human hand: face up, selectable only while input is expected.
     // AI hand: face down, never selectable.
@@ -2547,8 +2721,24 @@ public class UIManager : MonoBehaviour
             selectedCard.SetSelected(false);
 
         selectedCard = cardUI.IsSelected ? cardUI : null;
+
+        // Putting the hand card back down puts the table cards back down with
+        // it. Table cards are only ever chosen as material for a hand card, so
+        // a table selection with nothing in hand is a selection that cannot
+        // become a move: it just sat there lit up, waiting on a card the player
+        // had already decided against.
+        if (selectedCard == null) ClearTableSelection();
+
         HighlightCapturingHandCards();
         UpdateActionButtons();
+    }
+
+    private void ClearTableSelection()
+    {
+        foreach (var ui in buildSelection)
+            if (ui != null) ui.SetSelected(false);
+        buildSelection.Clear();
+        selectedBuilds.Clear();
     }
 
     // Hand-first guidance: with a card picked up and nothing chosen on the table,

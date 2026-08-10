@@ -53,7 +53,7 @@ public class CasinoAutoPlay : MonoBehaviour
 
     private static bool probeOnly;
     private int moves, rounds;
-    private bool shotBuild, shotPile;
+    private bool shotBuild, shotPile, shotHover;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Install()
@@ -156,6 +156,24 @@ public class CasinoAutoPlay : MonoBehaviour
                     yield return new WaitForSecondsRealtime(1.2f);
                     ScreenshotCapture.Capture("autoplay-build");
                 }
+            }
+
+            // Hover is the one hand behaviour a harness cannot reach by clicking:
+            // it needs a pointer, and there is no pointer in an unattended run.
+            // Calling the handler directly is exactly what the EventSystem would
+            // do, and it is the only way to photograph a card lifted out of the
+            // fan without a human holding the mouse still.
+            if (!shotHover && gm.IsWaitingForHumanInput() && ui.HumanHandCardUIs.Count >= 3)
+            {
+                shotHover = true;
+                var card = ui.HumanHandCardUIs[1];
+                Mark($"hovering {card.Card.rank} of {card.Card.suit}");
+                card.OnPointerEnter(null);
+                yield return new WaitForSecondsRealtime(0.6f);
+                ScreenshotCapture.Capture("autoplay-hover");
+                yield return new WaitForSecondsRealtime(0.4f);
+                card.OnPointerExit(null);
+                Mark("hover released");
             }
 
             // Once there is something in a pile worth looking at, open the viewer

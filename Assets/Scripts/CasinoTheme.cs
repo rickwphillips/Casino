@@ -106,6 +106,11 @@ public static class CasinoTheme
     public static Color ScoreCaptionAi => Palette.Blush.WithAlpha(0.78f);
     public static Color ScorePip => Palette.Brass.WithAlpha(0.70f);
 
+    // The pool of light behind your hand while the turn is yours. Faint on
+    // purpose: it should register as the table being lit where you are sitting,
+    // not as a highlight demanding to be clicked.
+    public static Color TurnGlow => Palette.Gold.WithAlpha(0.16f);
+
     // Transparent-but-raycastable: an Image needs a non-zero alpha to receive
     // clicks, so builds get an invisible hit area rather than a visible one.
     public static Color InvisibleHitArea => new(0f, 0f, 0f, 0.01f);
@@ -162,6 +167,10 @@ public static class CasinoTheme
     public static Color CardCapturable => Palette.Gold;
     public static Color CardSuggested => Palette.Counsel;
     public static Color CardOpponentTaking => Palette.Rust;
+    // Barely off white: hover says "this one is under the cursor", and it ranks
+    // below every state above, so it can never repaint a card the board has
+    // something to say about.
+    public static Color CardHover => Palette.Parchment;
 
     // ---------------------------------------------------------------
     // Builds
