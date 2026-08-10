@@ -84,6 +84,15 @@ public static class CasinoTheme
     public static Color GameOverPanel => Palette.PanelDeep;
     public static Color RoundSummaryPanel => Palette.PanelDeep;
 
+    // The title screen sits on the felt rather than on a grey sheet, so this is
+    // deliberately weaker than ModalScrim: it has to hide a dealt board without
+    // hiding the table the game is played on.
+    public static Color TitleVeil => Palette.FeltEdge.WithAlpha(0.90f);
+    public static Color TitleRule => Palette.Brass.WithAlpha(0.55f);
+    // Between TextMuted and TextFaint: the three plays are a caption, not a
+    // stamp, and TextFaint vanished against the felt.
+    public static Color TitlePlays => Palette.Parchment.WithAlpha(0.52f);
+
     public static Color PileViewerPanel => Palette.PanelDeep.WithAlpha(0.96f);
     public static Color ScorePanel => Palette.PanelInk.WithAlpha(0.94f);
     public static Color PileButton => Palette.PanelInk.WithAlpha(0.88f);
@@ -98,7 +107,9 @@ public static class CasinoTheme
     public static Color ButtonPrimary => Palette.BrassDeep;                     // Sweep, Continue
     public static Color ButtonSecondary => Palette.PanelInk.WithAlpha(0.88f);   // Build, Trail, Suggest
     public static Color ButtonLabel => Palette.Parchment;
-    public static Color ButtonPrimaryLabel => new(0.133f, 0.102f, 0.024f);
+    // White, not the dark bronze it launched with: dark-on-brass measured
+    // barely 4:1 and read as engraving, not as the label of the primary action.
+    public static Color ButtonPrimaryLabel => Color.white;
 
     // ---------------------------------------------------------------
     // Type
