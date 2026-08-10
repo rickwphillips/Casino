@@ -36,14 +36,13 @@ public static class CasinoLayout
         public Zone Score, PlayerPile, AiPile;
         public Zone DrawPile, TurnText, StatusText, Version, GameOver;
 
-        // Actions are a run of identical buttons: a vertical rail in landscape,
-        // a horizontal bar in portrait. One description covers both.
-        public Vector2 ActionAnchor, ActionFirst, ActionStep, ActionSize;
-
-        public Zone Action(int i) => new(
-            ActionAnchor.x, ActionAnchor.y,
-            ActionFirst.x + ActionStep.x * i, ActionFirst.y + ActionStep.y * i,
-            ActionSize.x, ActionSize.y);
+        // Actions are a horizontal row directly above the player's hand, not a
+        // fixed rail: which buttons exist depends on what is selected, so the
+        // profile describes the row (where its centre is, how tall, the gap)
+        // and UIManager lays the visible buttons out along it each refresh.
+        public Vector2 ActionAnchor;   // canvas anchor of the row
+        public Vector2 ActionCenter;   // x = row centre offset, y = row baseline
+        public float ActionHeight, ActionGap;
     }
 
     // Resolved on first read rather than in a field initializer.
@@ -71,9 +70,9 @@ public static class CasinoLayout
     //
     // The play area is centred on the space left over after the rail and the
     // draw-pile column, not on the canvas, which is why the x offsets are -69
-    // rather than 0. Score, piles and actions are one contiguous right rail;
-    // previously the score sat top-right and the buttons bottom-right with
-    // ~160 units of dead felt between two things that belong together.
+    // rather than 0. The score panel is the right rail; the action buttons
+    // left it for a contextual row above the hand, because a button that only
+    // exists in response to a selection belongs next to the selection.
     // -----------------------------------------------------------------
     public static readonly Profile Wide = new()
     {
@@ -92,14 +91,16 @@ public static class CasinoLayout
 
         OpponentHand = new Zone(0.5f, 1f, -52, -14, 460, 112),
         Table        = new Zone(0.5f, 0.5f, -52, 46, 620, 150),
-        Hint         = new Zone(0.5f, 0f, -52, 172, 560, 46),
+        Hint         = new Zone(0.5f, 0f, -52, 232, 560, 46),
         PlayerHand   = new Zone(0.5f, 0f, -52, 14, 460, 158),
 
         Score = new Zone(1f, 1f, -14, -14, 272, 278),
-        ActionAnchor = new Vector2(1, 0),
-        ActionFirst  = new Vector2(-14, 30),   // clears the version stamp at y 4..22
-        ActionStep   = new Vector2(0, 54),
-        ActionSize   = new Vector2(272, 46),
+        // The row sits in the seam between the hand (tops out at y 172) and the
+        // hint, which moved up to make room. Reaching a button is now a short
+        // hop from the card that made it appear, not a trip across the felt.
+        ActionAnchor = new Vector2(0.5f, 0f),
+        ActionCenter = new Vector2(-52, 180),
+        ActionHeight = 44, ActionGap = 10,
 
         // Left column, top to bottom: draw pile, status, then the two piles.
         DrawPile   = new Zone(0f, 0f, 50, 396, 96, 132),
@@ -124,14 +125,13 @@ public static class CasinoLayout
         // Play column is x 152..776, centre 464, i.e. 48 left of canvas centre.
         OpponentHand = new Zone(0.5f, 1f, -48, -12, 420, 104),
         Table        = new Zone(0.5f, 0.5f, -48, 40, 560, 140),
-        Hint         = new Zone(0.5f, 0f, -48, 152, 500, 44),
+        Hint         = new Zone(0.5f, 0f, -48, 208, 500, 44),
         PlayerHand   = new Zone(0.5f, 0f, -48, 12, 420, 140),
 
         Score = new Zone(1f, 1f, -12, -12, 236, 272),
-        ActionAnchor = new Vector2(1, 0),
-        ActionFirst  = new Vector2(-12, 28),
-        ActionStep   = new Vector2(0, 50),
-        ActionSize   = new Vector2(236, 44),
+        ActionAnchor = new Vector2(0.5f, 0f),
+        ActionCenter = new Vector2(-48, 158),
+        ActionHeight = 42, ActionGap = 8,
 
         DrawPile   = new Zone(0f, 0f, 38, 416, 88, 120),
         TurnText   = new Zone(0f, 0f, 12, 122, 180, 24),
@@ -170,10 +170,9 @@ public static class CasinoLayout
         Table      = new Zone(0.5f, 0.5f, 0, 20, 684, 300),
         Hint       = new Zone(0.5f, 0f, 0, 450, 660, 56),
 
-        ActionAnchor = new Vector2(0.5f, 0),
-        ActionFirst  = new Vector2(-258, 396),
-        ActionStep   = new Vector2(172, 0),
-        ActionSize   = new Vector2(166, 52),
+        ActionAnchor = new Vector2(0.5f, 0f),
+        ActionCenter = new Vector2(0, 396),
+        ActionHeight = 52, ActionGap = 10,
 
         PlayerHand = new Zone(0.5f, 0f, 0, 230, 684, 150),
         // 92 put the pile's count label hard against the bottom edge, where it

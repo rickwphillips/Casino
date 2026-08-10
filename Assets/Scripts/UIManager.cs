@@ -448,7 +448,188 @@ public class UIManager : MonoBehaviour
         }
 
         CreateRuntimeUI();
+        if (!TitleSuppressed) CreateTitleScreen();
         StartCoroutine(WaitAndRefresh());
+    }
+
+    // --- Title screen -------------------------------------------------
+    //
+    // The game used to open mid-deal: no name, no ruleset, no moment before the
+    // first card. This is that moment. It is a full-canvas overlay rather than a
+    // second scene, because UIManager builds the whole UI in code and another
+    // scene would need its own canvas, camera and wiring for one static screen.
+    //
+    // GameManager still deals on Start exactly as it always has, and the overlay
+    // simply covers the result. Nothing is gated: deferring InitializeGame would
+    // leave deck/dealer/nonDealer null while RefreshUI runs, and the deal is the
+    // only thing the player misses behind the title. So AnimateDeal defers
+    // instead, and Deal replays it. That animation is pure ghost cards over an
+    // already-dealt board, so replaying it changes no game state.
+
+    // Set by the harnesses, which drive the board directly and must not have to
+    // click through an opening screen.
+    public static bool SkipTitle;
+
+    // Same idiom as auto-verify.flag / screenshot.flag, but NOT consumed: an
+    // unattended verify loop wants the board in every run, not just the first.
+    private static bool TitleSuppressed
+    {
+        get
+        {
+            if (SkipTitle) return true;
+            try
+            {
+                return System.IO.File.Exists(System.IO.Path.Combine(
+                    Application.dataPath, "..", "skip-title.flag"));
+            }
+            catch { return false; }
+        }
+    }
+
+    private GameObject titleScreen;
+    private Vector3Int pendingDeal = Vector3Int.zero;
+
+    public bool TitleIsUp => titleScreen != null && titleScreen.activeSelf;
+
+    public void DismissTitle()
+    {
+        if (titleScreen == null || !titleScreen.activeSelf) return;
+        titleScreen.SetActive(false);
+
+        if (pendingDeal != Vector3Int.zero)
+        {
+            var d = pendingDeal;
+            pendingDeal = Vector3Int.zero;
+            StartCoroutine(DealSequence(d.x, d.y, d.z));
+        }
+        RefreshUI();
+    }
+
+    private void CreateTitleScreen()
+    {
+        titleScreen = new GameObject("TitleScreen");
+        titleScreen.transform.SetParent(canvasTransform, false);
+        var root = titleScreen.AddComponent<RectTransform>();
+        root.anchorMin = Vector2.zero;
+        root.anchorMax = Vector2.one;
+        root.offsetMin = root.offsetMax = Vector2.zero;
+
+        // Opaque, and made of the felt itself rather than a wash over the board.
+        // A translucent veil was the first attempt and it failed twice over: at
+        // 0.90 the dealt cards still read through as grey card-shaped patches
+        // (the same mistake the round summary made), and anything the player can
+        // half-see before the game starts is a distraction, not depth.
+        var veil = titleScreen.AddComponent<Image>();
+        veil.sprite = CasinoArt.Felt();
+        veil.color = veil.sprite != null ? Color.white : CasinoTheme.TitleVeil;
+        veil.raycastTarget = true;   // swallow clicks aimed at the board behind
+
+        var grain = new GameObject("TitleGrain");
+        grain.transform.SetParent(titleScreen.transform, false);
+        var gr = grain.AddComponent<RectTransform>();
+        gr.anchorMin = Vector2.zero;
+        gr.anchorMax = Vector2.one;
+        gr.offsetMin = gr.offsetMax = Vector2.zero;
+        var grainImage = grain.AddComponent<Image>();
+        grainImage.sprite = CasinoArt.FeltGrain();
+        grainImage.type = Image.Type.Tiled;
+        // Half strength, unlike the board's. The grain was tuned to sit under a
+        // full board of cards and panels; across an empty screen the same
+        // amount reads as static rather than cloth.
+        grainImage.color = new Color(1f, 1f, 1f, 0.5f);
+        grainImage.raycastTarget = false;
+
+        // The same brass rail the board wears, so the title is the table with
+        // nothing on it yet rather than a separate screen.
+        var rail = new GameObject("TitleRail");
+        rail.transform.SetParent(titleScreen.transform, false);
+        var rr = rail.AddComponent<RectTransform>();
+        rr.anchorMin = Vector2.zero;
+        rr.anchorMax = Vector2.one;
+        rr.offsetMin = new Vector2(8, 8);
+        rr.offsetMax = new Vector2(-8, -8);
+        var railImage = rail.AddComponent<Image>();
+        railImage.sprite = CasinoArt.Rail();
+        railImage.type = Image.Type.Sliced;
+        railImage.raycastTarget = false;
+
+        // Everything below is centred and under 600 units wide, which fits both
+        // the 1280x720 landscape references and the 720-wide portrait one, so the
+        // title needs no per-profile Zone.
+
+        var wordmark = CreateText("Wordmark", titleScreen.transform);
+        wordmark.text = "CASINO";
+        wordmark.fontSize = 78;
+        // TMP counts tracking after the last glyph too, so wide spacing drifts the
+        // optical centre left by half a step. The +9 puts it back.
+        wordmark.characterSpacing = 18;
+        wordmark.alignment = TextAlignmentOptions.Center;
+        wordmark.color = CasinoTheme.Headline;
+        CasinoType.ApplySerif(wordmark);
+        Pin(wordmark.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(9, 92), new Vector2(600, 104));
+
+        var rule = new GameObject("TitleRule");
+        rule.transform.SetParent(titleScreen.transform, false);
+        var ruleImage = rule.AddComponent<Image>();
+        ruleImage.color = CasinoTheme.TitleRule;
+        ruleImage.raycastTarget = false;
+        Pin(rule.GetComponent<RectTransform>(), new Vector2(0.5f, 0.5f), new Vector2(0, 44), new Vector2(280, 1.5f));
+
+        // Which ruleset you are about to play is not cosmetic here: the scene
+        // ships Rick's New England in the "Custom" slot, and the point totals
+        // differ enough between variants to change how a hand is played.
+        var ruleset = CreateText("Ruleset", titleScreen.transform);
+        ruleset.text = RulesetLine();
+        ruleset.fontSize = 17;
+        ruleset.alignment = TextAlignmentOptions.Center;
+        ruleset.color = CasinoTheme.TextMuted;
+        Pin(ruleset.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, 16), new Vector2(560, 28));
+
+        var deal = new GameObject("DealButton");
+        deal.transform.SetParent(titleScreen.transform, false);
+        deal.AddComponent<RectTransform>();
+        Surface(deal.AddComponent<Image>(), 6, CasinoTheme.ButtonPrimary, CasinoTheme.ButtonPrimaryBorder);
+        Pin(deal.GetComponent<RectTransform>(), new Vector2(0.5f, 0.5f), new Vector2(0, -50), new Vector2(200, 54));
+        deal.AddComponent<Button>().onClick.AddListener(DismissTitle);
+
+        var dealLabel = CreateText("Label", deal.transform);
+        dealLabel.text = "Deal";
+        dealLabel.fontSize = 22;
+        dealLabel.alignment = TextAlignmentOptions.Center;
+        dealLabel.color = CasinoTheme.ButtonPrimaryLabel;
+        CasinoType.ApplySerif(dealLabel);
+        var dl = dealLabel.rectTransform;
+        dl.anchorMin = Vector2.zero;
+        dl.anchorMax = Vector2.one;
+        dl.offsetMin = dl.offsetMax = Vector2.zero;
+
+        // The three plays, stated once. A player who has never met Casino has no
+        // way to guess that trailing is a move rather than a forfeit.
+        var plays = CreateText("Plays", titleScreen.transform);
+        plays.text = "SWEEP     TRAIL     BUILD";
+        plays.fontSize = 13;
+        plays.characterSpacing = 8;
+        plays.alignment = TextAlignmentOptions.Center;
+        // TextFaint is the version-stamp weight and vanished against the felt.
+        plays.color = CasinoTheme.TitlePlays;
+        Pin(plays.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(4, -112), new Vector2(560, 22));
+
+        // The board's version stamp is behind the title, and a screenshot that
+        // cannot name its own build is the thing CLAUDE.md exists to prevent.
+        var version = CreateText("TitleVersion", titleScreen.transform);
+        version.text = $"v{Application.version}";
+        version.fontSize = 12;
+        version.alignment = TextAlignmentOptions.BottomRight;
+        version.color = CasinoTheme.TextFaint;
+        Pin(version.rectTransform, new Vector2(1f, 0f), new Vector2(-10, 4), new Vector2(120, 18));
+    }
+
+    private static string RulesetLine()
+    {
+        var s = ScoringManager.Instance;
+        return s == null
+            ? "The fishing card game"
+            : $"{s.CurrentVariant}   ·   first to {s.WinScore}";
     }
 
     // ---------------------------------------------------------------
@@ -519,22 +700,20 @@ public class UIManager : MonoBehaviour
         if (dealerScoreText != null) dealerScoreText.gameObject.SetActive(false);
         if (nonDealerScoreText != null) nonDealerScoreText.gameObject.SetActive(false);
 
-        sweepButton = CreateActionButton("SweepButton", "Sweep",
-            new Vector2(-16, 16), out sweepButtonLabel);
+        // Positions are not set here: the buttons live in a contextual row above
+        // the hand, and UpdateActionButtons lays out whichever ones are visible.
+        sweepButton = CreateActionButton("SweepButton", "Sweep", out sweepButtonLabel);
         Surface(sweepButton.GetComponent<Image>(), 5, CasinoTheme.ButtonPrimary, CasinoTheme.ButtonPrimaryBorder);
         sweepButtonLabel.color = CasinoTheme.ButtonPrimaryLabel;
         sweepButton.onClick.AddListener(OnSweepClicked);
 
-        trailButton = CreateActionButton("TrailButton", "Trail",
-            new Vector2(-16, 70), out trailButtonLabel);
+        trailButton = CreateActionButton("TrailButton", "Trail", out trailButtonLabel);
         trailButton.onClick.AddListener(OnTrailClicked);
 
-        buildButton = CreateActionButton("BuildButton", "Build",
-            new Vector2(-16, 124), out buildButtonLabel);
+        buildButton = CreateActionButton("BuildButton", "Build", out buildButtonLabel);
         buildButton.onClick.AddListener(OnBuildClicked);
 
-        suggestButton = CreateActionButton("SuggestButton", "Suggest",
-            new Vector2(-16, 178), out suggestButtonLabel);
+        suggestButton = CreateActionButton("SuggestButton", "Suggest", out suggestButtonLabel);
         suggestButton.onClick.AddListener(OnSuggestClicked);
 
         hintText = CreateText("HintText", canvasTransform);
@@ -657,8 +836,8 @@ public class UIManager : MonoBehaviour
         PlaceByName("HintText", L.Hint);
         PlaceByName("VersionText", L.Version);
 
-        string[] actions = { "SweepButton", "TrailButton", "BuildButton", "SuggestButton" };
-        for (int i = 0; i < actions.Length; i++) PlaceByName(actions[i], L.Action(i));
+        // Action buttons are not placed here: which ones exist depends on the
+        // current selection, so UpdateActionButtons owns their row layout.
 
         // Game over panel: centered card
         if (gameOverPanel != null)
@@ -679,7 +858,7 @@ public class UIManager : MonoBehaviour
                 child.name == "AIPile" || child.name == "CapturedPanel" ||
                 child.name == "DrawPile" || child.name == "ScoreSummary" ||
                 child.name == "MoveBanner" || child.name == "VersionText" ||
-                child.name == "ModalScrim")
+                child.name == "ModalScrim" || child.name == "TitleScreen")
             {
                 keep.Add(child.gameObject);
             }
@@ -826,16 +1005,15 @@ public class UIManager : MonoBehaviour
     }
 
 
-    private Button CreateActionButton(string name, string label, Vector2 anchoredPos, out TextMeshProUGUI labelText)
+    private Button CreateActionButton(string name, string label, out TextMeshProUGUI labelText)
     {
         GameObject go = new(name);
         go.transform.SetParent(canvasTransform, false);
         var rect = go.AddComponent<RectTransform>();
-        rect.anchorMin = new Vector2(1, 0);
-        rect.anchorMax = new Vector2(1, 0);
-        rect.pivot = new Vector2(1, 0);
-        rect.anchoredPosition = anchoredPos;
-        rect.sizeDelta = new Vector2(160, 48);
+        rect.anchorMin = new Vector2(0.5f, 0);
+        rect.anchorMax = new Vector2(0.5f, 0);
+        rect.pivot = new Vector2(0, 0);
+        rect.sizeDelta = new Vector2(160, 48);   // placeholder; the row layout sizes it
 
         var image = go.AddComponent<Image>();
         Surface(image, 5, CasinoTheme.ButtonSecondary, CasinoTheme.ButtonBorder);
@@ -929,14 +1107,20 @@ public class UIManager : MonoBehaviour
 
         EnsureScrim();
         modalScrim.SetActive(open);
-        if (!open) return;
 
-        // Scrim first, then the panels, so the panels land above it.
-        modalScrim.transform.SetAsLastSibling();
-        if (summaryPanel != null && summaryPanel.activeSelf)
-            summaryPanel.transform.SetAsLastSibling();
-        if (gameOverPanel != null && gameOverPanel.activeSelf)
-            gameOverPanel.transform.SetAsLastSibling();
+        if (open)
+        {
+            // Scrim first, then the panels, so the panels land above it.
+            modalScrim.transform.SetAsLastSibling();
+            if (summaryPanel != null && summaryPanel.activeSelf)
+                summaryPanel.transform.SetAsLastSibling();
+            if (gameOverPanel != null && gameOverPanel.activeSelf)
+                gameOverPanel.transform.SetAsLastSibling();
+        }
+
+        // Last of all: the title outranks every modal. RefreshUI can raise a
+        // panel while the title is still up, and nothing behind it is reachable.
+        if (TitleIsUp) titleScreen.transform.SetAsLastSibling();
     }
 
     private void EnsureScrim()
@@ -1087,6 +1271,13 @@ public class UIManager : MonoBehaviour
     // (and the table on the opening deal), staggered like real dealing.
     public void AnimateDeal(int toNonDealer, int toDealer, int toTable)
     {
+        // Behind the title the whole animation is invisible, and it is the one
+        // thing worth seeing before the first move. Hold it for the Deal button.
+        if (TitleIsUp)
+        {
+            pendingDeal = new Vector3Int(toNonDealer, toDealer, toTable);
+            return;
+        }
         StartCoroutine(DealSequence(toNonDealer, toDealer, toTable));
     }
 
@@ -1156,7 +1347,7 @@ public class UIManager : MonoBehaviour
     // reach by clicking.
     public bool PressBuild()
     {
-        if (buildButton == null || !buildButton.interactable) return false;
+        if (buildButton == null || !buildButton.gameObject.activeInHierarchy || !buildButton.interactable) return false;
         OnBuildClicked();
         return true;
     }
@@ -1169,9 +1360,12 @@ public class UIManager : MonoBehaviour
     public string SweepButtonState => ButtonState(sweepButton, sweepButtonLabel);
     public string TrailButtonState => ButtonState(trailButton, trailButtonLabel);
 
+    // Visibility is now part of the state: a button that does not apply to the
+    // current selection is not on screen at all, and a probe needs to see that.
     private static string ButtonState(Button b, TextMeshProUGUI label) =>
         b == null ? "(missing)"
-                  : $"\"{(label != null ? label.text : "?")}\" {(b.interactable ? "enabled" : "disabled")}";
+        : !b.gameObject.activeSelf ? "hidden"
+        : $"\"{(label != null ? label.text : "?")}\" {(b.interactable ? "enabled" : "disabled")}";
 
     // The hint line is the game's whole explanatory voice: what a selection can
     // take, why a build was refused, what the evaluator would do. Reading it back
@@ -1661,6 +1855,14 @@ public class UIManager : MonoBehaviour
     
     private void Update()
     {
+        // Paint order on a canvas is sibling order, and the title is created
+        // before every card, ghost and build that RefreshUI spawns underneath
+        // it, so a single SetAsLastSibling at creation does not hold. The first
+        // run showed the score panel and the dealt hand drawing straight over
+        // the title. Re-raising while it is up is one call on a handful of
+        // frames, and it is the only thing that cannot get out of step.
+        if (TitleIsUp) titleScreen.transform.SetAsLastSibling();
+
         // A window resize can cross a breakpoint, which changes the whole
         // arrangement, not just its scale. Re-run the layout when the screen
         // actually changes size; comparing two ints per frame is free, and
@@ -2297,10 +2499,6 @@ public class UIManager : MonoBehaviour
         if (buildButton == null) return;
 
         bool humanTurn = GameManager.Instance != null && GameManager.Instance.IsWaitingForHumanInput();
-        buildButton.gameObject.SetActive(humanTurn);
-        suggestButton.gameObject.SetActive(humanTurn);
-        trailButton.gameObject.SetActive(humanTurn);
-        sweepButton.gameObject.SetActive(humanTurn);
 
         // Trailing is a free choice unless you own a build
         bool ownsBuild = humanTurn &&
@@ -2369,6 +2567,7 @@ public class UIManager : MonoBehaviour
                     : newValue > 10 ? $"{newValue} is too high"
                     : $"No {newValue} in hand";
             }
+            ApplyActionRow(humanTurn);
             UpdatePlayPreview(humanTurn);
             return;
         }
@@ -2408,7 +2607,76 @@ public class UIManager : MonoBehaviour
             buildButtonLabel.text = "Build";
         }
 
+        ApplyActionRow(humanTurn);
         UpdatePlayPreview(humanTurn);
+    }
+
+    // Which buttons exist, in what order, and where.
+    //
+    // The old rail showed all four buttons all the time, mostly disabled, in a
+    // corner the player's eye had no reason to visit. The row instead answers
+    // "what can I do with what I just picked": nothing selected shows only
+    // Suggest, and a selection summons the actions that apply to it, most
+    // likely play first (leftmost), directly above the hand. Disabled buttons
+    // still appear when their label carries the refusal ("No 9 in hand",
+    // "Locked (multi)") - the refusal is feedback, and hiding it would make
+    // the game silent exactly when the player is confused.
+    private void ApplyActionRow(bool humanTurn)
+    {
+        bool chosenSet = selectedCard != null && (buildSelection.Count > 0 || selectedBuilds.Count > 0);
+        bool loneCard = selectedCard != null && buildSelection.Count == 0
+                        && selectedBuilds.Count == 0 && selectedBuild == null;
+        bool buildContext = selectedBuild != null || (selectedCard != null && buildSelection.Count > 0);
+
+        bool showSweep = humanTurn && (sweepButton.interactable || chosenSet);
+        bool showBuild = humanTurn && buildContext;
+        bool showTrail = humanTurn && loneCard;
+
+        sweepButton.gameObject.SetActive(showSweep);
+        buildButton.gameObject.SetActive(showBuild);
+        trailButton.gameObject.SetActive(showTrail);
+        suggestButton.gameObject.SetActive(humanTurn);
+        if (!humanTurn) return;
+
+        // Most likely play leftmost: enabled beats disabled, then Sweep over
+        // Build over Trail (a capture is almost always the best available move,
+        // and when it is not, Sweep is not enabled). Suggest is advice, not a
+        // move, so it stays put at the end of the row.
+        var row = new List<(Button b, TextMeshProUGUI label, int rank)>();
+        if (showSweep) row.Add((sweepButton, sweepButtonLabel, (sweepButton.interactable ? 100 : 0) + 3));
+        if (showBuild) row.Add((buildButton, buildButtonLabel, (buildButton.interactable ? 100 : 0) + 2));
+        if (showTrail) row.Add((trailButton, trailButtonLabel, (trailButton.interactable ? 100 : 0) + 1));
+        row.Sort((a, b) => b.rank.CompareTo(a.rank));
+        row.Add((suggestButton, suggestButtonLabel, 0));
+
+        LayoutActionRow(row);
+    }
+
+    // Buttons size to their labels ("Sweep 9s", "Need another to take it") and
+    // the row re-centers over the hand, so it reads as one composed strip no
+    // matter how many actions the selection produced.
+    private void LayoutActionRow(List<(Button b, TextMeshProUGUI label, int rank)> row)
+    {
+        var L = CasinoLayout.Active;
+        var widths = new float[row.Count];
+        float total = L.ActionGap * (row.Count - 1);
+        for (int i = 0; i < row.Count; i++)
+        {
+            float text = row[i].label.GetPreferredValues(row[i].label.text).x;
+            widths[i] = Mathf.Clamp(text + 36f, 96f, 260f);
+            total += widths[i];
+        }
+
+        float x = L.ActionCenter.x - total / 2f;
+        for (int i = 0; i < row.Count; i++)
+        {
+            var rect = row[i].b.GetComponent<RectTransform>();
+            rect.anchorMin = rect.anchorMax = L.ActionAnchor;
+            rect.pivot = new Vector2(0, 0);
+            rect.anchoredPosition = new Vector2(x, L.ActionCenter.y);
+            rect.sizeDelta = new Vector2(widths[i], L.ActionHeight);
+            x += widths[i] + L.ActionGap;
+        }
     }
 
     // Live preview of what the Play button will do with the selected card
