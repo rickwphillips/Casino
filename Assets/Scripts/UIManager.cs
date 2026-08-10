@@ -2664,30 +2664,47 @@ public class UIManager : MonoBehaviour
         if (row.Count > 0) LayoutActionRow(row);
     }
 
-    // Buttons size to their labels ("Sweep 9s", "Need another to take it") and
-    // the row re-centers over the hand, so it reads as one composed strip no
-    // matter how many actions the selection produced.
+    // Only one card can be played per turn, so the options stack vertically
+    // above the card that summoned them - the most likely action nearest the
+    // card - rather than sitting in a fixed row. Buttons size to their labels
+    // ("Sweep 9s", "Need another to take it") and clamp to the canvas edge so
+    // a stack over an end card never clips. When only a build is selected
+    // (no hand card yet), the stack falls back to the profile's row anchor.
     private void LayoutActionRow(List<(Button b, TextMeshProUGUI label, int rank)> row)
     {
         var L = CasinoLayout.Active;
-        var widths = new float[row.Count];
-        float total = L.ActionGap * (row.Count - 1);
+        var canvasRect = (RectTransform)canvasTransform;
+        float halfW = canvasRect.rect.width / 2f;
+        float halfH = canvasRect.rect.height / 2f;
+
+        float xCenter, y;
+        if (selectedCard != null)
+        {
+            var cardRect = (RectTransform)selectedCard.transform;
+            Vector2 local = canvasTransform.InverseTransformPoint(cardRect.position);
+            // Card top in canvas units, honouring the selection's 1.15 scale.
+            float top = local.y + cardRect.rect.height * cardRect.localScale.y * (1f - cardRect.pivot.y);
+            xCenter = local.x;
+            y = top + 10f;
+        }
+        else
+        {
+            xCenter = L.ActionCenter.x;
+            y = L.ActionCenter.y - halfH;   // profile y is bottom-anchored
+        }
+
         for (int i = 0; i < row.Count; i++)
         {
             float text = row[i].label.GetPreferredValues(row[i].label.text).x;
-            widths[i] = Mathf.Clamp(text + 36f, 96f, 260f);
-            total += widths[i];
-        }
+            float w = Mathf.Clamp(text + 36f, 96f, 260f);
 
-        float x = L.ActionCenter.x - total / 2f;
-        for (int i = 0; i < row.Count; i++)
-        {
             var rect = row[i].b.GetComponent<RectTransform>();
-            rect.anchorMin = rect.anchorMax = L.ActionAnchor;
-            rect.pivot = new Vector2(0, 0);
-            rect.anchoredPosition = new Vector2(x, L.ActionCenter.y);
-            rect.sizeDelta = new Vector2(widths[i], L.ActionHeight);
-            x += widths[i] + L.ActionGap;
+            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            rect.anchoredPosition = new Vector2(
+                Mathf.Clamp(xCenter, -halfW + w / 2f + 10f, halfW - w / 2f - 10f), y);
+            rect.sizeDelta = new Vector2(w, L.ActionHeight);
+            y += L.ActionHeight + L.ActionGap;
         }
     }
 

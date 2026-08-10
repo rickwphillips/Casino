@@ -36,12 +36,10 @@ public static class CasinoLayout
         public Zone Score, PlayerPile, AiPile, Suggest;
         public Zone DrawPile, TurnText, StatusText, Version, GameOver;
 
-        // Actions are a horizontal row directly above the player's hand, not a
-        // fixed rail: which buttons exist depends on what is selected, so the
-        // profile describes the row (where its centre is, how tall, the gap)
-        // and UIManager lays the visible buttons out along it each refresh.
-        public Vector2 ActionAnchor;   // canvas anchor of the row
-        public Vector2 ActionCenter;   // x = row centre offset, y = row baseline
+        // Actions stack vertically above the selected hand card (one card per
+        // turn, so the options belong to it). The profile describes button
+        // height and gap; UIManager anchors the stack to the card each refresh.
+        public Vector2 ActionCenter;   // fallback stack anchor: x offset, y from bottom
         public float ActionHeight, ActionGap;
     }
 
@@ -91,16 +89,16 @@ public static class CasinoLayout
 
         OpponentHand = new Zone(0.5f, 1f, -52, -14, 460, 112),
         Table        = new Zone(0.5f, 0.5f, -52, 46, 620, 150),
-        Hint         = new Zone(0.5f, 0f, -52, 232, 560, 46),
+        // Above the table, not below it: the felt between hand and table now
+        // belongs to the action stack that grows over the selected card.
+        Hint         = new Zone(0.5f, 0f, -52, 490, 560, 46),
         PlayerHand   = new Zone(0.5f, 0f, -52, 14, 460, 158),
 
         Score = new Zone(1f, 1f, -14, -14, 272, 278),
-        // The row sits in the seam between the hand (tops out at y 172) and the
-        // hint, which moved up to make room. Reaching a button is now a short
-        // hop from the card that made it appear, not a trip across the felt.
-        ActionAnchor = new Vector2(0.5f, 0f),
+        // ActionCenter is only the fallback anchor (a build selected with no
+        // hand card); normally the stack sits over the selected card itself.
         ActionCenter = new Vector2(-52, 180),
-        ActionHeight = 44, ActionGap = 10,
+        ActionHeight = 44, ActionGap = 8,
 
         // Advice, not a move: a circled "?" tucked above the version stamp.
         Suggest = new Zone(1f, 0f, -14, 30, 40, 40),
@@ -128,11 +126,10 @@ public static class CasinoLayout
         // Play column is x 152..776, centre 464, i.e. 48 left of canvas centre.
         OpponentHand = new Zone(0.5f, 1f, -48, -12, 420, 104),
         Table        = new Zone(0.5f, 0.5f, -48, 40, 560, 140),
-        Hint         = new Zone(0.5f, 0f, -48, 208, 500, 44),
+        Hint         = new Zone(0.5f, 0f, -48, 500, 500, 44),
         PlayerHand   = new Zone(0.5f, 0f, -48, 12, 420, 140),
 
         Score = new Zone(1f, 1f, -12, -12, 236, 272),
-        ActionAnchor = new Vector2(0.5f, 0f),
         ActionCenter = new Vector2(-48, 158),
         ActionHeight = 42, ActionGap = 8,
         Suggest = new Zone(1f, 0f, -12, 28, 38, 38),
@@ -170,11 +167,11 @@ public static class CasinoLayout
         AiPile       = new Zone(1f, 1f, -14, -420, 336, 34),
 
         // The taller score bar pushes the whole upper stack down, so the table
-        // drops with it and the hint tucks in just above the action bar.
+        // drops with it. The hint sits above the table; the space below it
+        // belongs to the action stack over the selected card.
         Table      = new Zone(0.5f, 0.5f, 0, 20, 684, 300),
-        Hint       = new Zone(0.5f, 0f, 0, 450, 660, 56),
+        Hint       = new Zone(0.5f, 0f, 0, 816, 660, 56),
 
-        ActionAnchor = new Vector2(0.5f, 0f),
         ActionCenter = new Vector2(0, 396),
         ActionHeight = 52, ActionGap = 10,
         // Thumb-sized, clear of the version stamp.
