@@ -33,7 +33,7 @@ public static class CasinoLayout
         public float RowSpacing;
 
         public Zone OpponentHand, Table, PlayerHand, Hint;
-        public Zone Score, PlayerPile, AiPile, Suggest;
+        public Zone Score, PlayerPile, AiPile, Suggest, Aces;
         public Zone DrawPile, TurnText, StatusText, Version, GameOver;
 
         // Actions stack vertically above the selected hand card (one card per
@@ -103,6 +103,9 @@ public static class CasinoLayout
         // Advice, not a move: a circled "?" tucked above the version stamp.
         Suggest = new Zone(1f, 0f, -14, 30, 40, 40),
 
+        // Ace tally prototype: in the open felt the action rail left behind.
+        Aces = new Zone(1f, 1f, -14, -306, 272, 78),
+
         // Left column, top to bottom: draw pile, status, then the two piles.
         DrawPile   = new Zone(0f, 0f, 50, 396, 96, 132),
         TurnText   = new Zone(0f, 0f, 14, 130, 170, 24),
@@ -133,6 +136,7 @@ public static class CasinoLayout
         ActionCenter = new Vector2(-48, 158),
         ActionHeight = 42, ActionGap = 8,
         Suggest = new Zone(1f, 0f, -12, 28, 38, 38),
+        Aces = new Zone(1f, 1f, -12, -296, 236, 72),
 
         DrawPile   = new Zone(0f, 0f, 38, 416, 88, 120),
         TurnText   = new Zone(0f, 0f, 12, 122, 180, 24),
@@ -176,6 +180,9 @@ public static class CasinoLayout
         ActionHeight = 52, ActionGap = 10,
         // Thumb-sized, clear of the version stamp.
         Suggest = new Zone(1f, 0f, -14, 34, 48, 48),
+        // No free felt in portrait; rides the right edge below the pile row
+        // and shades the table's top corner. Prototype placement, revisit.
+        Aces = new Zone(1f, 1f, -14, -458, 220, 70),
 
         PlayerHand = new Zone(0.5f, 0f, 0, 230, 684, 150),
         // 92 put the pile's count label hard against the bottom edge, where it

@@ -745,6 +745,7 @@ public class UIManager : MonoBehaviour
         versionText.text = $"v{Application.version}";
 
         CreateScorePanel();
+        CreateAcesWidget();
         CreatePileViewer();
         CreateDrawPile();
 
@@ -832,6 +833,7 @@ public class UIManager : MonoBehaviour
         // constructor gave them, which is why the score panel and the action
         // rail drifted apart on a wide canvas: nothing owned them after creation.
         PlaceByName("ScorePanel", L.Score);
+        PlaceByName("AcesWidget", L.Aces);
         PlaceByName("HumanPile", L.PlayerPile);
         PlaceByName("AIPile", L.AiPile);
         PlaceByName("DrawPile", L.DrawPile);
@@ -865,6 +867,7 @@ public class UIManager : MonoBehaviour
         foreach (Transform child in canvasTransform)
         {
             if (child.name == "TableFelt" || child.name == "TableGrain" || child.name == "TableRail" || child.name == "ScorePanel" ||
+                child.name == "AcesWidget" ||
                 child.name == "BuildButton" || child.name == "SuggestButton" ||
                 child.name == "TrailButton" || child.name == "SweepButton" ||
                 child.name == "HintText" || child.name == "HumanPile" ||
@@ -1808,6 +1811,108 @@ public class UIManager : MonoBehaviour
                                     out aiStatsText, out aiScoreValue);
     }
 
+    private GameObject acesWidget;
+    private readonly Image[] aceBorders = new Image[4];
+    private readonly Image[] aceFaces = new Image[4];
+    private readonly TextMeshProUGUI[] acePips = new TextMeshProUGUI[4];
+
+    // Display order of the fan; red suits inside so the colours alternate.
+    private static readonly PlayingCard.Suit[] AceSuitOrder =
+    {
+        PlayingCard.Suit.Spades, PlayingCard.Suit.Hearts,
+        PlayingCard.Suit.Diamonds, PlayingCard.Suit.Clubs,
+    };
+    private static readonly string[] AceSuitGlyphs = { "♠", "♥", "♦", "♣" };
+
+    // The ace tally: four mini ace cards fanned like a held trick, one per
+    // suit, below the scoreboard. A captured ace turns its slot into a lit
+    // white card; the ones still in play stay as dark slots whose faint pip
+    // says exactly which ace is unaccounted for. The count is the picture:
+    // nobody has to read a number to know they are two aces from the bonus.
+    private void CreateAcesWidget()
+    {
+        acesWidget = new GameObject("AcesWidget");
+        acesWidget.transform.SetParent(canvasTransform, false);
+        var rect = acesWidget.AddComponent<RectTransform>();
+        rect.sizeDelta = new Vector2(272, 78);   // EnforceLayout re-places it
+
+        for (int i = 0; i < 4; i++)
+        {
+            float off = i - 1.5f;
+
+            var slot = new GameObject($"Ace{AceSuitOrder[i]}");
+            slot.transform.SetParent(acesWidget.transform, false);
+            var r = slot.AddComponent<RectTransform>();
+            r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
+            // A shallow arc with the outer cards tilted outward, so four
+            // rectangles read as a fan of cards rather than a bar chart.
+            r.anchoredPosition = new Vector2(off * 46f, 12f - off * off * 3.5f);
+            r.localRotation = Quaternion.Euler(0, 0, off * -7f);
+            r.sizeDelta = new Vector2(38, 52);
+
+            aceBorders[i] = slot.AddComponent<Image>();
+            aceBorders[i].sprite = CasinoArt.RoundedFill(5);
+            aceBorders[i].type = Image.Type.Sliced;
+            aceBorders[i].raycastTarget = false;
+
+            var faceGo = new GameObject("Face");
+            faceGo.transform.SetParent(slot.transform, false);
+            var fr = faceGo.AddComponent<RectTransform>();
+            fr.anchorMin = Vector2.zero;
+            fr.anchorMax = Vector2.one;
+            fr.offsetMin = new Vector2(1.5f, 1.5f);
+            fr.offsetMax = new Vector2(-1.5f, -1.5f);
+            aceFaces[i] = faceGo.AddComponent<Image>();
+            aceFaces[i].sprite = CasinoArt.RoundedFill(4);
+            aceFaces[i].type = Image.Type.Sliced;
+            aceFaces[i].raycastTarget = false;
+
+            var pip = CreateText("Pip", faceGo.transform);
+            var pr = pip.rectTransform;
+            pr.anchorMin = Vector2.zero;
+            pr.anchorMax = Vector2.one;
+            pr.offsetMin = pr.offsetMax = Vector2.zero;
+            pip.alignment = TextAlignmentOptions.Center;
+            pip.fontSize = 21;
+            // The rank whispers, the suit is the picture.
+            pip.text = $"<size=10>A</size>\n{AceSuitGlyphs[i]}";
+            pip.lineSpacing = -34;
+            acePips[i] = pip;
+        }
+
+        var caption = CreateText("Caption", acesWidget.transform);
+        var cr = caption.rectTransform;
+        cr.anchorMin = new Vector2(0, 0);
+        cr.anchorMax = new Vector2(1, 0);
+        cr.pivot = new Vector2(0.5f, 0);
+        cr.anchoredPosition = new Vector2(0, -4);
+        cr.sizeDelta = new Vector2(0, 14);
+        caption.fontSize = 10;
+        caption.characterSpacing = 18;
+        caption.alignment = TextAlignmentOptions.Center;
+        caption.color = CasinoTheme.BadgeIdleLabel;
+        caption.text = "YOUR ACES";
+
+        UpdateAcesWidget(null);
+    }
+
+    private void UpdateAcesWidget(GamePlayer human)
+    {
+        if (acesWidget == null) return;
+        for (int i = 0; i < 4; i++)
+        {
+            var suit = AceSuitOrder[i];
+            bool taken = human != null && human.CapturedCards.Any(c =>
+                c.rank == PlayingCard.Rank.Ace && c.suit == suit);
+            bool red = suit == PlayingCard.Suit.Hearts || suit == PlayingCard.Suit.Diamonds;
+
+            aceBorders[i].color = taken ? CasinoTheme.AceBorder : CasinoTheme.AceSlotBorder;
+            aceFaces[i].color = taken ? CasinoTheme.AceFace : CasinoTheme.AceSlot;
+            acePips[i].color = taken ? (red ? CasinoTheme.SuitRed : CasinoTheme.SuitBlack)
+                                     : CasinoTheme.AceSlotPip;
+        }
+    }
+
     // One player's block: a seat line, the running score set large because it is
     // the only number that decides anything, and the badge strip beneath.
     private ScoreBadge[] BuildPlayerBlock(Transform panel, string name, float top, Color accent,
@@ -2246,6 +2351,7 @@ public class UIManager : MonoBehaviour
 
         UpdateBadges(humanBadges, human, ai);
         UpdateBadges(aiBadges, ai, human);
+        UpdateAcesWidget(human);
 
         if (humanPileLabel != null)
         {
