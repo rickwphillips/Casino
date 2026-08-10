@@ -713,7 +713,9 @@ public class UIManager : MonoBehaviour
         buildButton = CreateActionButton("BuildButton", "Build", out buildButtonLabel);
         buildButton.onClick.AddListener(OnBuildClicked);
 
-        suggestButton = CreateActionButton("SuggestButton", "Suggest", out suggestButtonLabel);
+        // Suggest is an afterthought, not a move: a circled "?" in the corner,
+        // outside the action row. EnforceLayout places and sizes it per profile.
+        suggestButton = CreateActionButton("SuggestButton", "?", out suggestButtonLabel);
         suggestButton.onClick.AddListener(OnSuggestClicked);
 
         hintText = CreateText("HintText", canvasTransform);
@@ -836,8 +838,19 @@ public class UIManager : MonoBehaviour
         PlaceByName("HintText", L.Hint);
         PlaceByName("VersionText", L.Version);
 
-        // Action buttons are not placed here: which ones exist depends on the
+        // Move buttons are not placed here: which ones exist depends on the
         // current selection, so UpdateActionButtons owns their row layout.
+        // Suggest is static furniture: a quiet circled "?" in the corner,
+        // radius half the height so the rounded rect renders as a circle.
+        PlaceByName("SuggestButton", L.Suggest);
+        if (suggestButton != null)
+        {
+            Surface(suggestButton.GetComponent<Image>(), (int)(L.Suggest.Size.y / 2f),
+                CasinoTheme.PileButton, CasinoTheme.ButtonBorder);
+            suggestButtonLabel.text = "?";
+            suggestButtonLabel.fontSize = L.Suggest.Size.y * 0.5f;
+            suggestButtonLabel.color = CasinoTheme.TextMuted;
+        }
 
         // Game over panel: centered card
         if (gameOverPanel != null)
@@ -2640,16 +2653,15 @@ public class UIManager : MonoBehaviour
 
         // Most likely play leftmost: enabled beats disabled, then Sweep over
         // Build over Trail (a capture is almost always the best available move,
-        // and when it is not, Sweep is not enabled). Suggest is advice, not a
-        // move, so it stays put at the end of the row.
+        // and when it is not, Sweep is not enabled). Suggest is not in the row
+        // at all: it is advice, and lives as a circled "?" in the corner.
         var row = new List<(Button b, TextMeshProUGUI label, int rank)>();
         if (showSweep) row.Add((sweepButton, sweepButtonLabel, (sweepButton.interactable ? 100 : 0) + 3));
         if (showBuild) row.Add((buildButton, buildButtonLabel, (buildButton.interactable ? 100 : 0) + 2));
         if (showTrail) row.Add((trailButton, trailButtonLabel, (trailButton.interactable ? 100 : 0) + 1));
         row.Sort((a, b) => b.rank.CompareTo(a.rank));
-        row.Add((suggestButton, suggestButtonLabel, 0));
 
-        LayoutActionRow(row);
+        if (row.Count > 0) LayoutActionRow(row);
     }
 
     // Buttons size to their labels ("Sweep 9s", "Need another to take it") and
