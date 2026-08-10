@@ -171,6 +171,16 @@ public class CasinoAutoPlay : MonoBehaviour
                 yield return new WaitForSecondsRealtime(1f);
                 ui.TogglePileViewer(true);       // same seat toggles it shut
                 Mark("closed the pile viewer");
+
+                // The move log is the other panel nothing automated could
+                // reach, and by now there are ten moves in it to look at.
+                Mark("opening the move log");
+                ui.ToggleMoveLog();
+                yield return new WaitForSecondsRealtime(1f);
+                ScreenshotCapture.Capture("autoplay-movelog");
+                yield return new WaitForSecondsRealtime(1f);
+                ui.ToggleMoveLog();
+                Mark("closed the move log");
             }
 
             if (!gm.IsWaitingForHumanInput())

@@ -32,15 +32,25 @@ public static class CasinoLayout
         public Vector2 CardSize;
         public float RowSpacing;
 
-        public Zone OpponentHand, Table, PlayerHand, Hint;
+        public Zone OpponentHand, Table, PlayerHand;
         // One scoreboard for both sides. There were two zones here, one per
         // player, which is what put the same fact in two corners.
         public Zone Score;
-        public Zone PlayerPile, AiPile, Suggest, PlayerAces, AiAces;
+        // The game's voice, and its history. Message is a toast that fades;
+        // LogButton toggles LogPanel, which keeps every move that scrolled past.
+        // These replaced a gold line across the middle of the table, where text
+        // sat on top of the cards it was describing.
+        public Zone Message, LogButton, LogPanel;
+        // Each player's take, face up and stacked so only the pips show,
+        // on that player's own side of the right rail, plus the full grid one
+        // of them opens. The grid used to dock to the left edge, which is now
+        // the plaque's column, so it centres over the table instead.
+        public Zone PlayerCaptured, AiCaptured, PileViewer;
+        public Zone Suggest, PlayerAces, AiAces;
         // Two homes for the draw pile: it sits beside whoever is dealing
         // this deck, and moves when the deal does.
         public Zone DrawPileAi, DrawPileHuman;
-        public Zone TurnText, StatusText, Version, GameOver;
+        public Zone Version, GameOver;
 
         // Actions stack vertically above the selected hand card (one card per
         // turn, so the options belong to it). The profile describes button
@@ -84,54 +94,62 @@ public static class CasinoLayout
         CardSize = new Vector2(80, 120), RowSpacing = 14f,
 
         // Ported from the Parlor mockup's grid, not re-invented:
-        //   columns  168 | 1fr | 272      rows  112 | 1fr | 46 | 158    padding 14
-        //   "deck  opp    score"
-        //   "deck  table  score"
-        //   "piles hint   actions"
-        //   "piles hand   actions"
-        // Left column is deck over piles; the right rail is score over actions.
-        // The play column spans x 182..994, so its centre is 588, which is 52
-        // left of the canvas centre. That is where the -52 offsets come from.
+        //   columns  312 | 1fr | 120      rows  112 | 1fr | 46 | 158    padding 14
+        //   "score  opp     aitake"
+        //   "score  table   aitake"
+        //   "msg    hint    youtake"
+        //   "log    hand    youtake"
+        // Left column is the game talking: plaque, then toast, then the log it
+        // opens into. Right column is the two takes, one per side. The play
+        // column spans x 326..1160, centre 743, which is 103 right of the canvas
+        // centre; the -52 offsets predate that and still read fine, so the play
+        // area sits slightly left of its column rather than dead centre in it.
 
         OpponentHand = new Zone(0.5f, 1f, -52, -14, 460, 112),
         Table        = new Zone(0.5f, 0.5f, -52, 46, 620, 150),
-        // Above the table, not below it: the felt between hand and table now
-        // belongs to the action stack that grows over the selected card.
-        Hint         = new Zone(0.5f, 0f, -52, 490, 560, 46),
         PlayerHand   = new Zone(0.5f, 0f, -52, 14, 460, 158),
 
-        // The plaque takes the right rail, vertically centred: the one column
-        // the play area does not reach (the table spans x 278..898, the hands
-        // 358..818) so nothing has to move to make room for it. Stacked in
-        // seating order, opponent's total above yours.
-        Score = new Zone(1f, 0.5f, -14, 26, 196, 224),
+        // The plaque takes the top-left corner, the first thing read on a page.
+        Score = new Zone(0f, 1f, 14, -14, 196, 210),
+        // Directly under the plaque: the toast, and the button that opens the
+        // log beneath it. Both hug the same left margin so the column reads as
+        // one voice rather than three unrelated widgets.
+        Message   = new Zone(0f, 1f, 14, -232, 242, 56),
+        LogButton = new Zone(0f, 1f, 264, -232, 34, 34),
+        LogPanel  = new Zone(0f, 1f, 14, -296, 284, 340),
+
         // ActionCenter is only the fallback anchor (a build selected with no
         // hand card); normally the stack sits over the selected card itself.
         ActionCenter = new Vector2(-52, 180),
         ActionHeight = 44, ActionGap = 8,
 
-        // Advice, not a move: a circled "?" tucked above the version stamp.
-        Suggest = new Zone(1f, 0f, -14, 30, 40, 40),
+        // Advice, not a move: a circled "?" in the one corner nothing else
+        // wants, now that the takes own the right rail.
+        Suggest = new Zone(0f, 0f, 14, 14, 40, 40),
 
-        // Ace splashes land on the capturer's side: yours above the "?",
-        // the AI's in the open top-left corner. Nothing renders until an
-        // ace is actually taken, so neither zone costs idle attention.
-        PlayerAces = new Zone(1f, 0f, -14, 84, 220, 64),
-        AiAces     = new Zone(0f, 1f, 14, -14, 220, 64),
+        // Each side's take, face up and stacked, on that side's end of the
+        // right rail: the AI's above, yours below, the same seating order the
+        // plaque uses. Narrow enough to leave the coin shelves their room, and
+        // tall enough that a full 26-card take still fans wide enough to read:
+        // the fan spacing is (height - card) / (count - 1), so height is the
+        // only thing standing between a stack of pips and a white brick.
+        AiCaptured     = new Zone(1f, 1f, -14, -14, 100, 318),
+        PlayerCaptured = new Zone(1f, 0f, -14, 14, 100, 318),
+        // Over the table, not down the left edge where the plaque now lives.
+        PileViewer = new Zone(0.5f, 0.5f, -52, 0, 460, 420),
 
-        // Left column: the draw pile rides with the dealer (top when the AI
-        // deals, bottom when you do); status and the two piles keep the corner.
-        DrawPileAi    = new Zone(0f, 1f, 50, -120, 96, 132),
-        // Right at the player's elbow: bottom-aligned with the hand and
-        // nearly touching it (hand zone starts at x 358). The count renders
-        // on the deck itself, so nothing hangs below the zone any more.
+        // Ace splashes land inboard of their owner's take, so a shelf grows
+        // toward the table instead of into the stack beside it.
+        PlayerAces = new Zone(1f, 0f, -114, 14, 200, 64),
+        AiAces     = new Zone(1f, 1f, -114, -14, 200, 64),
+
+        // The draw pile rides with the dealer: at the AI's elbow up top when it
+        // deals (clear of the opponent hand, which starts at x 358), at yours
+        // down below when you do.
+        DrawPileAi    = new Zone(0f, 1f, 254, -14, 96, 132),
         DrawPileHuman = new Zone(0f, 0f, 254, 14, 96, 132),
-        TurnText   = new Zone(0f, 0f, 14, 130, 170, 24),
-        StatusText = new Zone(0f, 0f, 14, 104, 170, 24),
-        PlayerPile = new Zone(0f, 0f, 14, 62, 168, 34),
-        AiPile     = new Zone(0f, 0f, 14, 20, 168, 34),
 
-        Version  = new Zone(1f, 0f, -10, 4, 120, 18),
+        Version  = new Zone(0f, 0f, 62, 6, 120, 18),
         GameOver = new Zone(0.5f, 0.5f, 0, 0, 440, 240),
         };
 
@@ -143,28 +161,30 @@ public static class CasinoLayout
         Name = "Compact", Reference = new Vector2(1024, 768), Match = 1f,
         CardSize = new Vector2(76, 114), RowSpacing = 10f,
 
-        // Same Parlor grid, tighter: columns 140 | 1fr | 236, padding 12.
-        // Play column is x 152..776, centre 464, i.e. 48 left of canvas centre.
+        // Same Parlor grid, tighter: columns 280 | 1fr | 108, padding 12.
         OpponentHand = new Zone(0.5f, 1f, -48, -12, 420, 104),
         Table        = new Zone(0.5f, 0.5f, -48, 40, 560, 140),
-        Hint         = new Zone(0.5f, 0f, -48, 500, 500, 44),
         PlayerHand   = new Zone(0.5f, 0f, -48, 12, 420, 140),
 
-        Score = new Zone(1f, 0.5f, -12, 24, 180, 210),
+        Score = new Zone(0f, 1f, 12, -12, 180, 196),
+        Message   = new Zone(0f, 1f, 12, -216, 224, 52),
+        LogButton = new Zone(0f, 1f, 244, -216, 32, 32),
+        LogPanel  = new Zone(0f, 1f, 12, -276, 264, 320),
+
         ActionCenter = new Vector2(-48, 158),
         ActionHeight = 42, ActionGap = 8,
-        Suggest = new Zone(1f, 0f, -12, 28, 38, 38),
-        PlayerAces = new Zone(1f, 0f, -12, 76, 200, 60),
-        AiAces     = new Zone(0f, 1f, 12, -12, 200, 60),
+        Suggest = new Zone(0f, 0f, 12, 12, 38, 38),
 
-        DrawPileAi    = new Zone(0f, 1f, 38, -116, 88, 120),
+        AiCaptured     = new Zone(1f, 1f, -12, -12, 94, 200),
+        PlayerCaptured = new Zone(1f, 0f, -12, 12, 94, 200),
+        PileViewer = new Zone(0.5f, 0.5f, -48, 0, 420, 400),
+        PlayerAces = new Zone(1f, 0f, -104, 12, 180, 60),
+        AiAces     = new Zone(1f, 1f, -104, -12, 180, 60),
+
+        DrawPileAi    = new Zone(0f, 1f, 200, -12, 88, 120),
         DrawPileHuman = new Zone(0f, 0f, 186, 12, 84, 114),
-        TurnText   = new Zone(0f, 0f, 12, 122, 180, 24),
-        StatusText = new Zone(0f, 0f, 12, 96, 180, 24),
-        PlayerPile = new Zone(0f, 0f, 12, 56, 140, 32),
-        AiPile     = new Zone(0f, 0f, 12, 18, 140, 32),
 
-        Version  = new Zone(1f, 0f, -10, 4, 120, 18),
+        Version  = new Zone(0f, 0f, 58, 4, 120, 18),
         GameOver = new Zone(0.5f, 0.5f, 0, 0, 420, 230),
         };
 
@@ -182,34 +202,37 @@ public static class CasinoLayout
         Name = "Portrait", Reference = new Vector2(720, 1280), Match = 0f,
         CardSize = new Vector2(72, 108), RowSpacing = 6f,
 
-        // No right rail to hang a plaque on, so it takes the empty top-right
-        // header instead, clearing the opponent hand at y -292. Untested on a
-        // device like the rest of this profile.
-        Score = new Zone(1f, 1f, -14, -14, 190, 220),
-        OpponentHand = new Zone(0.5f, 1f, 0, -292, 684, 120),
-        PlayerPile   = new Zone(0f, 1f, 14, -420, 336, 34),
-        AiPile       = new Zone(1f, 1f, -14, -420, 336, 34),
+        // The plaque takes the top-left of the header, the toast and log button
+        // the space beside it. Untested on a device like the rest of this
+        // profile.
+        Score     = new Zone(0f, 1f, 14, -14, 176, 196),
+        Message   = new Zone(1f, 1f, -14, -14, 470, 56),
+        LogButton = new Zone(1f, 1f, -14, -80, 40, 40),
+        LogPanel  = new Zone(1f, 1f, -14, -128, 470, 300),
 
-        // The taller score bar pushes the whole upper stack down, so the table
-        // drops with it. The hint sits above the table; the space below it
-        // belongs to the action stack over the selected card.
+        OpponentHand = new Zone(0.5f, 1f, 0, -292, 684, 120),
+
+        // The taller header pushes the whole upper stack down, so the table
+        // drops with it. The space below the table belongs to the action stack
+        // over the selected card.
         Table      = new Zone(0.5f, 0.5f, 0, 20, 684, 300),
-        Hint       = new Zone(0.5f, 0f, 0, 816, 660, 56),
 
         ActionCenter = new Vector2(0, 396),
         ActionHeight = 52, ActionGap = 10,
         // Thumb-sized, clear of the version stamp.
-        Suggest = new Zone(1f, 0f, -14, 34, 48, 48),
-        // Portrait is untested on a device; the AI row shades the opponent
-        // hand's left edge. Revisit with the rest of the portrait pass.
-        PlayerAces = new Zone(1f, 0f, -14, 96, 220, 60),
-        AiAces     = new Zone(0f, 1f, 14, -296, 160, 56),
+        Suggest = new Zone(0f, 0f, 14, 34, 48, 48),
+
+        // No right rail here, so the takes sit at the outer ends of the two
+        // hand rows rather than in a column of their own.
+        AiCaptured     = new Zone(1f, 1f, -8, -292, 76, 120),
+        PlayerCaptured = new Zone(1f, 0f, -8, 230, 76, 120),
+        PileViewer = new Zone(0.5f, 0.5f, 0, 0, 660, 560),
+        PlayerAces = new Zone(1f, 0f, -92, 96, 200, 60),
+        AiAces     = new Zone(0f, 1f, 14, -420, 200, 56),
 
         PlayerHand = new Zone(0.5f, 0f, 0, 230, 684, 150),
         DrawPileAi    = new Zone(0f, 1f, 20, -440, 76, 104),
         DrawPileHuman = new Zone(0f, 0f, 20, 118, 76, 104),
-        TurnText   = new Zone(0f, 0f, 110, 164, 260, 24),
-        StatusText = new Zone(0f, 0f, 110, 138, 260, 24),
         Version    = new Zone(1f, 0f, -10, 6, 120, 18),
         GameOver   = new Zone(0.5f, 0.5f, 0, 0, 640, 300),
     };

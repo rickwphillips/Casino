@@ -16,7 +16,18 @@ public class GameManager : MonoBehaviour
     
     [Header("Game Settings")]
     [SerializeField] private float aiMoveDelay = 1.5f;
-    
+
+    // When the AI leads a hand, its move used to land on top of the deal: the
+    // deal animation is still flying ghosts to the hands while the 1.5s timer
+    // runs out, so the first thing the player ever saw of that hand was the
+    // board already changed by a move they never watched happen. Leading off
+    // costs a longer pause, once per hand, so the deal finishes and the table
+    // sits still before the AI touches it.
+    [SerializeField] private float aiLeadInDelay = 3.2f;
+
+    // Set when a hand is dealt, cleared by the first move of that hand.
+    private bool freshDeal;
+
     private GameDeck deck;
     private GamePlayer dealer;
     private GamePlayer nonDealer;
@@ -105,7 +116,9 @@ public class GameManager : MonoBehaviour
         
         GameLogger.Instance.LogGameStart();
         GameLogger.Instance.LogInitialDeal(dealer, nonDealer, tableCards);
-        
+
+        freshDeal = true;
+
         // Notify UI to refresh
         if (UIManager.Instance != null)
         {
@@ -123,6 +136,9 @@ public class GameManager : MonoBehaviour
 
         if (currentPlayer.IsHuman())
         {
+            // You leading means the AI is not leading off the deal, and its
+            // reply should come at the normal pace.
+            freshDeal = false;
             waitingForHumanInput = true;
         }
         else
@@ -561,6 +577,8 @@ public class GameManager : MonoBehaviour
                 nonDealer.AddCards(deck.DrawCards(HAND_SIZE));
                 dealer.AddCards(deck.DrawCards(HAND_SIZE));
 
+                freshDeal = true;
+
                 if (UIManager.Instance != null)
                 {
                     UIManager.Instance.AnimateDeal(HAND_SIZE, HAND_SIZE, 0);
@@ -614,6 +632,7 @@ public class GameManager : MonoBehaviour
         dealer.AddCards(deck.DrawCards(HAND_SIZE));
 
         currentPlayer = nonDealer;
+        freshDeal = true;
 
         if (UIManager.Instance != null)
         {
@@ -1011,8 +1030,9 @@ public class GameManager : MonoBehaviour
     
     private System.Collections.IEnumerator AIPlayTurnCoroutine()
     {
-        // Wait for the AI move delay
-        yield return new WaitForSeconds(aiMoveDelay);
+        // Leading off a freshly dealt hand waits longer: see aiLeadInDelay.
+        yield return new WaitForSeconds(freshDeal ? aiLeadInDelay : aiMoveDelay);
+        freshDeal = false;
 
         if (currentPhase == GamePhase.GameOver) yield break;
         if (currentPlayer.IsHuman()) yield break; // Safety check

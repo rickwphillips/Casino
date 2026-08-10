@@ -377,6 +377,8 @@ public class UIManager : MonoBehaviour
     private TextMeshProUGUI sweepButtonLabel;
     private TextMeshProUGUI hintText;
     private TextMeshProUGUI versionText;
+    private Button logToggle;
+    private TextMeshProUGUI logToggleLabel;
     // One scoreboard, not two floating lines. Values only; the plaque's
     // labels and rule are furniture that never changes after construction.
     private TextMeshProUGUI humanScoreValue;
@@ -389,11 +391,21 @@ public class UIManager : MonoBehaviour
     // Update; zero forces a pass on the first frame.
     private Vector2Int layoutScreen;
 
-    // Captured-pile viewer
-    private Button humanPileButton;
-    private Button aiPileButton;
-    private TextMeshProUGUI humanPileLabel;
-    private TextMeshProUGUI aiPileLabel;
+    // Captured piles: a face-up stack per player on the right rail, and the
+    // full grid one of them opens.
+    private GameObject humanCaptured;
+    private GameObject aiCaptured;
+    private int humanCapturedShown = -1;
+    private int aiCapturedShown = -1;
+
+    // Cards in a take are about three-quarter size. The pips need roughly
+    // MinPipOffset of card showing to be read at all; the zone is sized so a
+    // full 26-card take still clears it, and below it the stack degrades to a
+    // solid block, which is still an honest picture of a very big pile.
+    private const float CapturedCardScale = 0.74f;
+    private const float MinPipOffset = 8f;
+    private const float MaxPipOffset = 20f;
+
     private GameObject capturedPanel;
     private Transform capturedGrid;
     private TextMeshProUGUI capturedTitle;
@@ -720,19 +732,7 @@ public class UIManager : MonoBehaviour
         suggestButton = CreateActionButton("SuggestButton", "?", out suggestButtonLabel);
         suggestButton.onClick.AddListener(OnSuggestClicked);
 
-        hintText = CreateText("HintText", canvasTransform);
-        var hintRect = hintText.rectTransform;
-        hintRect.anchorMin = new Vector2(0.5f, 0);
-        hintRect.anchorMax = new Vector2(0.5f, 0);
-        hintRect.pivot = new Vector2(0.5f, 0);
-        hintRect.anchoredPosition = new Vector2(0, 145);
-        hintRect.sizeDelta = new Vector2(470, 54);
-        hintText.fontSize = 15;
-        hintText.alignment = TextAlignmentOptions.Center;
-        CasinoType.ApplySerif(hintText);
-        hintText.fontStyle = FontStyles.Italic;
-        hintText.color = CasinoTheme.HintText;
-        hintText.text = "";
+        CreateMessageColumn();
 
         versionText = CreateText("VersionText", canvasTransform);
         var verRect = versionText.rectTransform;
@@ -827,8 +827,11 @@ public class UIManager : MonoBehaviour
         // The scene's generic Play button is replaced by the explicit
         // Sweep / Trail / Build actions - leave it out of keep so it hides.
 
-        keep.Add(PlaceText(currentPlayerText, L.TurnText, 14));
-        keep.Add(PlaceText(gameStatusText, L.StatusText, 13));
+        // "Current Turn: Non-Dealer" and "Playing..." are gone from the corner.
+        // Both restated something the board already showed, in seat names the
+        // rest of the UI stopped using, and the toast covers the turn anyway.
+        if (currentPlayerText != null) currentPlayerText.gameObject.SetActive(false);
+        if (gameStatusText != null) gameStatusText.gameObject.SetActive(false);
         if (deckCountText != null) deckCountText.gameObject.SetActive(false);
 
         // Runtime-created furniture. These used to keep whatever position their
@@ -837,11 +840,25 @@ public class UIManager : MonoBehaviour
         PlaceByName("Scoreboard", L.Score);
         PlaceByName("AcesHuman", L.PlayerAces);
         PlaceByName("AcesAI", L.AiAces);
-        PlaceByName("HumanPile", L.PlayerPile);
-        PlaceByName("AIPile", L.AiPile);
+        PlaceByName("CapturedHuman", L.PlayerCaptured);
+        PlaceByName("CapturedAI", L.AiCaptured);
+        PlaceByName("CapturedPanel", L.PileViewer);
         PlaceDrawPile();
-        PlaceByName("HintText", L.Hint);
+        PlaceByName("Message", L.Message);
+        PlaceByName("LogPanel", L.LogPanel);
         PlaceByName("VersionText", L.Version);
+
+        // The log button is a circle like Suggest, and for the same reason: it
+        // is a way in, not a move.
+        PlaceByName("LogButton", L.LogButton);
+        if (logToggle != null)
+        {
+            Surface(logToggle.GetComponent<Image>(), (int)(L.LogButton.Size.y / 2f),
+                CasinoTheme.PileButton, CasinoTheme.ButtonBorder);
+            logToggleLabel.text = "≡";
+            logToggleLabel.fontSize = L.LogButton.Size.y * 0.5f;
+            logToggleLabel.color = CasinoTheme.TextMuted;
+        }
 
         // Move buttons are not placed here: which ones exist depends on the
         // current selection, so UpdateActionButtons owns their row layout.
@@ -874,10 +891,11 @@ public class UIManager : MonoBehaviour
                 child.name == "AcesHuman" || child.name == "AcesAI" ||
                 child.name == "BuildButton" || child.name == "SuggestButton" ||
                 child.name == "TrailButton" || child.name == "SweepButton" ||
-                child.name == "HintText" || child.name == "HumanPile" ||
-                child.name == "AIPile" || child.name == "CapturedPanel" ||
+                child.name == "Message" || child.name == "LogButton" ||
+                child.name == "LogPanel" || child.name == "CapturedPanel" ||
+                child.name == "CapturedHuman" || child.name == "CapturedAI" ||
                 child.name == "DrawPile" || child.name == "ScoreSummary" ||
-                child.name == "MoveBanner" || child.name == "VersionText" ||
+                child.name == "VersionText" ||
                 child.name == "ModalScrim" || child.name == "TitleScreen")
             {
                 keep.Add(child.gameObject);
@@ -1186,23 +1204,23 @@ public class UIManager : MonoBehaviour
         return go.AddComponent<TextMeshProUGUI>();
     }
 
-    // Pile buttons under the score panel + a toggleable panel showing the
-    // actual captured cards.
+    // A face-up stack per player, and the full grid one of them opens.
     private void CreatePileViewer()
     {
-        humanPileButton = CreatePileButton("HumanPile", new Vector2(-12, -258), out humanPileLabel);
-        humanPileButton.onClick.AddListener(() => TogglePile(true));
+        // The piles used to be two labelled boxes in the bottom-left corner
+        // reading "Your pile 12". A number is a poor picture of a pile: it says
+        // how many without showing what. Each take is now a face-up stack on
+        // its owner's end of the right rail, tight enough that only the pips
+        // show, and clicking one still opens the full grid below.
+        humanCaptured = CreateCapturedStack("CapturedHuman", true);
+        aiCaptured = CreateCapturedStack("CapturedAI", false);
 
-        aiPileButton = CreatePileButton("AIPile", new Vector2(-12, -300), out aiPileLabel);
-        aiPileButton.onClick.AddListener(() => TogglePile(false));
-
-        // Docked to the left edge - never covers the table or the controls
+        // Centred over the table. It used to dock to the left edge, which was
+        // free felt then and is the plaque's column now; EnforceLayout gives it
+        // its real geometry from L.PileViewer.
         capturedPanel = new GameObject("CapturedPanel");
         capturedPanel.transform.SetParent(canvasTransform, false);
-        var rect = capturedPanel.AddComponent<RectTransform>();
-        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0, 0.5f);
-        rect.anchoredPosition = new Vector2(10, 20);
-        rect.sizeDelta = new Vector2(180, 500);
+        capturedPanel.AddComponent<RectTransform>();
         var bg = capturedPanel.AddComponent<Image>();
         Surface(bg, 8, CasinoTheme.PileViewerPanel, CasinoTheme.PanelBorder);
 
@@ -1335,28 +1353,57 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    private Button CreatePileButton(string name, Vector2 pos, out TextMeshProUGUI label)
+    // A clickable column that the cards get parented into. The container's own
+    // Image is the hit area, not decoration: an Image needs a non-zero alpha to
+    // receive a click, and the cards themselves are not selectable here.
+    private GameObject CreateCapturedStack(string name, bool human)
     {
         GameObject go = new(name);
         go.transform.SetParent(canvasTransform, false);
-        var rect = go.AddComponent<RectTransform>();
-        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(1, 1);
-        rect.anchoredPosition = pos;
-        rect.sizeDelta = new Vector2(250, 36);
+        go.AddComponent<RectTransform>();
         var img = go.AddComponent<Image>();
-        Surface(img, 4, CasinoTheme.PileButton, CasinoTheme.PileBorder);
-        var btn = go.AddComponent<Button>();
+        img.color = CasinoTheme.InvisibleHitArea;
+        go.AddComponent<Button>().onClick.AddListener(() => TogglePile(human));
+        return go;
+    }
 
-        label = CreateText("Label", go.transform);
-        var lr = label.rectTransform;
-        lr.anchorMin = Vector2.zero;
-        lr.anchorMax = Vector2.one;
-        lr.offsetMin = new Vector2(8, 0);
-        lr.offsetMax = new Vector2(-8, 0);
-        label.fontSize = 13;
-        label.alignment = TextAlignmentOptions.Left;
-        label.color = CasinoTheme.TextPrimary;
-        return btn;
+    // Face up, newest in front and lowest, so each card underneath keeps its
+    // top corner (rank and suit) in view. The offset shrinks as the pile grows
+    // so a 26-card take stays inside its zone: the stack getting denser is what
+    // says it is getting bigger, since there is no longer a count to read.
+    private void SyncCapturedStack(GameObject host, IReadOnlyList<PlayingCard> cards, ref int lastCount)
+    {
+        if (host == null || cards.Count == lastCount) return;
+        lastCount = cards.Count;
+
+        foreach (Transform child in host.transform) Destroy(child.gameObject);
+        if (cards.Count == 0) return;
+
+        var zone = host.GetComponent<RectTransform>().rect;
+        Vector2 size = CardSize(CapturedCardScale);
+        float travel = Mathf.Max(0f, zone.height - size.y);
+        float step = cards.Count > 1
+            ? Mathf.Clamp(travel / (cards.Count - 1), MinPipOffset, MaxPipOffset)
+            : 0f;
+
+        for (int i = 0; i < cards.Count; i++)
+        {
+            GameObject mini = Instantiate(cardPrefab, host.transform);
+            var ui = mini.GetComponent<CardUI>() ?? mini.AddComponent<CardUI>();
+            ui.Initialize(cards[i], false);
+            var r = mini.GetComponent<RectTransform>();
+            r.anchorMin = r.anchorMax = new Vector2(0.5f, 1);
+            r.pivot = new Vector2(0.5f, 1);
+            r.sizeDelta = size;
+            r.anchoredPosition = new Vector2(0, -i * step);
+            // Later cards sit in front, covering the body of the one above and
+            // leaving its corner showing.
+            mini.transform.SetAsLastSibling();
+            // The stack is a picture of the pile, not a set of controls; the
+            // container takes the click for all of them.
+            var img = mini.GetComponent<Image>();
+            if (img != null) img.raycastTarget = false;
+        }
     }
 
     // ---- Verification surface -------------------------------------------
@@ -1367,6 +1414,7 @@ public class UIManager : MonoBehaviour
     // them were reachable without a human at the keyboard.
 
     public void TogglePileViewer(bool human) => TogglePile(human);
+    public void ToggleMoveLog() => ToggleLog();
 
     public IReadOnlyList<CardUI> HumanHandCardUIs => nonDealerCardUIs;
     public IReadOnlyList<CardUI> TableCardUIs => tableCardUIs;
@@ -1409,26 +1457,20 @@ public class UIManager : MonoBehaviour
 
     private void TogglePile(bool human)
     {
+        // Clicking the stack that is already open closes it, so the same click
+        // that asked the question dismisses the answer.
         if (capturedPanel.activeSelf && pileShowsHuman == human)
         {
             capturedPanel.SetActive(false);
-            SetLeftEdgeVisible(true);
             return;
         }
         pileShowsHuman = human;
         pileShownCount = -1;
         capturedPanel.SetActive(true);
-        SetLeftEdgeVisible(false);
+        // Paint order is sibling order, and the stacks and cards are built
+        // after this panel was.
+        capturedPanel.transform.SetAsLastSibling();
         RebuildPilePanel();
-    }
-
-    // The open pile viewer occupies the left edge; the draw pile and status
-    // texts that live there step aside while it is open.
-    private void SetLeftEdgeVisible(bool visible)
-    {
-        if (drawPile != null) drawPile.SetActive(visible);
-        if (currentPlayerText != null) currentPlayerText.gameObject.SetActive(visible);
-        if (gameStatusText != null) gameStatusText.gameObject.SetActive(visible);
     }
 
     private void RebuildPilePanel()
@@ -1582,7 +1624,8 @@ public class UIManager : MonoBehaviour
 
     public void AnimateCapture(PlayingCard played, List<PlayingCard> captured, bool byHuman)
     {
-        Vector3 target = (byHuman ? humanPileButton : aiPileButton).transform.position;
+        // The take is where captured cards land, so that is where they fly.
+        Vector3 target = (byHuman ? humanCaptured : aiCaptured).transform.position;
         SpawnGhost(FindCardUI(played), target);
         foreach (var c in captured)
             SpawnGhost(FindCardUI(c), target);
@@ -1647,6 +1690,151 @@ public class UIManager : MonoBehaviour
             yield return null;
         }
         if (ghost != null) Destroy(ghost.gameObject);
+    }
+
+    // The game's voice, moved off the table.
+    //
+    // Everything the game had to say used to be set in gold across the middle
+    // of the felt, on top of the cards it was describing, and it vanished when
+    // it was replaced: a move you looked away from was a move you never saw.
+    // Now it is a toast under the plaque that fades on its own, backed by a log
+    // that keeps every move, so nothing is lost by blinking.
+    //
+    // hintText is still the field the ~30 call sites write to, so relocating
+    // the voice did not mean rewriting everything that speaks.
+    private GameObject logPanel;
+    private TextMeshProUGUI logBody;
+    private ScrollRect logScroll;
+    private readonly System.Text.StringBuilder log = new();
+    private string shownMessage = "";
+    private float messageShownAt;
+
+    private const float MessageHold = 3.4f;   // full opacity
+    private const float MessageFade = 0.9f;   // then out over this long
+
+    private void CreateMessageColumn()
+    {
+        hintText = CreateText("Message", canvasTransform);
+        hintText.fontSize = 15;
+        hintText.alignment = TextAlignmentOptions.TopLeft;
+        CasinoType.ApplySerif(hintText);
+        hintText.fontStyle = FontStyles.Italic;
+        hintText.color = CasinoTheme.HintText;
+        hintText.raycastTarget = false;
+        hintText.text = "";
+
+        logToggle = CreateActionButton("LogButton", "≡", out logToggleLabel);
+        logToggle.onClick.AddListener(ToggleLog);
+
+        BuildLogPanel();
+    }
+
+    // A scrolling transcript. One TMP inside a masked viewport rather than one
+    // object per line: the log is read rarely and appended to constantly, and a
+    // few hundred child objects to show forty lines of text is a poor trade.
+    private void BuildLogPanel()
+    {
+        logPanel = new GameObject("LogPanel");
+        logPanel.transform.SetParent(canvasTransform, false);
+        logPanel.AddComponent<RectTransform>();
+        var bg = logPanel.AddComponent<Image>();
+        Surface(bg, 8, CasinoTheme.PileViewerPanel, CasinoTheme.PanelBorder);
+
+        var title = CreateText("LogTitle", logPanel.transform);
+        var tr = title.rectTransform;
+        tr.anchorMin = new Vector2(0, 1); tr.anchorMax = Vector2.one;
+        tr.pivot = new Vector2(0.5f, 1);
+        tr.offsetMin = new Vector2(12, -30); tr.offsetMax = new Vector2(-12, -8);
+        title.fontSize = 11;
+        title.alignment = TextAlignmentOptions.Left;
+        CasinoType.ApplySerif(title);
+        title.color = CasinoTheme.TextFaint;
+        title.text = "<cspace=0.28em>MOVE LOG";
+        title.raycastTarget = false;
+
+        // The viewport clips; the content is taller than it and slides.
+        GameObject viewport = new("Viewport");
+        viewport.transform.SetParent(logPanel.transform, false);
+        var vr = viewport.AddComponent<RectTransform>();
+        vr.anchorMin = Vector2.zero; vr.anchorMax = Vector2.one;
+        vr.offsetMin = new Vector2(12, 12); vr.offsetMax = new Vector2(-12, -34);
+        viewport.AddComponent<RectMask2D>();
+
+        logBody = CreateText("LogBody", viewport.transform);
+        var br = logBody.rectTransform;
+        br.anchorMin = new Vector2(0, 1); br.anchorMax = new Vector2(1, 1);
+        br.pivot = new Vector2(0.5f, 1);
+        br.offsetMin = br.offsetMax = Vector2.zero;
+        logBody.fontSize = 13;
+        logBody.alignment = TextAlignmentOptions.TopLeft;
+        CasinoType.ApplySerif(logBody);
+        logBody.color = CasinoTheme.TextMuted;
+        logBody.raycastTarget = false;
+        logBody.text = "";
+        // Without this the content rect keeps the viewport's height and the
+        // ScrollRect thinks there is nothing to scroll.
+        var fitter = logBody.gameObject.AddComponent<ContentSizeFitter>();
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        logScroll = logPanel.AddComponent<ScrollRect>();
+        logScroll.viewport = vr;
+        logScroll.content = br;
+        logScroll.horizontal = false;
+        logScroll.movementType = ScrollRect.MovementType.Clamped;
+        logScroll.scrollSensitivity = 24f;
+
+        logPanel.SetActive(false);
+    }
+
+    private void ToggleLog()
+    {
+        if (logPanel == null) return;
+        logPanel.SetActive(!logPanel.activeSelf);
+        if (!logPanel.activeSelf) return;
+        // Same reason as the pile viewer: cards are created after this panel,
+        // and paint order is sibling order.
+        logPanel.transform.SetAsLastSibling();
+        ScrollLogToEnd();
+    }
+
+    // Every completed play, kept in order. The toast says it once; this says it
+    // for the rest of the game.
+    private void AppendToLog(string entry)
+    {
+        if (string.IsNullOrWhiteSpace(entry)) return;
+        if (log.Length > 0) log.Append('\n');
+        log.Append(entry);
+        if (logBody != null) logBody.text = log.ToString();
+        if (logPanel != null && logPanel.activeSelf) ScrollLogToEnd();
+    }
+
+    // Newest at the bottom, so opening the log lands on the most recent move.
+    private void ScrollLogToEnd()
+    {
+        if (logScroll == null) return;
+        Canvas.ForceUpdateCanvases();
+        logScroll.verticalNormalizedPosition = 0f;
+    }
+
+    // The toast fades itself. Call sites just assign hintText.text, so the only
+    // reliable place to notice a new message is here, by watching the string.
+    private void TickMessage()
+    {
+        if (hintText == null) return;
+
+        if (hintText.text != shownMessage)
+        {
+            shownMessage = hintText.text;
+            messageShownAt = Time.time;
+            hintText.alpha = 1f;
+            return;
+        }
+
+        if (shownMessage.Length == 0) return;
+        float age = Time.time - messageShownAt;
+        hintText.alpha = age <= MessageHold
+            ? 1f
+            : Mathf.Clamp01(1f - (age - MessageHold) / MessageFade);
     }
 
     // One scoreboard, in one place.
@@ -1896,6 +2084,8 @@ public class UIManager : MonoBehaviour
         // the title. Re-raising while it is up is one call on a handful of
         // frames, and it is the only thing that cannot get out of step.
         if (TitleIsUp) titleScreen.transform.SetAsLastSibling();
+
+        TickMessage();
 
         // A window resize can cross a breakpoint, which changes the whole
         // arrangement, not just its scale. Re-run the layout when the screen
@@ -2203,9 +2393,6 @@ public class UIManager : MonoBehaviour
         GamePlayer nonDealer = GameManager.Instance.GetNonDealer();
         GameDeck deck = GameManager.Instance.GetDeck();
         
-        if (currentPlayerText != null)
-            currentPlayerText.text = $"Current Turn: {currentPlayer.Name}";
-        
         if (deckCountText != null)
             deckCountText.text = $"Cards in Deck: {deck.CardsRemaining()}";
 
@@ -2217,17 +2404,14 @@ public class UIManager : MonoBehaviour
         if (nonDealerScoreText != null)
             nonDealerScoreText.text = $"Non-Dealer: {nonDealer.Name}\nScore: {nonDealer.Score}";
         
-        if (gameStatusText != null)
+        // This used to hang off "if (gameStatusText != null)", which read as a
+        // guard on a label and was actually the gate on the game-over panel.
         {
             GameManager.GamePhase phase = GameManager.Instance.GetCurrentPhase();
             if (phase == GameManager.GamePhase.GameOver)
             {
                 GamePlayer winner = dealer.Score > nonDealer.Score ? dealer : nonDealer;
 
-                // The panel now states the result in full, so repeating it in the
-                // corner just says the same thing twice, and said it in seat names
-                // ("Non-Dealer Wins!") while the panel said "You win".
-                gameStatusText.text = "";
                 playCardButton.interactable = false;
                 ShowGameOverResult(dealer, nonDealer, winner);
                 if (hintText != null) hintText.text = "";
@@ -2239,7 +2423,6 @@ public class UIManager : MonoBehaviour
             }
             else
             {
-                gameStatusText.text = "Playing...";
                 if (gameOverPanel != null && gameOverPanel.activeSelf)
                 {
                     gameOverPanel.SetActive(false);
@@ -2288,11 +2471,9 @@ public class UIManager : MonoBehaviour
         UpdateAceRows(human, ai);
         PlaceDrawPile();
 
-        if (humanPileLabel != null)
-        {
-            humanPileLabel.text = $"Your pile  {human.CapturedCards.Count}";
-            aiPileLabel.text = $"AI pile  {ai.CapturedCards.Count}";
-        }
+        SyncCapturedStack(humanCaptured, human.CapturedCards, ref humanCapturedShown);
+        SyncCapturedStack(aiCaptured, ai.CapturedCards, ref aiCapturedShown);
+
         if (capturedPanel != null && capturedPanel.activeSelf)
             RebuildPilePanel();
     }
@@ -2891,42 +3072,13 @@ public class UIManager : MonoBehaviour
 
     private string CardName(PlayingCard card) => CaptureChecker.Describe(card);
 
-    // Move banner: announces each play and its effect, then fades
-    private TextMeshProUGUI moveBanner;
-    private Coroutine bannerFade;
-
+    // Each completed play, announced once in the toast and kept forever in the
+    // log. This used to be a separate gold banner across the top of the table,
+    // a second floating text channel competing with the hint for the same felt.
     public void ShowMove(string text)
     {
-        if (moveBanner == null)
-        {
-            moveBanner = CreateText("MoveBanner", canvasTransform);
-            var r = moveBanner.rectTransform;
-            r.anchorMin = r.anchorMax = new Vector2(0.5f, 1);
-            r.pivot = new Vector2(0.5f, 1);
-            r.anchoredPosition = new Vector2(0, -118);
-            r.sizeDelta = new Vector2(620, 40);
-            moveBanner.fontSize = 21;
-            moveBanner.fontStyle = FontStyles.Bold;
-            moveBanner.alignment = TextAlignmentOptions.Center;
-            moveBanner.color = CasinoTheme.Headline;
-            CasinoType.ApplySerif(moveBanner);
-        }
-        moveBanner.text = text;
-        moveBanner.alpha = 1f;
-        if (bannerFade != null) StopCoroutine(bannerFade);
-        bannerFade = StartCoroutine(FadeBanner());
-    }
-
-    private System.Collections.IEnumerator FadeBanner()
-    {
-        yield return new WaitForSeconds(1.6f);
-        float t = 0f;
-        while (t < 0.5f && moveBanner != null)
-        {
-            t += Time.deltaTime;
-            moveBanner.alpha = 1f - t / 0.5f;
-            yield return null;
-        }
+        if (hintText != null) hintText.text = text;
+        AppendToLog(text);
     }
 
     private string SweepName(PlayingCard c) =>
