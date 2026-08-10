@@ -1286,11 +1286,13 @@ public class UIManager : MonoBehaviour
             img.raycastTarget = false;
         }
 
-        // Centre the number on the TOP card of the stack, not on the zone:
-        // the layers fan down-right as the pile grows, so the zone's centre
-        // and the visible deck's centre drift apart by up to 12 units.
+        // Centre the number on the TOP card of the stack, not on the zone.
+        // Layers are inserted at sibling index 0, so the *first* one built
+        // (i == 0) ends up frontmost: it sits at x 0, y -2*layers, and its
+        // centre is half a card in from there. Aiming at the last layer
+        // instead lands the number up-and-right of the card you can see.
         var lr = drawPileLabel.rectTransform;
-        lr.anchoredPosition = new Vector2(2f * (layers - 1) + 38f, -56f);
+        lr.anchoredPosition = new Vector2(38f, -2f * layers - 54f);
 
         // An empty deck draws no layers, so a number would float on felt;
         // the pile vanishing is the message.
