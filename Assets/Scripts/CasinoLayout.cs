@@ -33,7 +33,7 @@ public static class CasinoLayout
         public float RowSpacing;
 
         public Zone OpponentHand, Table, PlayerHand, Hint;
-        public Zone Score, PlayerPile, AiPile, Suggest, Aces;
+        public Zone Score, PlayerPile, AiPile, Suggest, PlayerAces, AiAces;
         public Zone DrawPile, TurnText, StatusText, Version, GameOver;
 
         // Actions stack vertically above the selected hand card (one card per
@@ -103,8 +103,11 @@ public static class CasinoLayout
         // Advice, not a move: a circled "?" tucked above the version stamp.
         Suggest = new Zone(1f, 0f, -14, 30, 40, 40),
 
-        // Ace tally prototype: in the open felt the action rail left behind.
-        Aces = new Zone(1f, 1f, -14, -306, 272, 78),
+        // Ace splashes land on the capturer's side: yours above the "?",
+        // the AI's in the open top-left corner. Nothing renders until an
+        // ace is actually taken, so neither zone costs idle attention.
+        PlayerAces = new Zone(1f, 0f, -14, 84, 220, 64),
+        AiAces     = new Zone(0f, 1f, 14, -14, 220, 64),
 
         // Left column, top to bottom: draw pile, status, then the two piles.
         DrawPile   = new Zone(0f, 0f, 50, 396, 96, 132),
@@ -136,7 +139,8 @@ public static class CasinoLayout
         ActionCenter = new Vector2(-48, 158),
         ActionHeight = 42, ActionGap = 8,
         Suggest = new Zone(1f, 0f, -12, 28, 38, 38),
-        Aces = new Zone(1f, 1f, -12, -296, 236, 72),
+        PlayerAces = new Zone(1f, 0f, -12, 76, 200, 60),
+        AiAces     = new Zone(0f, 1f, 12, -12, 200, 60),
 
         DrawPile   = new Zone(0f, 0f, 38, 416, 88, 120),
         TurnText   = new Zone(0f, 0f, 12, 122, 180, 24),
@@ -180,9 +184,10 @@ public static class CasinoLayout
         ActionHeight = 52, ActionGap = 10,
         // Thumb-sized, clear of the version stamp.
         Suggest = new Zone(1f, 0f, -14, 34, 48, 48),
-        // No free felt in portrait; rides the right edge below the pile row
-        // and shades the table's top corner. Prototype placement, revisit.
-        Aces = new Zone(1f, 1f, -14, -458, 220, 70),
+        // Portrait is untested on a device; the AI row shades the opponent
+        // hand's left edge. Revisit with the rest of the portrait pass.
+        PlayerAces = new Zone(1f, 0f, -14, 96, 220, 60),
+        AiAces     = new Zone(0f, 1f, 14, -296, 160, 56),
 
         PlayerHand = new Zone(0.5f, 0f, 0, 230, 684, 150),
         // 92 put the pile's count label hard against the bottom edge, where it

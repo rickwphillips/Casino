@@ -186,14 +186,11 @@ public static class CasinoTheme
     public static Color BadgeLeadingBorder => Palette.Counsel;
     public static Color BadgeLeadingLabel => Palette.Counsel;
 
-    // Ace tally: four mini cards fanned under the scoreboard, one per suit.
-    // A captured ace is a lit white card; an uncaptured one is a dark slot
-    // whose faint pip says which ace is still out there.
+    // Ace trophies: a captured ace splashes in as a lit mini card on the
+    // capturer's side of the board. There is no idle state on purpose; an
+    // ace not yet taken renders nothing at all.
     public static Color AceFace => Color.white;
     public static Color AceBorder => Palette.Gold;
-    public static Color AceSlot => new(0.07f, 0.13f, 0.10f);
-    public static Color AceSlotBorder => Palette.Brass.WithAlpha(0.35f);
-    public static Color AceSlotPip => Palette.Parchment.WithAlpha(0.30f);
 
     public static Color BuildTagLocked => Palette.PanelDeep.WithAlpha(0.9f);
     public static Color BuildTagRaisable => Palette.BrassDeep.WithAlpha(0.9f);

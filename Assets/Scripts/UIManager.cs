@@ -745,7 +745,7 @@ public class UIManager : MonoBehaviour
         versionText.text = $"v{Application.version}";
 
         CreateScorePanel();
-        CreateAcesWidget();
+        CreateAceRows();
         CreatePileViewer();
         CreateDrawPile();
 
@@ -833,7 +833,8 @@ public class UIManager : MonoBehaviour
         // constructor gave them, which is why the score panel and the action
         // rail drifted apart on a wide canvas: nothing owned them after creation.
         PlaceByName("ScorePanel", L.Score);
-        PlaceByName("AcesWidget", L.Aces);
+        PlaceByName("AcesHuman", L.PlayerAces);
+        PlaceByName("AcesAI", L.AiAces);
         PlaceByName("HumanPile", L.PlayerPile);
         PlaceByName("AIPile", L.AiPile);
         PlaceByName("DrawPile", L.DrawPile);
@@ -867,7 +868,7 @@ public class UIManager : MonoBehaviour
         foreach (Transform child in canvasTransform)
         {
             if (child.name == "TableFelt" || child.name == "TableGrain" || child.name == "TableRail" || child.name == "ScorePanel" ||
-                child.name == "AcesWidget" ||
+                child.name == "AcesHuman" || child.name == "AcesAI" ||
                 child.name == "BuildButton" || child.name == "SuggestButton" ||
                 child.name == "TrailButton" || child.name == "SweepButton" ||
                 child.name == "HintText" || child.name == "HumanPile" ||
@@ -1811,106 +1812,155 @@ public class UIManager : MonoBehaviour
                                     out aiStatsText, out aiScoreValue);
     }
 
-    private GameObject acesWidget;
-    private readonly Image[] aceBorders = new Image[4];
-    private readonly Image[] aceFaces = new Image[4];
-    private readonly TextMeshProUGUI[] acePips = new TextMeshProUGUI[4];
+    private RectTransform humanAcesRow, aiAcesRow;
+    private readonly Dictionary<PlayingCard.Suit, GameObject> humanAceIcons = new();
+    private readonly Dictionary<PlayingCard.Suit, GameObject> aiAceIcons = new();
 
-    // Display order of the fan; red suits inside so the colours alternate.
     private static readonly PlayingCard.Suit[] AceSuitOrder =
     {
         PlayingCard.Suit.Spades, PlayingCard.Suit.Hearts,
         PlayingCard.Suit.Diamonds, PlayingCard.Suit.Clubs,
     };
-    private static readonly string[] AceSuitGlyphs = { "♠", "♥", "♦", "♣" };
 
-    // The ace tally: four mini ace cards fanned like a held trick, one per
-    // suit, below the scoreboard. A captured ace turns its slot into a lit
-    // white card; the ones still in play stay as dark slots whose faint pip
-    // says exactly which ace is unaccounted for. The count is the picture:
-    // nobody has to read a number to know they are two aces from the bonus.
-    private void CreateAcesWidget()
+    private static string SuitGlyph(PlayingCard.Suit s) => s switch
     {
-        acesWidget = new GameObject("AcesWidget");
-        acesWidget.transform.SetParent(canvasTransform, false);
-        var rect = acesWidget.AddComponent<RectTransform>();
-        rect.sizeDelta = new Vector2(272, 78);   // EnforceLayout re-places it
+        PlayingCard.Suit.Spades => "♠",
+        PlayingCard.Suit.Hearts => "♥",
+        PlayingCard.Suit.Diamonds => "♦",
+        _ => "♣",
+    };
 
-        for (int i = 0; i < 4; i++)
-        {
-            float off = i - 1.5f;
-
-            var slot = new GameObject($"Ace{AceSuitOrder[i]}");
-            slot.transform.SetParent(acesWidget.transform, false);
-            var r = slot.AddComponent<RectTransform>();
-            r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
-            // A shallow arc with the outer cards tilted outward, so four
-            // rectangles read as a fan of cards rather than a bar chart.
-            r.anchoredPosition = new Vector2(off * 46f, 12f - off * off * 3.5f);
-            r.localRotation = Quaternion.Euler(0, 0, off * -7f);
-            r.sizeDelta = new Vector2(38, 52);
-
-            aceBorders[i] = slot.AddComponent<Image>();
-            aceBorders[i].sprite = CasinoArt.RoundedFill(5);
-            aceBorders[i].type = Image.Type.Sliced;
-            aceBorders[i].raycastTarget = false;
-
-            var faceGo = new GameObject("Face");
-            faceGo.transform.SetParent(slot.transform, false);
-            var fr = faceGo.AddComponent<RectTransform>();
-            fr.anchorMin = Vector2.zero;
-            fr.anchorMax = Vector2.one;
-            fr.offsetMin = new Vector2(1.5f, 1.5f);
-            fr.offsetMax = new Vector2(-1.5f, -1.5f);
-            aceFaces[i] = faceGo.AddComponent<Image>();
-            aceFaces[i].sprite = CasinoArt.RoundedFill(4);
-            aceFaces[i].type = Image.Type.Sliced;
-            aceFaces[i].raycastTarget = false;
-
-            var pip = CreateText("Pip", faceGo.transform);
-            var pr = pip.rectTransform;
-            pr.anchorMin = Vector2.zero;
-            pr.anchorMax = Vector2.one;
-            pr.offsetMin = pr.offsetMax = Vector2.zero;
-            pip.alignment = TextAlignmentOptions.Center;
-            pip.fontSize = 21;
-            // The rank whispers, the suit is the picture.
-            pip.text = $"<size=10>A</size>\n{AceSuitGlyphs[i]}";
-            pip.lineSpacing = -34;
-            acePips[i] = pip;
-        }
-
-        var caption = CreateText("Caption", acesWidget.transform);
-        var cr = caption.rectTransform;
-        cr.anchorMin = new Vector2(0, 0);
-        cr.anchorMax = new Vector2(1, 0);
-        cr.pivot = new Vector2(0.5f, 0);
-        cr.anchoredPosition = new Vector2(0, -4);
-        cr.sizeDelta = new Vector2(0, 14);
-        caption.fontSize = 10;
-        caption.characterSpacing = 18;
-        caption.alignment = TextAlignmentOptions.Center;
-        caption.color = CasinoTheme.BadgeIdleLabel;
-        caption.text = "YOUR ACES";
-
-        UpdateAcesWidget(null);
+    // Ace trophies are event-driven, not slots: nothing renders until an ace
+    // is actually captured, and then the icon splashes in on the capturer's
+    // side - oversized and bright, settling onto the felt like a card tossed
+    // to your corner. Both players get the same treatment on their own side.
+    // Icons accumulate for the round and clear when the piles do.
+    private void CreateAceRows()
+    {
+        humanAcesRow = CreateAceRow("AcesHuman");
+        aiAcesRow = CreateAceRow("AcesAI");
     }
 
-    private void UpdateAcesWidget(GamePlayer human)
+    private RectTransform CreateAceRow(string name)
     {
-        if (acesWidget == null) return;
-        for (int i = 0; i < 4; i++)
-        {
-            var suit = AceSuitOrder[i];
-            bool taken = human != null && human.CapturedCards.Any(c =>
-                c.rank == PlayingCard.Rank.Ace && c.suit == suit);
-            bool red = suit == PlayingCard.Suit.Hearts || suit == PlayingCard.Suit.Diamonds;
+        GameObject go = new(name);
+        go.transform.SetParent(canvasTransform, false);
+        var rect = go.AddComponent<RectTransform>();
+        rect.sizeDelta = new Vector2(220, 64);   // EnforceLayout re-places it
+        return rect;
+    }
 
-            aceBorders[i].color = taken ? CasinoTheme.AceBorder : CasinoTheme.AceSlotBorder;
-            aceFaces[i].color = taken ? CasinoTheme.AceFace : CasinoTheme.AceSlot;
-            acePips[i].color = taken ? (red ? CasinoTheme.SuitRed : CasinoTheme.SuitBlack)
-                                     : CasinoTheme.AceSlotPip;
+    private void UpdateAceRows(GamePlayer human, GamePlayer ai)
+    {
+        SyncAceRow(humanAcesRow, humanAceIcons, human);
+        SyncAceRow(aiAcesRow, aiAceIcons, ai);
+    }
+
+    private void SyncAceRow(RectTransform row, Dictionary<PlayingCard.Suit, GameObject> icons,
+                            GamePlayer p)
+    {
+        if (row == null || p == null) return;
+
+        var owned = new HashSet<PlayingCard.Suit>(p.CapturedCards
+            .Where(c => c.rank == PlayingCard.Rank.Ace).Select(c => c.suit));
+
+        // Round over, piles cleared: the trophies leave with them, no ceremony.
+        foreach (var suit in icons.Keys.Where(s => !owned.Contains(s)).ToList())
+        {
+            Destroy(icons[suit]);
+            icons.Remove(suit);
         }
+
+        bool added = false;
+        foreach (var suit in AceSuitOrder)
+        {
+            if (!owned.Contains(suit) || icons.ContainsKey(suit)) continue;
+            var icon = BuildAceIcon(row, suit);
+            icons[suit] = icon;
+            StartCoroutine(SplashIn((RectTransform)icon.transform));
+            added = true;
+        }
+
+        if (added || icons.Count > 0) ReflowAceRow(icons);
+    }
+
+    // A small tossed-on-the-felt cluster: alternating tilts, centered in the
+    // row, ordered by capture (suit order is just the stable tie-break).
+    private void ReflowAceRow(Dictionary<PlayingCard.Suit, GameObject> icons)
+    {
+        int n = icons.Count, i = 0;
+        foreach (var suit in AceSuitOrder)
+        {
+            if (!icons.TryGetValue(suit, out var go)) continue;
+            var r = (RectTransform)go.transform;
+            r.anchoredPosition = new Vector2((i - (n - 1) / 2f) * 46f, (i % 2 == 0) ? 2f : -3f);
+            r.localRotation = Quaternion.Euler(0, 0, (i % 2 == 0) ? -6f : 5f);
+            i++;
+        }
+    }
+
+    private GameObject BuildAceIcon(RectTransform row, PlayingCard.Suit suit)
+    {
+        var go = new GameObject($"Ace{suit}");
+        go.transform.SetParent(row, false);
+        var r = go.AddComponent<RectTransform>();
+        r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
+        r.sizeDelta = new Vector2(38, 52);
+
+        var border = go.AddComponent<Image>();
+        border.sprite = CasinoArt.RoundedFill(5);
+        border.type = Image.Type.Sliced;
+        border.color = CasinoTheme.AceBorder;
+        border.raycastTarget = false;
+
+        var faceGo = new GameObject("Face");
+        faceGo.transform.SetParent(go.transform, false);
+        var fr = faceGo.AddComponent<RectTransform>();
+        fr.anchorMin = Vector2.zero;
+        fr.anchorMax = Vector2.one;
+        fr.offsetMin = new Vector2(1.5f, 1.5f);
+        fr.offsetMax = new Vector2(-1.5f, -1.5f);
+        var face = faceGo.AddComponent<Image>();
+        face.sprite = CasinoArt.RoundedFill(4);
+        face.type = Image.Type.Sliced;
+        face.color = CasinoTheme.AceFace;
+        face.raycastTarget = false;
+
+        bool red = suit == PlayingCard.Suit.Hearts || suit == PlayingCard.Suit.Diamonds;
+        var pip = CreateText("Pip", faceGo.transform);
+        var pr = pip.rectTransform;
+        pr.anchorMin = Vector2.zero;
+        pr.anchorMax = Vector2.one;
+        pr.offsetMin = pr.offsetMax = Vector2.zero;
+        pip.alignment = TextAlignmentOptions.Center;
+        pip.fontSize = 21;
+        pip.lineSpacing = -34;
+        pip.text = $"<size=10>A</size>\n{SuitGlyph(suit)}";
+        pip.color = red ? CasinoTheme.SuitRed : CasinoTheme.SuitBlack;
+
+        return go;
+    }
+
+    // The entrance: lands big and bright, shrinks onto the felt with a small
+    // overshoot so it reads as arriving, not appearing.
+    private System.Collections.IEnumerator SplashIn(RectTransform r)
+    {
+        var group = r.gameObject.AddComponent<CanvasGroup>();
+        const float dur = 0.5f;
+        for (float t = 0; t < dur; t += Time.deltaTime)
+        {
+            if (r == null) yield break;   // row cleared mid-splash
+            float k = t / dur;
+            float ease = 1f - (1f - k) * (1f - k);              // decelerate
+            float scale = Mathf.Lerp(2.6f, 1f, ease)
+                        - 0.08f * Mathf.Sin(k * Mathf.PI);      // dip past 1 and settle
+            r.localScale = Vector3.one * scale;
+            group.alpha = Mathf.Clamp01(k * 3f);
+            yield return null;
+        }
+        if (r == null) yield break;
+        r.localScale = Vector3.one;
+        group.alpha = 1f;
     }
 
     // One player's block: a seat line, the running score set large because it is
@@ -2351,7 +2401,7 @@ public class UIManager : MonoBehaviour
 
         UpdateBadges(humanBadges, human, ai);
         UpdateBadges(aiBadges, ai, human);
-        UpdateAcesWidget(human);
+        UpdateAceRows(human, ai);
 
         if (humanPileLabel != null)
         {
