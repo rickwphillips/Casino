@@ -1247,10 +1247,10 @@ public class UIManager : MonoBehaviour
         // the card-back layers it rebuilds.
         drawPileLabel = CreateText("Count", drawPile.transform);
         var lr = drawPileLabel.rectTransform;
-        lr.anchorMin = Vector2.zero;
-        lr.anchorMax = Vector2.one;
-        lr.offsetMin = lr.offsetMax = Vector2.zero;
-        drawPileLabel.fontSize = 36;
+        lr.anchorMin = lr.anchorMax = new Vector2(0, 1);
+        lr.pivot = new Vector2(0.5f, 0.5f);
+        lr.sizeDelta = new Vector2(76, 108);
+        drawPileLabel.fontSize = 42;
         drawPileLabel.fontStyle = FontStyles.Bold;
         CasinoType.ApplySerif(drawPileLabel);
         drawPileLabel.alignment = TextAlignmentOptions.Center;
@@ -1285,6 +1285,12 @@ public class UIManager : MonoBehaviour
             img.sprite = CardUI.CardBackSprite;
             img.raycastTarget = false;
         }
+
+        // Centre the number on the TOP card of the stack, not on the zone:
+        // the layers fan down-right as the pile grows, so the zone's centre
+        // and the visible deck's centre drift apart by up to 12 units.
+        var lr = drawPileLabel.rectTransform;
+        lr.anchoredPosition = new Vector2(2f * (layers - 1) + 38f, -56f);
 
         // An empty deck draws no layers, so a number would float on felt;
         // the pile vanishing is the message.
