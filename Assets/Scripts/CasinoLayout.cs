@@ -33,8 +33,11 @@ public static class CasinoLayout
         public float RowSpacing;
 
         public Zone OpponentHand, Table, PlayerHand, Hint;
-        public Zone Score, PlayerPile, AiPile, Suggest, PlayerAces, AiAces;
-        public Zone DrawPile, TurnText, StatusText, Version, GameOver;
+        public Zone PlayerScore, AiScore, PlayerPile, AiPile, Suggest, PlayerAces, AiAces;
+        // Two homes for the draw pile: it sits beside whoever is dealing
+        // this deck, and moves when the deal does.
+        public Zone DrawPileAi, DrawPileHuman;
+        public Zone TurnText, StatusText, Version, GameOver;
 
         // Actions stack vertically above the selected hand card (one card per
         // turn, so the options belong to it). The profile describes button
@@ -94,7 +97,10 @@ public static class CasinoLayout
         Hint         = new Zone(0.5f, 0f, -52, 490, 560, 46),
         PlayerHand   = new Zone(0.5f, 0f, -52, 14, 460, 158),
 
-        Score = new Zone(1f, 1f, -14, -14, 272, 278),
+        // Score lines sit with their side's coin shelf: yours above your
+        // shelf in the bottom-right corner, the AI's below its shelf top-left.
+        PlayerScore = new Zone(1f, 0f, -14, 152, 240, 20),
+        AiScore     = new Zone(0f, 1f, 14, -84, 240, 20),
         // ActionCenter is only the fallback anchor (a build selected with no
         // hand card); normally the stack sits over the selected card itself.
         ActionCenter = new Vector2(-52, 180),
@@ -109,8 +115,10 @@ public static class CasinoLayout
         PlayerAces = new Zone(1f, 0f, -14, 84, 220, 64),
         AiAces     = new Zone(0f, 1f, 14, -14, 220, 64),
 
-        // Left column, top to bottom: draw pile, status, then the two piles.
-        DrawPile   = new Zone(0f, 0f, 50, 396, 96, 132),
+        // Left column: the draw pile rides with the dealer (top when the AI
+        // deals, bottom when you do); status and the two piles keep the corner.
+        DrawPileAi    = new Zone(0f, 1f, 50, -120, 96, 132),
+        DrawPileHuman = new Zone(0f, 0f, 50, 200, 96, 132),
         TurnText   = new Zone(0f, 0f, 14, 130, 170, 24),
         StatusText = new Zone(0f, 0f, 14, 104, 170, 24),
         PlayerPile = new Zone(0f, 0f, 14, 62, 168, 34),
@@ -135,14 +143,16 @@ public static class CasinoLayout
         Hint         = new Zone(0.5f, 0f, -48, 500, 500, 44),
         PlayerHand   = new Zone(0.5f, 0f, -48, 12, 420, 140),
 
-        Score = new Zone(1f, 1f, -12, -12, 236, 272),
+        PlayerScore = new Zone(1f, 0f, -12, 140, 220, 20),
+        AiScore     = new Zone(0f, 1f, 12, -78, 220, 20),
         ActionCenter = new Vector2(-48, 158),
         ActionHeight = 42, ActionGap = 8,
         Suggest = new Zone(1f, 0f, -12, 28, 38, 38),
         PlayerAces = new Zone(1f, 0f, -12, 76, 200, 60),
         AiAces     = new Zone(0f, 1f, 12, -12, 200, 60),
 
-        DrawPile   = new Zone(0f, 0f, 38, 416, 88, 120),
+        DrawPileAi    = new Zone(0f, 1f, 38, -116, 88, 120),
+        DrawPileHuman = new Zone(0f, 0f, 38, 190, 88, 120),
         TurnText   = new Zone(0f, 0f, 12, 122, 180, 24),
         StatusText = new Zone(0f, 0f, 12, 96, 180, 24),
         PlayerPile = new Zone(0f, 0f, 12, 56, 140, 32),
@@ -166,10 +176,8 @@ public static class CasinoLayout
         Name = "Portrait", Reference = new Vector2(720, 1280), Match = 0f,
         CardSize = new Vector2(72, 108), RowSpacing = 6f,
 
-        // 220 tall, not 92: the score panel's internal layout is authored for a
-        // column of eight stat lines and is not itself profile-aware, so a short
-        // wide bar makes its children collide. Give it the height it needs.
-        Score        = new Zone(0.5f, 1f, 0, -10, 700, 272),
+        PlayerScore = new Zone(1f, 0f, -14, 160, 240, 22),
+        AiScore     = new Zone(0f, 1f, 14, -356, 240, 22),
         OpponentHand = new Zone(0.5f, 1f, 0, -292, 684, 120),
         PlayerPile   = new Zone(0f, 1f, 14, -420, 336, 34),
         AiPile       = new Zone(1f, 1f, -14, -420, 336, 34),
@@ -192,7 +200,8 @@ public static class CasinoLayout
         PlayerHand = new Zone(0.5f, 0f, 0, 230, 684, 150),
         // 92 put the pile's count label hard against the bottom edge, where it
         // rendered clipped. The zone is the card; the label hangs below it.
-        DrawPile   = new Zone(0f, 0f, 20, 118, 76, 104),
+        DrawPileAi    = new Zone(0f, 1f, 20, -440, 76, 104),
+        DrawPileHuman = new Zone(0f, 0f, 20, 118, 76, 104),
         TurnText   = new Zone(0f, 0f, 110, 164, 260, 24),
         StatusText = new Zone(0f, 0f, 110, 138, 260, 24),
         Version    = new Zone(1f, 0f, -10, 6, 120, 18),

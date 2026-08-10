@@ -36,6 +36,10 @@ public class CasinoStatePreview : MonoBehaviour
     private static void Install()
     {
         if (!File.Exists(FlagPath) && !File.Exists(RankFlagPath) && !File.Exists(ScenarioFlagPath)) return;
+        UIManager.SkipTitle = true;
+        // The staged boards and transcripts assume the human is non-dealer
+        // and moves first; pin the seat so runs stay reproducible.
+        GameManager.ForceHumanNonDealer = true;   // these stage a board to photograph
         var host = new GameObject("CasinoStatePreview");
         host.AddComponent<CasinoStatePreview>();
         DontDestroyOnLoad(host);

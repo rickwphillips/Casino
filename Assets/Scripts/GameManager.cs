@@ -51,6 +51,11 @@ public class GameManager : MonoBehaviour
         Invoke(nameof(InitializeGame), 0.1f);
     }
     
+    // Harnesses stage boards around a known seating (human as non-dealer,
+    // moving first), so they set this before Start and a run is reproducible.
+    // Real play keeps the coin flip below.
+    public static bool ForceHumanNonDealer;
+
     public void InitializeGame() {
         // 1-player guarantee: this is a human-vs-AI game. If the scene still
         // carries an old AI-vs-AI configuration, seat the human as non-dealer.
@@ -58,6 +63,19 @@ public class GameManager : MonoBehaviour
             nonDealerPlayerType == GamePlayer.PlayerType.AI)
         {
             nonDealerPlayerType = GamePlayer.PlayerType.Human;
+        }
+
+        // The first dealer is a coin flip, not a fixed seat. The deal moves
+        // to the other player after every scored deck, as it always has.
+        if (ForceHumanNonDealer)
+        {
+            dealerPlayerType = GamePlayer.PlayerType.AI;
+            nonDealerPlayerType = GamePlayer.PlayerType.Human;
+        }
+        else if (Random.value < 0.5f)
+        {
+            (dealerPlayerType, nonDealerPlayerType) = (nonDealerPlayerType, dealerPlayerType);
+            (dealerAIDifficulty, nonDealerAIDifficulty) = (nonDealerAIDifficulty, dealerAIDifficulty);
         }
 
         deck = new GameDeck();
@@ -544,7 +562,13 @@ public class GameManager : MonoBehaviour
                 dealer.AddCards(deck.DrawCards(HAND_SIZE));
 
                 if (UIManager.Instance != null)
+                {
                     UIManager.Instance.AnimateDeal(HAND_SIZE, HAND_SIZE, 0);
+                    // The deck just emptied into these hands: table cards and
+                    // majorities settle when they run out, so say so.
+                    if (deck.CardsRemaining() < HAND_SIZE * 2)
+                        UIManager.Instance.ShowMove("Last Hand!");
+                }
             }
             else
             {

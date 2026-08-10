@@ -60,6 +60,13 @@ public class CasinoAutoPlay : MonoBehaviour
     {
         if (!File.Exists(FlagPath)) return;
 
+        // This harness drives the board directly; an opening screen it never
+        // clicks would leave every screenshot showing the title.
+        UIManager.SkipTitle = true;
+        // The staged boards and transcripts assume the human is non-dealer
+        // and moves first; pin the seat so runs stay reproducible.
+        GameManager.ForceHumanNonDealer = true;
+
         // Read the mode before consuming the flag, and get a breadcrumb down
         // before anything else can hang. If the transcript is missing after a
         // run, nothing in this class ran at all.

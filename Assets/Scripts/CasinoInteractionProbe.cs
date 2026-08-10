@@ -27,6 +27,10 @@ public class CasinoInteractionProbe : MonoBehaviour
     private static void Install()
     {
         if (!File.Exists(FlagPath)) return;
+        UIManager.SkipTitle = true;
+        // The staged boards and transcripts assume the human is non-dealer
+        // and moves first; pin the seat so runs stay reproducible.
+        GameManager.ForceHumanNonDealer = true;   // the probe starts at the dealt board
         try { File.WriteAllText(LogPath, ""); } catch { }
         Mark("install");
         try { File.Delete(FlagPath); } catch { }
