@@ -119,9 +119,9 @@ public static class CasinoLayout
         // deals, bottom when you do); status and the two piles keep the corner.
         DrawPileAi    = new Zone(0f, 1f, 50, -120, 96, 132),
         // Right at the player's elbow: bottom-aligned with the hand and
-        // nearly touching it (hand zone starts at x 358; the count label
-        // hangs 26 under the card, so y stays above 30).
-        DrawPileHuman = new Zone(0f, 0f, 254, 30, 96, 132),
+        // nearly touching it (hand zone starts at x 358). The count renders
+        // on the deck itself, so nothing hangs below the zone any more.
+        DrawPileHuman = new Zone(0f, 0f, 254, 14, 96, 132),
         TurnText   = new Zone(0f, 0f, 14, 130, 170, 24),
         StatusText = new Zone(0f, 0f, 14, 104, 170, 24),
         PlayerPile = new Zone(0f, 0f, 14, 62, 168, 34),
@@ -155,7 +155,7 @@ public static class CasinoLayout
         AiAces     = new Zone(0f, 1f, 12, -12, 200, 60),
 
         DrawPileAi    = new Zone(0f, 1f, 38, -116, 88, 120),
-        DrawPileHuman = new Zone(0f, 0f, 186, 28, 84, 114),
+        DrawPileHuman = new Zone(0f, 0f, 186, 12, 84, 114),
         TurnText   = new Zone(0f, 0f, 12, 122, 180, 24),
         StatusText = new Zone(0f, 0f, 12, 96, 180, 24),
         PlayerPile = new Zone(0f, 0f, 12, 56, 140, 32),
@@ -201,8 +201,6 @@ public static class CasinoLayout
         AiAces     = new Zone(0f, 1f, 14, -296, 160, 56),
 
         PlayerHand = new Zone(0.5f, 0f, 0, 230, 684, 150),
-        // 92 put the pile's count label hard against the bottom edge, where it
-        // rendered clipped. The zone is the card; the label hangs below it.
         DrawPileAi    = new Zone(0f, 1f, 20, -440, 76, 104),
         DrawPileHuman = new Zone(0f, 0f, 20, 118, 76, 104),
         TurnText   = new Zone(0f, 0f, 110, 164, 260, 24),

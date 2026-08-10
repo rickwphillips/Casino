@@ -1242,16 +1242,20 @@ public class UIManager : MonoBehaviour
         rect.anchoredPosition = new Vector2(30, 130);
         rect.sizeDelta = new Vector2(96, 132);
 
+        // The count sits ON the deck, big, not in a caption under it: the
+        // pile is its own label. UpdateDrawPile keeps this child on top of
+        // the card-back layers it rebuilds.
         drawPileLabel = CreateText("Count", drawPile.transform);
         var lr = drawPileLabel.rectTransform;
-        lr.anchorMin = new Vector2(0, 0);
-        lr.anchorMax = new Vector2(1, 0);
-        lr.pivot = new Vector2(0.5f, 1);
-        lr.anchoredPosition = new Vector2(0, -4);
-        lr.sizeDelta = new Vector2(96, 22);
-        drawPileLabel.fontSize = 13;
+        lr.anchorMin = Vector2.zero;
+        lr.anchorMax = Vector2.one;
+        lr.offsetMin = lr.offsetMax = Vector2.zero;
+        drawPileLabel.fontSize = 36;
+        drawPileLabel.fontStyle = FontStyles.Bold;
+        CasinoType.ApplySerif(drawPileLabel);
         drawPileLabel.alignment = TextAlignmentOptions.Center;
-        drawPileLabel.color = CasinoTheme.TextMuted;
+        drawPileLabel.color = CasinoTheme.Palette.Ivory;
+        drawPileLabel.raycastTarget = false;
     }
 
     private void UpdateDrawPile(int remaining)
@@ -1282,7 +1286,9 @@ public class UIManager : MonoBehaviour
             img.raycastTarget = false;
         }
 
-        drawPileLabel.text = remaining > 0 ? $"Deck: {remaining}" : "Deck empty";
+        // An empty deck draws no layers, so a number would float on felt;
+        // the pile vanishing is the message.
+        drawPileLabel.text = remaining > 0 ? remaining.ToString() : "";
     }
 
     // Deal animation: face-down ghosts fly from the draw pile to each hand
