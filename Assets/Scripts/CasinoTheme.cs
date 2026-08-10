@@ -97,6 +97,15 @@ public static class CasinoTheme
     public static Color ScorePanel => Palette.PanelInk.WithAlpha(0.94f);
     public static Color PileButton => Palette.PanelInk.WithAlpha(0.88f);
 
+    // The scoreboard plaque. Both totals are always legible; the leader is
+    // struck in ivory and whoever trails drops to brass, so a glance at the
+    // brightness says who is ahead before you have read either number.
+    public static Color ScoreLeader => Palette.Ivory;
+    public static Color ScoreTrailing => Palette.Brass;
+    public static Color ScoreCaptionYou => Palette.Mint.WithAlpha(0.78f);
+    public static Color ScoreCaptionAi => Palette.Blush.WithAlpha(0.78f);
+    public static Color ScorePip => Palette.Brass.WithAlpha(0.70f);
+
     // Transparent-but-raycastable: an Image needs a non-zero alpha to receive
     // clicks, so builds get an invisible hit area rather than a visible one.
     public static Color InvisibleHitArea => new(0f, 0f, 0f, 0.01f);

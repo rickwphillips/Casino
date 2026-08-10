@@ -33,7 +33,10 @@ public static class CasinoLayout
         public float RowSpacing;
 
         public Zone OpponentHand, Table, PlayerHand, Hint;
-        public Zone PlayerScore, AiScore, PlayerPile, AiPile, Suggest, PlayerAces, AiAces;
+        // One scoreboard for both sides. There were two zones here, one per
+        // player, which is what put the same fact in two corners.
+        public Zone Score;
+        public Zone PlayerPile, AiPile, Suggest, PlayerAces, AiAces;
         // Two homes for the draw pile: it sits beside whoever is dealing
         // this deck, and moves when the deal does.
         public Zone DrawPileAi, DrawPileHuman;
@@ -97,10 +100,11 @@ public static class CasinoLayout
         Hint         = new Zone(0.5f, 0f, -52, 490, 560, 46),
         PlayerHand   = new Zone(0.5f, 0f, -52, 14, 460, 158),
 
-        // Score lines sit with their side's coin shelf: yours above your
-        // shelf in the bottom-right corner, the AI's below its shelf top-left.
-        PlayerScore = new Zone(1f, 0f, -14, 152, 240, 20),
-        AiScore     = new Zone(0f, 1f, 14, -84, 240, 20),
+        // The plaque takes the right rail, vertically centred: the one column
+        // the play area does not reach (the table spans x 278..898, the hands
+        // 358..818) so nothing has to move to make room for it. Stacked in
+        // seating order, opponent's total above yours.
+        Score = new Zone(1f, 0.5f, -14, 26, 196, 224),
         // ActionCenter is only the fallback anchor (a build selected with no
         // hand card); normally the stack sits over the selected card itself.
         ActionCenter = new Vector2(-52, 180),
@@ -146,8 +150,7 @@ public static class CasinoLayout
         Hint         = new Zone(0.5f, 0f, -48, 500, 500, 44),
         PlayerHand   = new Zone(0.5f, 0f, -48, 12, 420, 140),
 
-        PlayerScore = new Zone(1f, 0f, -12, 140, 220, 20),
-        AiScore     = new Zone(0f, 1f, 12, -78, 220, 20),
+        Score = new Zone(1f, 0.5f, -12, 24, 180, 210),
         ActionCenter = new Vector2(-48, 158),
         ActionHeight = 42, ActionGap = 8,
         Suggest = new Zone(1f, 0f, -12, 28, 38, 38),
@@ -179,8 +182,10 @@ public static class CasinoLayout
         Name = "Portrait", Reference = new Vector2(720, 1280), Match = 0f,
         CardSize = new Vector2(72, 108), RowSpacing = 6f,
 
-        PlayerScore = new Zone(1f, 0f, -14, 160, 240, 22),
-        AiScore     = new Zone(0f, 1f, 14, -356, 240, 22),
+        // No right rail to hang a plaque on, so it takes the empty top-right
+        // header instead, clearing the opponent hand at y -292. Untested on a
+        // device like the rest of this profile.
+        Score = new Zone(1f, 1f, -14, -14, 190, 220),
         OpponentHand = new Zone(0.5f, 1f, 0, -292, 684, 120),
         PlayerPile   = new Zone(0f, 1f, 14, -420, 336, 34),
         AiPile       = new Zone(1f, 1f, -14, -420, 336, 34),

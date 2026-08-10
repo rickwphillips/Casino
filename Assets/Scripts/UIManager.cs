@@ -377,8 +377,11 @@ public class UIManager : MonoBehaviour
     private TextMeshProUGUI sweepButtonLabel;
     private TextMeshProUGUI hintText;
     private TextMeshProUGUI versionText;
-    private TextMeshProUGUI humanScoreLine;
-    private TextMeshProUGUI aiScoreLine;
+    // One scoreboard, not two floating lines. Values only; the plaque's
+    // labels and rule are furniture that never changes after construction.
+    private TextMeshProUGUI humanScoreValue;
+    private TextMeshProUGUI aiScoreValue;
+    private TextMeshProUGUI scoreTargetLine;
     private Transform canvasTransform;
     private bool lastHumanTurn;
 
@@ -743,7 +746,7 @@ public class UIManager : MonoBehaviour
         versionText.color = CasinoTheme.TextFaint;
         versionText.text = $"v{Application.version}";
 
-        CreateScoreLines();
+        CreateScoreboard();
         CreateAceRows();
         CreatePileViewer();
         CreateDrawPile();
@@ -831,8 +834,7 @@ public class UIManager : MonoBehaviour
         // Runtime-created furniture. These used to keep whatever position their
         // constructor gave them, which is why the score panel and the action
         // rail drifted apart on a wide canvas: nothing owned them after creation.
-        PlaceByName("ScoreHuman", L.PlayerScore);
-        PlaceByName("ScoreAI", L.AiScore);
+        PlaceByName("Scoreboard", L.Score);
         PlaceByName("AcesHuman", L.PlayerAces);
         PlaceByName("AcesAI", L.AiAces);
         PlaceByName("HumanPile", L.PlayerPile);
@@ -868,7 +870,7 @@ public class UIManager : MonoBehaviour
         foreach (Transform child in canvasTransform)
         {
             if (child.name == "TableFelt" || child.name == "TableGrain" || child.name == "TableRail" ||
-                child.name == "ScoreHuman" || child.name == "ScoreAI" ||
+                child.name == "Scoreboard" ||
                 child.name == "AcesHuman" || child.name == "AcesAI" ||
                 child.name == "BuildButton" || child.name == "SuggestButton" ||
                 child.name == "TrailButton" || child.name == "SweepButton" ||
@@ -1647,22 +1649,99 @@ public class UIManager : MonoBehaviour
         if (ghost != null) Destroy(ghost.gameObject);
     }
 
-    // The scoreboard panel is gone: the trophy coins carry the prizes, so
-    // all that is left worth stating is the running score and the target.
-    // One quiet line per side, sitting with that side's shelf of coins.
-    private void CreateScoreLines()
+    // One scoreboard, in one place.
+    //
+    // The score used to be stated twice: "AI 2" floating top-left and
+    // "YOU 3 · first to 11" bottom-right, each sitting with its own shelf of
+    // coins. Reading the match meant reading opposite corners and doing the
+    // subtraction yourself. A single plaque on the right rail puts both totals
+    // and the target in one glance, stacked in seating order (opponent above,
+    // you below) so the plaque reads the same way the table does.
+    //
+    // Children anchor by fraction of the plaque, not by pixel offsets, so the
+    // same construction fills whatever size each profile's Score zone gives it.
+    private void CreateScoreboard()
     {
-        humanScoreLine = CreateText("ScoreHuman", canvasTransform);
-        humanScoreLine.alignment = TextAlignmentOptions.MidlineRight;
-        humanScoreLine.fontSize = 15;
-        CasinoType.ApplySerif(humanScoreLine);
-        humanScoreLine.color = CasinoTheme.TextMuted;
+        GameObject board = new("Scoreboard");
+        board.transform.SetParent(canvasTransform, false);
+        board.AddComponent<RectTransform>();
+        Surface(board.AddComponent<Image>(), 10, CasinoTheme.ScorePanel,
+                CasinoTheme.PanelBorder, 1.5f);
+        board.GetComponent<Image>().raycastTarget = false;
 
-        aiScoreLine = CreateText("ScoreAI", canvasTransform);
-        aiScoreLine.alignment = TextAlignmentOptions.MidlineLeft;
-        aiScoreLine.fontSize = 15;
-        CasinoType.ApplySerif(aiScoreLine);
-        aiScoreLine.color = CasinoTheme.TextMuted;
+        aiScoreValue = ScoreNumeral(board.transform, "AiValue", 0.60f, 0.87f);
+        humanScoreValue = ScoreNumeral(board.transform, "HumanValue", 0.14f, 0.41f);
+
+        ScoreCaption(board.transform, "AiCaption", 0.87f, 0.97f, "AI", 12f,
+                     CasinoTheme.ScoreCaptionAi);
+        ScoreCaption(board.transform, "HumanCaption", 0.41f, 0.51f, "YOU", 12f,
+                     CasinoTheme.ScoreCaptionYou);
+
+        // A brass rule broken by a diamond: the plaque's waistline, and the
+        // only thing separating the two totals.
+        ScoreRule(board.transform, "RuleLeft", 0.08f, 0.40f);
+        ScoreRule(board.transform, "RuleRight", 0.60f, 0.92f);
+        var pip = ScoreCaption(board.transform, "RulePip", 0.535f, 0.575f, "◆", 9f,
+                               CasinoTheme.ScorePip);
+        pip.rectTransform.anchoredPosition = new Vector2(0, 2);
+
+        scoreTargetLine = ScoreCaption(board.transform, "Target", 0.02f, 0.11f, "", 10f,
+                                       CasinoTheme.TextFaint);
+    }
+
+    // A big serif total. Colour is set per refresh (the leader brightens), so
+    // this only fixes the shape.
+    private TextMeshProUGUI ScoreNumeral(Transform parent, string name, float yMin, float yMax)
+    {
+        var t = StretchedText(parent, name, yMin, yMax);
+        t.fontSize = 52;
+        t.fontStyle = FontStyles.Bold;
+        CasinoType.ApplySerif(t);
+        t.alignment = TextAlignmentOptions.Center;
+        t.text = "0";
+        return t;
+    }
+
+    // Small letterspaced capitals. <cspace> is what makes them read as engraved
+    // rather than merely small.
+    private TextMeshProUGUI ScoreCaption(Transform parent, string name, float yMin, float yMax,
+                                         string body, float size, Color color)
+    {
+        var t = StretchedText(parent, name, yMin, yMax);
+        t.fontSize = size;
+        CasinoType.ApplySerif(t);
+        t.alignment = TextAlignmentOptions.Center;
+        t.color = color;
+        t.text = body.Length > 0 ? $"<cspace=0.28em>{body}" : "";
+        return t;
+    }
+
+    private void ScoreRule(Transform parent, string name, float xMin, float xMax)
+    {
+        GameObject go = new(name);
+        go.transform.SetParent(parent, false);
+        var r = go.AddComponent<RectTransform>();
+        r.anchorMin = new Vector2(xMin, 0.55f);
+        r.anchorMax = new Vector2(xMax, 0.55f);
+        r.pivot = new Vector2(0.5f, 0.5f);
+        r.offsetMin = new Vector2(0, -0.5f);
+        r.offsetMax = new Vector2(0, 0.5f);
+        var img = go.AddComponent<Image>();
+        img.color = CasinoTheme.Divider;
+        img.raycastTarget = false;
+    }
+
+    // Full-width band between two height fractions of the parent.
+    private TextMeshProUGUI StretchedText(Transform parent, string name, float yMin, float yMax)
+    {
+        var t = CreateText(name, parent);
+        var r = t.rectTransform;
+        r.anchorMin = new Vector2(0, yMin);
+        r.anchorMax = new Vector2(1, yMax);
+        r.pivot = new Vector2(0.5f, 0.5f);
+        r.offsetMin = r.offsetMax = Vector2.zero;
+        t.raycastTarget = false;
+        return t;
     }
 
     private RectTransform humanAcesRow, aiAcesRow;
@@ -2188,14 +2267,22 @@ public class UIManager : MonoBehaviour
         GamePlayer human = dealer.IsHuman() ? dealer : nonDealer;
         GamePlayer ai = dealer.IsHuman() ? nonDealer : dealer;
 
-        // The banked totals; the coins beside them show the deck in progress.
-        if (humanScoreLine != null)
+        // The banked totals; the coins on each shelf show the deck in progress.
+        if (humanScoreValue != null)
         {
-            int target = ScoringManager.Instance.WinScore;
-            // <alpha> is a state switch in TMP, not a paired tag; nothing
-            // follows the target, so it never needs switching back.
-            humanScoreLine.text = $"YOU  <b>{human.Score}</b>  <alpha=#99>· first to {target}";
-            aiScoreLine.text = $"AI  <b>{ai.Score}</b>";
+            humanScoreValue.text = human.Score.ToString();
+            aiScoreValue.text = ai.Score.ToString();
+
+            // Level pegging is nobody's lead, so a tie brightens both rather
+            // than picking a winner; 0-0 at the deal reads as an even start.
+            bool tied = human.Score == ai.Score;
+            humanScoreValue.color = tied || human.Score > ai.Score
+                ? CasinoTheme.ScoreLeader : CasinoTheme.ScoreTrailing;
+            aiScoreValue.color = tied || ai.Score > human.Score
+                ? CasinoTheme.ScoreLeader : CasinoTheme.ScoreTrailing;
+
+            scoreTargetLine.text =
+                $"<cspace=0.28em>FIRST TO {ScoringManager.Instance.WinScore}";
         }
 
         UpdateAceRows(human, ai);
