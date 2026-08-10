@@ -161,37 +161,34 @@ public static class CasinoTheme
     public static Color BuildOwnedByOpponent => Palette.BuildRust.WithAlpha(0.95f);
     public static Color BuildBadgeLabel => Color.white;
 
+    // (The score-badge tokens lived here until the badge panel itself was
+    // retired in favour of the trophy coins below.)
+
+    // Trophy coins: a captured ace splashes in as a struck coin on the
+    // capturer's side. There is no idle state on purpose; an ace not yet
+    // taken renders nothing at all. The stamp is tone-on-tone (dark bronze
+    // into brass, with a light catch below the incision) because a minted
+    // coin carries its device in relief, not in ink.
+    public static Color CoinRim => Palette.Gold;
+    public static Color CoinFace => Palette.Brass;
+    // Two kinds of relief, deliberately opposite: the suit is struck INTO the
+    // face (dark incision, light catching its lower lip), the device is
+    // raised OUT of it (bright gold over a dark cast shadow). Sunk watermark,
+    // raised letter: that is what keeps them apart at 46 pixels.
+    // The impression started at 0.30 alpha, which read as tarnish, not a
+    // suit; the coin has to answer "which ace" at a glance.
+    public static Color CoinWatermark => Palette.Bronze.WithAlpha(0.62f);
+    public static Color CoinWatermarkLight => Palette.Gold.WithAlpha(0.42f);
+    public static Color CoinDevice => Palette.Gold;
+    public static Color CoinDeviceShadow => Palette.Bronze;
+    // Lowered from 0.38: at full strength the sweep read as a notification.
+    public static Color CoinShine => Color.white.WithAlpha(0.20f);
+    // Big Casino's halo; Breathe() modulates the alpha, this is its ceiling.
+    public static Color CoinGlow => Palette.Gold.WithAlpha(0.50f);
+
     // A single build can be raised and stolen; a multi-build is locked and can
     // only be taken whole. They rendered identically before, so the tag carries
     // the distinction the rules depend on.
-    // Score badges. A badge is either won or it is not, and the panel should say
-    // which at a glance, so the two states are deliberately far apart: an unearned
-    // badge is a faint outline on the panel, an earned one is struck in brass.
-    // Contested badges (most cards, most spades) use a third, cooler state while
-    // you are ahead but the deck is not finished, because leading is not winning.
-    // Idle is a slot, not a ghost. The first version used 0.55 fill and a 0.38
-    // label on a panel that is already near-black, which made an unwon badge
-    // invisible rather than merely quiet, and at deck end every badge resets to
-    // idle, so the whole panel looked empty at exactly the moment someone wants
-    // to read it. An unwon prize still has to be legible as a prize on offer.
-    public static Color BadgeIdle => new(0.09f, 0.15f, 0.12f);
-    public static Color BadgeIdleBorder => Palette.Brass.WithAlpha(0.45f);
-    public static Color BadgeIdleLabel => Palette.Parchment.WithAlpha(0.72f);
-
-    public static Color BadgeWon => Palette.BrassDeep;
-    public static Color BadgeWonBorder => Palette.Gold;
-    public static Color BadgeWonLabel => new(0.133f, 0.102f, 0.024f);
-
-    public static Color BadgeLeading => new(0.08f, 0.17f, 0.22f);
-    public static Color BadgeLeadingBorder => Palette.Counsel;
-    public static Color BadgeLeadingLabel => Palette.Counsel;
-
-    // Ace trophies: a captured ace splashes in as a lit mini card on the
-    // capturer's side of the board. There is no idle state on purpose; an
-    // ace not yet taken renders nothing at all.
-    public static Color AceFace => Color.white;
-    public static Color AceBorder => Palette.Gold;
-
     public static Color BuildTagLocked => Palette.PanelDeep.WithAlpha(0.9f);
     public static Color BuildTagRaisable => Palette.BrassDeep.WithAlpha(0.9f);
     public static Color BuildTagLabel => Palette.Gold;

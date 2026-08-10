@@ -71,6 +71,16 @@ public static class CasinoArt
         });
     }
 
+    // Soft radial halo, white so the Image can tint it. Alpha is full inside
+    // the shape and falls off squared over the blur band, which reads as a
+    // glow around the thing rather than fog behind it.
+    public static Sprite Glow(int radius, int blur) =>
+        Build($"glow{radius}|{blur}", radius, blur, (d, x, y) =>
+        {
+            float s = Mathf.Clamp01(1f - d / Mathf.Max(blur, 1));
+            return new Color(1f, 1f, 1f, s * s);
+        });
+
     // Soft drop shadow, offset downward. Sits behind a card as its own Image so
     // the card face above it can still be tinted by state without tinting this.
     public static Sprite Shadow(int radius, int blur, int dy) =>
