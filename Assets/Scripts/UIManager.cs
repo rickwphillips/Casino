@@ -2288,8 +2288,28 @@ public class UIManager : MonoBehaviour
 
         // The glow is the turn, not the hand: it follows whose move it is.
         if (handGlow != null)
+        {
             handGlow.SetActive(GameManager.Instance.IsWaitingForHumanInput());
+            SizeHandGlow(nonDealerCardUIs.Count);
+        }
     }
+
+    // The pool of light is cast by the hand, so it shrinks as the hand is
+    // played out. A glow that stayed full width down to the last card read as
+    // lighting for a hand that was no longer there.
+    private void SizeHandGlow(int cards)
+    {
+        int full = Mathf.Max(2, GameManager.FullHandSize);
+        // Never all the way down to nothing: one card still throws some light,
+        // and a glow collapsing to a point looks like a bug rather than a fade.
+        float k = Mathf.Lerp(GlowFloor, 1f, Mathf.Clamp01((cards - 1f) / (full - 1f)));
+        // Scale the transform rather than the rect. The glow is a sliced sprite
+        // whose soft border is half its height; shrink the rect below that and
+        // the borders collide and the falloff turns into a hard edge.
+        handGlow.transform.localScale = new Vector3(k, k, 1f);
+    }
+
+    private const float GlowFloor = 0.42f;
 
     // Your hand is held, not laid out: cards splay from a point below the
     // bottom edge, tilting further and sitting lower the further they are from

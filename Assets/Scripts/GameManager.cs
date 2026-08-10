@@ -42,6 +42,8 @@ public class GameManager : MonoBehaviour
     private GamePlayer lastPlayerToCaptureThisRound;
     private int cardsPlayedThisRound = 0;
     private const int HAND_SIZE = 4;
+    // A full hand is what the UI measures a shrinking one against.
+    public static int FullHandSize => HAND_SIZE;
     private const int TABLE_SIZE = 4;
     private bool waitingForHumanInput = false;
 

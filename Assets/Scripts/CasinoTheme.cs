@@ -109,7 +109,7 @@ public static class CasinoTheme
     // The pool of light behind your hand while the turn is yours. Faint on
     // purpose: it should register as the table being lit where you are sitting,
     // not as a highlight demanding to be clicked.
-    public static Color TurnGlow => Palette.Gold.WithAlpha(0.16f);
+    public static Color TurnGlow => Palette.Gold.WithAlpha(0.105f);
 
     // Transparent-but-raycastable: an Image needs a non-zero alpha to receive
     // clicks, so builds get an invisible hit area rather than a visible one.
