@@ -1046,6 +1046,13 @@ public class GameManager : MonoBehaviour
     
     private System.Collections.IEnumerator AIPlayTurnCoroutine()
     {
+        // The game deals behind the title, so when the AI leads, its clock
+        // would start (and finish) before the player ever saw the board: the
+        // opening move looked instant no matter what aiLeadInDelay said. The
+        // AI does not move until the player is actually watching.
+        while (UIManager.Instance != null && UIManager.Instance.TitleIsUp)
+            yield return null;
+
         // Leading off a freshly dealt hand waits longer: see aiLeadInDelay.
         yield return new WaitForSeconds(freshDeal ? aiLeadInDelay : aiMoveDelay);
         freshDeal = false;

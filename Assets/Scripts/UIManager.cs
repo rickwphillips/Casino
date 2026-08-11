@@ -734,7 +734,7 @@ public class UIManager : MonoBehaviour
         Pin(suits.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(7, 16), new Vector2(600, 72));
 
         var tagline = CreateText("SplashTagline", splash.transform);
-        tagline.text = "THE  FISHING  CARD  GAME";
+        tagline.text = "A  FREDDY  RHETORICK  CARD  GAME";
         tagline.fontSize = 13;
         tagline.characterSpacing = 8;
         tagline.alignment = TextAlignmentOptions.Center;
