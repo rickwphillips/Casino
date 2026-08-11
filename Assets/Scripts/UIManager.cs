@@ -562,6 +562,7 @@ public class UIManager : MonoBehaviour
     private GameObject titleScreen;
     private GameObject titleSettingsPanel;
     private TextMeshProUGUI titleWinValue;
+    private TextMeshProUGUI titleAiDifficulty;
     private TextMeshProUGUI titleRulesetLine;
     private Vector3Int pendingDeal = Vector3Int.zero;
 
@@ -701,6 +702,62 @@ public class UIManager : MonoBehaviour
         version.alignment = TextAlignmentOptions.BottomRight;
         version.color = CasinoTheme.TextFaint;
         Pin(version.rectTransform, new Vector2(1f, 0f), new Vector2(-10, 4), new Vector2(120, 18));
+
+        // Built last so it covers the whole title: a child of the overlay, so
+        // SkipTitle skips it too and the per-frame re-raise cannot push the
+        // title above it.
+        CreateTitleSplash();
+    }
+
+    // A breath before the title: the four suits on dark ink, held for a
+    // moment and faded away. A click skips it; a player who has seen it
+    // once should never have to wait on it.
+    private bool splashSkipped;
+
+    private void CreateTitleSplash()
+    {
+        var splash = new GameObject("TitleSplash");
+        splash.transform.SetParent(titleScreen.transform, false);
+        splash.AddComponent<RectTransform>();
+        Stretch(splash.GetComponent<RectTransform>());
+        var bg = splash.AddComponent<Image>();
+        bg.color = CasinoTheme.SplashInk;
+        bg.raycastTarget = true;   // swallow clicks aimed at the title behind
+
+        var suits = CreateText("SplashSuits", splash.transform);
+        suits.text = "♠   ♥   ♦   ♣";
+        suits.fontSize = 46;
+        suits.characterSpacing = 14;
+        suits.alignment = TextAlignmentOptions.Center;
+        suits.color = CasinoTheme.SplashSuits;
+        CasinoType.ApplySerif(suits);
+        Pin(suits.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(7, 16), new Vector2(600, 72));
+
+        var tagline = CreateText("SplashTagline", splash.transform);
+        tagline.text = "THE  FISHING  CARD  GAME";
+        tagline.fontSize = 13;
+        tagline.characterSpacing = 8;
+        tagline.alignment = TextAlignmentOptions.Center;
+        tagline.color = CasinoTheme.TextMuted;
+        Pin(tagline.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(4, -34), new Vector2(600, 22));
+
+        var group = splash.AddComponent<CanvasGroup>();
+        splash.AddComponent<Button>().onClick.AddListener(() => splashSkipped = true);
+        StartCoroutine(FadeSplash(splash, group));
+    }
+
+    private System.Collections.IEnumerator FadeSplash(GameObject splash, CanvasGroup group)
+    {
+        const float hold = 1.3f, fade = 0.7f;
+        for (float t = 0; t < hold && !splashSkipped; t += Time.unscaledDeltaTime)
+            yield return null;
+        for (float t = 0; t < fade && !splashSkipped; t += Time.unscaledDeltaTime)
+        {
+            if (splash == null) yield break;
+            group.alpha = 1f - t / fade;
+            yield return null;
+        }
+        if (splash != null) Destroy(splash);
     }
 
     // Settings live behind a toggle and start closed: the title stays one quiet
@@ -730,14 +787,14 @@ public class UIManager : MonoBehaviour
         titleSettingsPanel.transform.SetParent(titleScreen.transform, false);
         titleSettingsPanel.AddComponent<RectTransform>();
         Surface(titleSettingsPanel.AddComponent<Image>(), 8, CasinoTheme.GameOverPanel, CasinoTheme.PanelBorder);
-        Pin(titleSettingsPanel.GetComponent<RectTransform>(), new Vector2(0.5f, 0.5f), new Vector2(0, -232), new Vector2(320, 76));
+        Pin(titleSettingsPanel.GetComponent<RectTransform>(), new Vector2(0.5f, 0.5f), new Vector2(0, -262), new Vector2(320, 128));
 
         var winLabel = CreateText("WinTotalLabel", titleSettingsPanel.transform);
         winLabel.text = "Win total";
         winLabel.fontSize = 17;
         winLabel.alignment = TextAlignmentOptions.Left;
         winLabel.color = CasinoTheme.TextMuted;
-        Pin(winLabel.rectTransform, new Vector2(0f, 0.5f), new Vector2(20, 0), new Vector2(140, 26));
+        Pin(winLabel.rectTransform, new Vector2(0f, 0.5f), new Vector2(20, 26), new Vector2(140, 26));
 
         titleWinValue = CreateText("WinTotalValue", titleSettingsPanel.transform);
         titleWinValue.text = (ScoringManager.Instance != null ? ScoringManager.Instance.WinScore : 21).ToString();
@@ -745,12 +802,52 @@ public class UIManager : MonoBehaviour
         titleWinValue.alignment = TextAlignmentOptions.Center;
         titleWinValue.color = CasinoTheme.Headline;
         CasinoType.ApplySerif(titleWinValue);
-        Pin(titleWinValue.rectTransform, new Vector2(1f, 0.5f), new Vector2(-66, 0), new Vector2(56, 30));
+        Pin(titleWinValue.rectTransform, new Vector2(1f, 0.5f), new Vector2(-66, 26), new Vector2(56, 30));
 
-        StepperButton("WinMinus", -1, new Vector2(-126, 0), "-");
-        StepperButton("WinPlus", +1, new Vector2(-20, 0), "+");
+        StepperButton("WinMinus", -1, new Vector2(-126, 26), "-");
+        StepperButton("WinPlus", +1, new Vector2(-20, 26), "+");
+
+        // Second setting: how hard the opponent thinks. One button that
+        // cycles Easy > Medium > Hard, because three choices do not need a
+        // dropdown and the current value is the only thing worth reading.
+        var aiLabel = CreateText("AiDifficultyLabel", titleSettingsPanel.transform);
+        aiLabel.text = "AI difficulty";
+        aiLabel.fontSize = 17;
+        aiLabel.alignment = TextAlignmentOptions.Left;
+        aiLabel.color = CasinoTheme.TextMuted;
+        Pin(aiLabel.rectTransform, new Vector2(0f, 0.5f), new Vector2(20, -26), new Vector2(140, 26));
+
+        var aiButton = new GameObject("AiDifficultyButton");
+        aiButton.transform.SetParent(titleSettingsPanel.transform, false);
+        aiButton.AddComponent<RectTransform>();
+        Surface(aiButton.AddComponent<Image>(), 5, CasinoTheme.ButtonSecondary, CasinoTheme.ButtonBorder);
+        Pin(aiButton.GetComponent<RectTransform>(), new Vector2(1f, 0.5f), new Vector2(-20, -26), new Vector2(140, 34));
+        aiButton.AddComponent<Button>().onClick.AddListener(CycleAiDifficulty);
+
+        titleAiDifficulty = CreateText("Label", aiButton.transform);
+        titleAiDifficulty.text = GameManager.Instance != null
+            ? GameManager.Instance.AIDifficulty.ToString() : "Medium";
+        titleAiDifficulty.fontSize = 17;
+        titleAiDifficulty.alignment = TextAlignmentOptions.Center;
+        titleAiDifficulty.color = CasinoTheme.ButtonLabel;
+        CasinoType.ApplySerif(titleAiDifficulty);
+        Stretch(titleAiDifficulty.rectTransform);
 
         titleSettingsPanel.SetActive(false);
+    }
+
+    private void CycleAiDifficulty()
+    {
+        var gm = GameManager.Instance;
+        if (gm == null) return;
+        var next = gm.AIDifficulty switch
+        {
+            AIPlayer.Difficulty.Easy => AIPlayer.Difficulty.Medium,
+            AIPlayer.Difficulty.Medium => AIPlayer.Difficulty.Hard,
+            _ => AIPlayer.Difficulty.Easy,
+        };
+        gm.SetAIDifficulty(next);
+        if (titleAiDifficulty != null) titleAiDifficulty.text = next.ToString();
     }
 
     private void StepperButton(string name, int delta, Vector2 pos, string glyph)
@@ -1645,6 +1742,7 @@ public class UIManager : MonoBehaviour
         if (titleSettingsPanel != null) titleSettingsPanel.SetActive(!titleSettingsPanel.activeSelf);
     }
     public void StepTitleWinScore(int delta) => StepWinScore(delta);
+    public void CycleTitleAiDifficulty() => CycleAiDifficulty();
 
     public IReadOnlyList<CardUI> HumanHandCardUIs => nonDealerCardUIs;
     public IReadOnlyList<CardUI> TableCardUIs => tableCardUIs;
@@ -3052,12 +3150,14 @@ public class UIManager : MonoBehaviour
 
         bool humanTurn = GameManager.Instance != null && GameManager.Instance.IsWaitingForHumanInput();
 
-        // Trailing is a free choice unless you own a build
+        // Trailing is a free choice unless you own a build. An owner cannot
+        // trail at all, so the button hides rather than sitting disabled: a
+        // move that is never on the menu is not feedback, just clutter.
         bool ownsBuild = humanTurn &&
             GameManager.Instance.PlayerOwnsBuild(GameManager.Instance.GetCurrentPlayer());
         trailButton.interactable = humanTurn && selectedCard != null && !ownsBuild
                                    && buildSelection.Count == 0;
-        trailButtonLabel.text = ownsBuild ? "Trail (own build)" : "Trail";
+        trailButtonLabel.text = "Trail";
 
         // Sweep: takes the chosen cards/builds, or everything that applies
         bool canSweep = false;
@@ -3182,7 +3282,11 @@ public class UIManager : MonoBehaviour
 
         bool showSweep = humanTurn && (sweepButton.interactable || chosenSet);
         bool showBuild = humanTurn && buildContext;
-        bool showTrail = humanTurn && loneCard;
+        // A build owner must sweep or build; Trail is not a refused option for
+        // them, it is no option, so it does not appear.
+        bool ownsBuild = humanTurn && GameManager.Instance != null &&
+            GameManager.Instance.PlayerOwnsBuild(GameManager.Instance.GetCurrentPlayer());
+        bool showTrail = humanTurn && loneCard && !ownsBuild;
 
         sweepButton.gameObject.SetActive(showSweep);
         buildButton.gameObject.SetActive(showBuild);
@@ -3282,6 +3386,12 @@ public class UIManager : MonoBehaviour
                 what += (what.Length > 0 ? " + " : "") + $"{buildCaptures} build(s)";
             bool sweep = captures.Count == gm.GetTableCards().Count && gm.GetActiveBuilds().Count == buildCaptures;
             hintText.text = $"Play takes: {what}{(sweep ? "  (SWEEP!)" : "")}";
+        }
+        else if (gm.PlayerOwnsBuild(gm.GetCurrentPlayer()))
+        {
+            // No trailing for a build owner, so "will trail" would promise a
+            // move the row does not offer.
+            hintText.text = $"{CardName(card)} takes nothing. You own a build: sweep or build.";
         }
         else
         {

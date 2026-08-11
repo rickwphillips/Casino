@@ -27,14 +27,17 @@ public class CasinoTitleProbe : MonoBehaviour
 
     private IEnumerator Run()
     {
-        yield return new WaitForSecondsRealtime(2.5f);
+        // The splash holds for ~1.3s before its fade; catch it mid-hold.
+        yield return new WaitForSecondsRealtime(0.7f);
         var ui = UIManager.Instance;
         if (ui == null || !ui.TitleIsUp)
         {
             Debug.LogWarning("CasinoTitleProbe: no title screen to probe (skip-title.flag present?)");
             yield break;
         }
+        ScreenshotCapture.Capture("title-splash");
 
+        yield return new WaitForSecondsRealtime(2.1f);   // splash gone by ~2s
         ScreenshotCapture.Capture("title-closed");
         yield return new WaitForSecondsRealtime(0.6f);
 
@@ -44,11 +47,16 @@ public class CasinoTitleProbe : MonoBehaviour
 
         ui.StepTitleWinScore(+1);
         ui.StepTitleWinScore(+1);
+        ui.CycleTitleAiDifficulty();
         yield return new WaitForSecondsRealtime(0.6f);
-        ScreenshotCapture.Capture("title-win-stepped");
+        ScreenshotCapture.Capture("title-settings-changed");
 
+        // Put both settings back where they started (the difficulty cycle is
+        // three long, so two more steps close the loop).
         ui.StepTitleWinScore(-1);
         ui.StepTitleWinScore(-1);
+        ui.CycleTitleAiDifficulty();
+        ui.CycleTitleAiDifficulty();
         yield return new WaitForSecondsRealtime(0.3f);
 
         ui.DismissTitle();

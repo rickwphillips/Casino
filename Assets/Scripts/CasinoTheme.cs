@@ -92,6 +92,10 @@ public static class CasinoTheme
     // Between TextMuted and TextFaint: the three plays are a caption, not a
     // stamp, and TextFaint vanished against the felt.
     public static Color TitlePlays => Palette.Parchment.WithAlpha(0.52f);
+    // The splash is the one screen with no felt at all: house ink and gold,
+    // shown for a breath before the title fades in behind it.
+    public static Color SplashInk => Palette.PanelDeep;
+    public static Color SplashSuits => Palette.Gold;
 
     public static Color PileViewerPanel => Palette.PanelDeep.WithAlpha(0.96f);
     public static Color ScorePanel => Palette.PanelInk.WithAlpha(0.94f);

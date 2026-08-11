@@ -179,11 +179,17 @@ replays them; that animation is pure ghost cards over an already-dealt board, so
 it changes no game state. `Update()` re-raises the overlay every frame because cards, ghosts
 and builds are all created *after* it and paint order is sibling order.
 
-The title carries a **Settings** toggle whose panel starts closed. Its one setting so far is
-the win total: a stepper wired to `ScoringManager.OverrideWinScore` (session-only override;
+A **splash** (the four suits on dark ink, `CasinoTheme.SplashInk`/`SplashSuits`) covers the
+title for ~1.3s then fades; a click skips it. It is a child of the title overlay, so
+`SkipTitle` skips it too and the per-frame re-raise cannot separate them.
+
+The title carries a **Settings** toggle whose panel starts closed. Two settings so far:
+the win total, a stepper wired to `ScoringManager.OverrideWinScore` (session-only override;
 `ScoringConfig`'s code default is the classic 21, while every shipped preset sets 11 so a
-test game can end in one deck). `title-probe.flag` runs `CasinoTitleProbe`, which walks the
-panel unattended: closed, opened, stepped up and back, dismissed.
+test game can end in one deck), and the AI difficulty, one button cycling
+Easy/Medium/Hard through `GameManager.SetAIDifficulty` (both seats, live AIs included).
+`title-probe.flag` runs `CasinoTitleProbe`, which walks it all unattended: splash, closed
+panel, opened, both settings changed and reverted, dismissed.
 
 Two ways to skip the title: `UIManager.SkipTitle` (set by `CasinoAutoPlay`,
 `CasinoInteractionProbe` and `CasinoStatePreview` in their `Install()` methods), or dropping

@@ -162,6 +162,20 @@ public class GameManager : MonoBehaviour
 
     public bool PlayerOwnsBuild(GamePlayer player) => PlayerHasPendingBuild(player);
 
+    // The title screen's settings panel. Both seats take the same level: the
+    // deal alternates and the AI moves seats with it, so a per-seat setting
+    // would silently change the opponent mid-match.
+    public AIPlayer.Difficulty AIDifficulty =>
+        dealer != null && dealer.IsAI() ? dealerAIDifficulty : nonDealerAIDifficulty;
+
+    public void SetAIDifficulty(AIPlayer.Difficulty level)
+    {
+        dealerAIDifficulty = level;
+        nonDealerAIDifficulty = level;
+        dealerAI?.SetDifficulty(level);
+        nonDealerAI?.SetDifficulty(level);
+    }
+
     // A builder must always hold true: after playing 'playedCard', every build
     // the player still owns (not being captured right now) must remain
     // capturable from their hand.

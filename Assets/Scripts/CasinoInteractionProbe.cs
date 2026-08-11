@@ -141,6 +141,58 @@ public class CasinoInteractionProbe : MonoBehaviour
             }
         }
 
+        // 6. A build owner must sweep or build, so while the build stands the
+        //    Trail button should not exist at all, not sit disabled. Stage it
+        //    through the UI when the deal allows: find a numeric hand+table
+        //    pair whose sum another hand card can capture, build it, then
+        //    check the action row once the turn comes back.
+        for (float waited = 0f; !gm.IsWaitingForHumanInput() && waited < 12f; waited += 0.5f)
+            yield return new WaitForSecondsRealtime(0.5f);
+        hand = ui.HumanHandCardUIs;
+        table = ui.TableCardUIs;
+        var buildPair = (
+            from h in hand
+            where h?.Card != null && h.Card.rank < PlayingCard.Rank.Jack
+            from t in table
+            where t?.Card != null && t.Card.rank < PlayingCard.Rank.Jack
+            let v = CaptureChecker.GetCardValue(h.Card) + CaptureChecker.GetCardValue(t.Card)
+            where v <= 10 && hand.Any(o => o != h && o?.Card != null
+                && CaptureChecker.BuildCaptureValue(o.Card) == v)
+            select (h, t)).FirstOrDefault();
+        if (!gm.IsWaitingForHumanInput() || buildPair.h == null)
+        {
+            Mark("6: no legal build this deal; trail-hiding check inconclusive");
+        }
+        else
+        {
+            if (!buildPair.h.IsSelected)
+                Mark($"click hand card {Describe(buildPair.h)} -> {buildPair.h.SimulateClick()}");
+            yield return Settle();
+            if (!buildPair.t.IsSelected)
+                Mark($"click table card {Describe(buildPair.t)} -> {buildPair.t.SimulateClick()}");
+            yield return Settle();
+            Mark($"press Build -> pressed={ui.PressBuild()}");
+
+            // The AI answers; wait for the turn to come back with the build
+            // still standing.
+            for (float waited = 0f; !gm.IsWaitingForHumanInput() && waited < 12f; waited += 0.5f)
+                yield return new WaitForSecondsRealtime(0.5f);
+            if (!gm.IsWaitingForHumanInput() || !gm.PlayerOwnsBuild(gm.GetCurrentPlayer()))
+            {
+                Mark("6: build gone or turn never returned; trail-hiding check inconclusive");
+            }
+            else
+            {
+                var anyCard = ui.HumanHandCardUIs.FirstOrDefault(c => c != null);
+                Mark($"click hand card {Describe(anyCard)} -> {anyCard.SimulateClick()}");
+                yield return Settle();
+                Mark(ui.TrailButtonState == "hidden"
+                    ? "PASS: Trail hidden while owning a build"
+                    : $"FAIL: Trail visible while owning a build ({ui.TrailButtonState})");
+                Shot("probe-6-owner-no-trail", ui);
+            }
+        }
+
         Mark("done");
     }
 
