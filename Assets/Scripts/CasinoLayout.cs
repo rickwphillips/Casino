@@ -214,18 +214,22 @@ public static class CasinoLayout
         Name = "Portrait", Reference = new Vector2(720, 1280), Match = 0f,
         CardSize = new Vector2(72, 108), RowSpacing = 6f,
 
-        // The plaque takes the top-left of the header, the toast and log button
-        // the space beside it. Untested on a device like the rest of this
+        // The plaque sits at the right centre, in the dead band between the
+        // table row and the hand, where nothing else lives. The toast and log
+        // button keep the header. Untested on a device like the rest of this
         // profile.
-        Score     = new Zone(0f, 1f, 14, -14, 176, 196),
+        Score     = new Zone(1f, 0.5f, -14, 0, 176, 196),
         Message   = new Zone(1f, 1f, -14, -14, 500, 60),
 
         OpponentHand = new Zone(0.5f, 1f, 0, -292, 684, 120),
 
         // The taller header pushes the whole upper stack down, so the table
         // drops with it. The space below the table belongs to the action stack
-        // over the selected card.
-        Table      = new Zone(0.5f, 0.5f, 0, 20, 684, 300),
+        // over the selected card. The row is nudged left of centre so a
+        // five-card-and-build row clears the plaque on the right; the row is a
+        // single non-wrapping HorizontalLayoutGroup, so a truly crowded table
+        // will still reach under it.
+        Table      = new Zone(0.5f, 0.5f, -70, 20, 684, 300),
 
         ActionCenter = new Vector2(0, 396),
         ActionHeight = 52, ActionGap = 10,
