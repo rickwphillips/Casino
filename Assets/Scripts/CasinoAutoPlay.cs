@@ -52,6 +52,7 @@ public class CasinoAutoPlay : MonoBehaviour
     private static string LogPath => Path.Combine(Root, "autoplay-log.txt");
 
     private static bool probeOnly;
+    private static bool forceHardAI;
     private int moves, rounds;
     private bool shotBuild, shotPile, shotHover;
 
@@ -70,7 +71,12 @@ public class CasinoAutoPlay : MonoBehaviour
         // Read the mode before consuming the flag, and get a breadcrumb down
         // before anything else can hang. If the transcript is missing after a
         // run, nothing in this class ran at all.
-        probeOnly = ReadFlagMode().Contains("probe");
+        var mode = ReadFlagMode();
+        probeOnly = mode.Contains("probe");
+        // The scene ships the AI at Medium (dealer seat), so Hard is only ever
+        // seen through the title toggle. "hard" in the flag file plays the
+        // whole game against the Hard evaluator instead.
+        forceHardAI = mode.Contains("hard");
         try { File.WriteAllText(LogPath, ""); } catch { }
         Mark($"install (probeOnly={probeOnly})");
 
@@ -117,6 +123,12 @@ public class CasinoAutoPlay : MonoBehaviour
         var gm = GameManager.Instance;
         var ui = UIManager.Instance;
         if (gm == null || ui == null) { Mark("no GameManager/UIManager"); yield break; }
+
+        if (forceHardAI)
+        {
+            gm.SetAIDifficulty(AIPlayer.Difficulty.Hard);
+            Mark("AI difficulty forced to Hard");
+        }
 
         while (moves < MoveCap)
         {
