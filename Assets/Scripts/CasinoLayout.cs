@@ -119,11 +119,12 @@ public static class CasinoLayout
         PlayerHand   = new Zone(0.5f, 0f, -52, -30, 460, 158),
         HandGlow     = new Zone(0.5f, 0f, -52, -104, 660, 300),
 
-        // The plaque takes the top-left corner, the first thing read on a page.
-        Score = new Zone(0f, 1f, 14, -14, 196, 210),
-        // The toast sits directly under the plaque, so the top-left column is
-        // the game talking: totals, then what just happened.
-        Message   = new Zone(0f, 1f, 14, -232, 284, 56),
+        // The plaque sits at the right centre between the two takes, the same
+        // seat it holds in portrait: one player per side of the scoreboard.
+        Score = new Zone(1f, 0.5f, -14, 0, 196, 210),
+        // The toast takes the top-left corner the plaque vacated, stopping
+        // short of the AI draw pile at x 254.
+        Message   = new Zone(0f, 1f, 14, -14, 230, 56),
 
         // ActionCenter is only the fallback anchor (a build selected with no
         // hand card); normally the stack sits over the selected card itself.
@@ -140,12 +141,11 @@ public static class CasinoLayout
 
         // Each side's take, face up and stacked, on that side's end of the
         // right rail: the AI's above, yours below, the same seating order the
-        // plaque uses. Narrow enough to leave the coin shelves their room, and
-        // tall enough that a full 26-card take still fans wide enough to read:
-        // the fan spacing is (height - card) / (count - 1), so height is the
-        // only thing standing between a stack of pips and a white brick.
-        AiCaptured     = new Zone(1f, 1f, -14, -14, 100, 318),
-        PlayerCaptured = new Zone(1f, 0f, -14, 14, 100, 318),
+        // plaque uses. Short enough to leave the plaque the middle of the
+        // rail; a take that outgrows its zone wraps into further columns
+        // (SyncCapturedStack), so height no longer decides readability.
+        AiCaptured     = new Zone(1f, 1f, -14, -14, 100, 220),
+        PlayerCaptured = new Zone(1f, 0f, -14, 14, 100, 220),
         // Over the table, not down the left edge where the plaque now lives.
         PileViewer = new Zone(0.5f, 0.5f, -52, 0, 460, 420),
 
@@ -178,8 +178,9 @@ public static class CasinoLayout
         PlayerHand   = new Zone(0.5f, 0f, -48, -26, 420, 140),
         HandGlow     = new Zone(0.5f, 0f, -48, -96, 600, 270),
 
-        Score = new Zone(0f, 1f, 12, -12, 180, 196),
-        Message   = new Zone(0f, 1f, 12, -216, 260, 52),
+        Score = new Zone(1f, 0.5f, -12, 0, 180, 196),
+        // Stops short of the AI draw pile at x 200.
+        Message   = new Zone(0f, 1f, 12, -12, 184, 52),
 
         ActionCenter = new Vector2(-48, 158),
         ActionHeight = 42, ActionGap = 8,

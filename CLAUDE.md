@@ -136,19 +136,22 @@ arrangement now).
 
 Layout since the 2026-08-10/11 "Parlor" redesign:
 
-- **Top-left**: the score plaque (`Scoreboard`) — one plaque for both players, leader struck
-  in `ScoreLeader` (ivory), trailer in `ScoreTrailing` (brass), a tie brightens both. Below
-  it the ephemeral message toast (`Message`), which is the object `UIManager.hintText` points
-  at: call sites still just assign `hintText.text`, and `TickMessage()` in `Update()` watches
-  the string for changes and drives the fade (hold 3.4s, fade 0.9s).
+- **Right centre**: the score plaque (`Scoreboard`) — one plaque for both players, at the
+  right centre of every profile with the AI's take above it and the human's below. Leader
+  struck in `ScoreLeader` (ivory), trailer in `ScoreTrailing` (brass), a tie brightens both.
+  The ephemeral message toast (`Message`) holds the top-left corner (top-right in Portrait);
+  it is the object `UIManager.hintText` points at: call sites still just assign
+  `hintText.text`, and `TickMessage()` in `Update()` watches the string for changes and
+  drives the fade (hold 3.4s, fade 0.9s).
 - **Move log**: `logPanel`, a `ScrollRect` + `RectMask2D` + one TMP with a `ContentSizeFitter`,
   appended by `ShowMove` — there is no centre banner any more. Toggled by the circled "≡"
   next to the "?" Suggest button in the bottom-left corner; the panel opens upward
   (`UIManager.ToggleMoveLog()` is the harness hook).
 - **Right rail**: each player's captured cards as a face-up stack (`CapturedHuman`,
   `CapturedAI`), newest in front and lowest so each card underneath keeps its top-corner
-  pips visible; the pip offset shrinks as the pile grows. Clicking a stack opens the full
-  grid centred over the table (`L.PileViewer`).
+  pips visible; the pip offset shrinks as the pile grows, and a stack that outgrows its
+  zone wraps into further columns growing leftward. The trophy-coin shelves sit beside the
+  takes. Clicking a stack opens the full grid centred over the table (`L.PileViewer`).
 - **Bottom**: the human hand fans (`ApplyHandFan`) and is sunk below the screen edge so card
   bottoms clip (Portrait deliberately keeps the hand fully on screen instead). Hovering a
   selectable card lifts it (`HoverLift`), stands it upright, tints it `CardHover`, and raises
