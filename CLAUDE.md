@@ -179,10 +179,17 @@ replays them; that animation is pure ghost cards over an already-dealt board, so
 it changes no game state. `Update()` re-raises the overlay every frame because cards, ghosts
 and builds are all created *after* it and paint order is sibling order.
 
-Two ways to skip it: `UIManager.SkipTitle` (set by `CasinoAutoPlay`, `CasinoInteractionProbe`
-and `CasinoStatePreview` in their `Install()` methods), or dropping `skip-title.flag` in the
-repo root. Unlike the other flags that one is **not consumed**, because an unattended verify
-loop wants the board in every run rather than only the first.
+The title carries a **Settings** toggle whose panel starts closed. Its one setting so far is
+the win total: a stepper wired to `ScoringManager.OverrideWinScore` (session-only override;
+`ScoringConfig`'s code default is the classic 21, while every shipped preset sets 11 so a
+test game can end in one deck). `title-probe.flag` runs `CasinoTitleProbe`, which walks the
+panel unattended: closed, opened, stepped up and back, dismissed.
+
+Two ways to skip the title: `UIManager.SkipTitle` (set by `CasinoAutoPlay`,
+`CasinoInteractionProbe` and `CasinoStatePreview` in their `Install()` methods), or dropping
+`skip-title.flag` in the repo root. Unlike the other flags that one is **not consumed**,
+because an unattended verify loop wants the board in every run rather than only the first
+(so lift it before a `title-probe.flag` run and restore it after).
 
 ## Workflow gotchas
 

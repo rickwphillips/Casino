@@ -126,6 +126,14 @@ public class ScoringManager : MonoBehaviour
         }
     }
 
+    // The title screen's settings panel can override the active preset's win
+    // total for this session. ScoringConfig's code default is 21, the classic
+    // target; the shipped presets set 11 so a test game can end in one deck.
+    public void OverrideWinScore(int score)
+    {
+        if (_currentConfig != null) _currentConfig.WinScore = Mathf.Max(1, score);
+    }
+
     // Declarative accessors
     public ScoringConfig CurrentConfig => _currentConfig;
     public int PointsForMostCards => _currentConfig.PointsForMostCards;

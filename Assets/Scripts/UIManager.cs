@@ -560,6 +560,9 @@ public class UIManager : MonoBehaviour
     }
 
     private GameObject titleScreen;
+    private GameObject titleSettingsPanel;
+    private TextMeshProUGUI titleWinValue;
+    private TextMeshProUGUI titleRulesetLine;
     private Vector3Int pendingDeal = Vector3Int.zero;
 
     public bool TitleIsUp => titleScreen != null && titleScreen.activeSelf;
@@ -652,6 +655,7 @@ public class UIManager : MonoBehaviour
         // ships Rick's New England in the "Custom" slot, and the point totals
         // differ enough between variants to change how a hand is played.
         var ruleset = CreateText("Ruleset", titleScreen.transform);
+        titleRulesetLine = ruleset;
         ruleset.text = RulesetLine();
         ruleset.fontSize = 17;
         ruleset.alignment = TextAlignmentOptions.Center;
@@ -687,6 +691,8 @@ public class UIManager : MonoBehaviour
         plays.color = CasinoTheme.TitlePlays;
         Pin(plays.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(4, -112), new Vector2(560, 22));
 
+        CreateTitleSettings();
+
         // The board's version stamp is behind the title, and a screenshot that
         // cannot name its own build is the thing CLAUDE.md exists to prevent.
         var version = CreateText("TitleVersion", titleScreen.transform);
@@ -695,6 +701,90 @@ public class UIManager : MonoBehaviour
         version.alignment = TextAlignmentOptions.BottomRight;
         version.color = CasinoTheme.TextFaint;
         Pin(version.rectTransform, new Vector2(1f, 0f), new Vector2(-10, 4), new Vector2(120, 18));
+    }
+
+    // Settings live behind a toggle and start closed: the title stays one quiet
+    // screen, and the panel is there for the player who goes looking. First
+    // (and so far only) setting: the win total. The stepper starts from the
+    // active preset's value (the shipped presets say 11, so a test game ends
+    // in one deck); ScoringConfig's code default is the classic 21.
+    private void CreateTitleSettings()
+    {
+        var toggle = new GameObject("SettingsButton");
+        toggle.transform.SetParent(titleScreen.transform, false);
+        toggle.AddComponent<RectTransform>();
+        Surface(toggle.AddComponent<Image>(), 5, CasinoTheme.ButtonSecondary, CasinoTheme.ButtonBorder);
+        Pin(toggle.GetComponent<RectTransform>(), new Vector2(0.5f, 0.5f), new Vector2(0, -158), new Vector2(150, 34));
+        toggle.AddComponent<Button>().onClick.AddListener(
+            () => titleSettingsPanel.SetActive(!titleSettingsPanel.activeSelf));
+
+        var toggleLabel = CreateText("Label", toggle.transform);
+        toggleLabel.text = "Settings";
+        toggleLabel.fontSize = 16;
+        toggleLabel.alignment = TextAlignmentOptions.Center;
+        toggleLabel.color = CasinoTheme.ButtonLabel;
+        CasinoType.ApplySerif(toggleLabel);
+        Stretch(toggleLabel.rectTransform);
+
+        titleSettingsPanel = new GameObject("SettingsPanel");
+        titleSettingsPanel.transform.SetParent(titleScreen.transform, false);
+        titleSettingsPanel.AddComponent<RectTransform>();
+        Surface(titleSettingsPanel.AddComponent<Image>(), 8, CasinoTheme.GameOverPanel, CasinoTheme.PanelBorder);
+        Pin(titleSettingsPanel.GetComponent<RectTransform>(), new Vector2(0.5f, 0.5f), new Vector2(0, -232), new Vector2(320, 76));
+
+        var winLabel = CreateText("WinTotalLabel", titleSettingsPanel.transform);
+        winLabel.text = "Win total";
+        winLabel.fontSize = 17;
+        winLabel.alignment = TextAlignmentOptions.Left;
+        winLabel.color = CasinoTheme.TextMuted;
+        Pin(winLabel.rectTransform, new Vector2(0f, 0.5f), new Vector2(20, 0), new Vector2(140, 26));
+
+        titleWinValue = CreateText("WinTotalValue", titleSettingsPanel.transform);
+        titleWinValue.text = (ScoringManager.Instance != null ? ScoringManager.Instance.WinScore : 21).ToString();
+        titleWinValue.fontSize = 22;
+        titleWinValue.alignment = TextAlignmentOptions.Center;
+        titleWinValue.color = CasinoTheme.Headline;
+        CasinoType.ApplySerif(titleWinValue);
+        Pin(titleWinValue.rectTransform, new Vector2(1f, 0.5f), new Vector2(-66, 0), new Vector2(56, 30));
+
+        StepperButton("WinMinus", -1, new Vector2(-126, 0), "-");
+        StepperButton("WinPlus", +1, new Vector2(-20, 0), "+");
+
+        titleSettingsPanel.SetActive(false);
+    }
+
+    private void StepperButton(string name, int delta, Vector2 pos, string glyph)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(titleSettingsPanel.transform, false);
+        go.AddComponent<RectTransform>();
+        Surface(go.AddComponent<Image>(), 5, CasinoTheme.ButtonSecondary, CasinoTheme.ButtonBorder);
+        Pin(go.GetComponent<RectTransform>(), new Vector2(1f, 0.5f), pos, new Vector2(34, 34));
+        go.AddComponent<Button>().onClick.AddListener(() => StepWinScore(delta));
+
+        var label = CreateText("Label", go.transform);
+        label.text = glyph;
+        label.fontSize = 20;
+        label.alignment = TextAlignmentOptions.Center;
+        label.color = CasinoTheme.ButtonLabel;
+        Stretch(label.rectTransform);
+    }
+
+    private void StepWinScore(int delta)
+    {
+        var sm = ScoringManager.Instance;
+        if (sm == null) return;
+        int next = Mathf.Clamp(sm.WinScore + delta, 5, 99);
+        sm.OverrideWinScore(next);
+        if (titleWinValue != null) titleWinValue.text = next.ToString();
+        if (titleRulesetLine != null) titleRulesetLine.text = RulesetLine();
+    }
+
+    private static void Stretch(RectTransform r)
+    {
+        r.anchorMin = Vector2.zero;
+        r.anchorMax = Vector2.one;
+        r.offsetMin = r.offsetMax = Vector2.zero;
     }
 
     private static string RulesetLine()
@@ -1550,6 +1640,11 @@ public class UIManager : MonoBehaviour
 
     public void TogglePileViewer(bool human) => TogglePile(human);
     public void ToggleMoveLog() => ToggleLog();
+    public void ToggleTitleSettings()
+    {
+        if (titleSettingsPanel != null) titleSettingsPanel.SetActive(!titleSettingsPanel.activeSelf);
+    }
+    public void StepTitleWinScore(int delta) => StepWinScore(delta);
 
     public IReadOnlyList<CardUI> HumanHandCardUIs => nonDealerCardUIs;
     public IReadOnlyList<CardUI> TableCardUIs => tableCardUIs;
