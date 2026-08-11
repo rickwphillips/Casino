@@ -5,6 +5,53 @@ The app version lives in `ProjectSettings/ProjectSettings.asset` (`bundleVersion
 and renders in the bottom-right corner of the game UI (`v{Application.version}`),
 so every screenshot identifies its build. Each release gets a `v<version>` git tag.
 
+## [1.2.0] - 2026-08-11
+
+The parlor gets finished furniture and a front door: one scoreboard plaque in
+the same seat on every screen shape, layouts that wrap instead of colliding, a
+splash and settings on the title, and the shipped rules corrected to 21.
+
+### Scoreboard, coins, and the right rail
+- One score plaque replaces the two floating score lines; leader struck in
+  ivory, trailer in brass, and it holds the right centre in all three profiles
+- Trophy coins (aces, Big/Little Casino, majorities) splash in on capture and
+  sit on shelves beside each player's take
+- Captured cards render as face-up pip stacks that wrap into columns when a
+  take outgrows its zone; clicking one opens the pile grid over the table
+- Deck count stamped on the deck itself, centred on the visible top card
+
+### Layout that yields instead of overlapping
+- The table row wraps at its zone's width (`ApplyTableWrap`), multi-card builds
+  keeping their natural footprint; the Portrait zone stops short of the plaque
+- The hand fans, sinks below the bottom edge (landscape), lifts a hovered card
+  upright, and a gold pool lights the felt on your turn, shrinking with the hand
+- Both hand containers lose a scene-shipped 0.75 scale that had drawn hand
+  cards three-quarter size for years
+- Portrait: AI draw pile level with the AI hand row, coins on the right rail
+
+### The game's voice
+- The centre move banner and mid-table hint line are gone; moves announce in a
+  fading toast under the plaque and persist in a scrollable move log opened
+  from a bottom-left button
+- The Trail button no longer appears while you own a build (an owner must
+  sweep or build), and the play preview says so instead of promising a trail
+- `GameManager.aiLeadInDelay` (3.2s) paces the AI when it leads a fresh deal
+
+### Title, splash, and settings
+- A splash (the four suits on house ink) holds for a breath and fades into the
+  title; a click skips it
+- The title gains a Settings panel, closed by default: win total stepper and
+  AI difficulty (Easy/Medium/Hard, both seats, live AIs included). Session-only
+- All three score presets now ship the real rule, win at 21; the old 11 was a
+  testing shortcut and is now the autoplay harness's explicit override
+
+### Harnesses
+- `CasinoTitleProbe` (`title-probe.flag`) walks splash, panel, both settings
+  changed and reverted, dismissal
+- `CasinoInteractionProbe` asserts that deselecting the hand card clears the
+  table selection, and that Trail is hidden while a build is owned
+- `autoplay.flag` accepts "hard" to play the whole game against the Hard AI
+
 ## [1.1.0] - 2026-08-05
 
 The UI redesign: a chosen visual direction, a layout engine that survives more
