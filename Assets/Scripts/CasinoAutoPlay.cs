@@ -130,6 +130,15 @@ public class CasinoAutoPlay : MonoBehaviour
             Mark("AI difficulty forced to Hard");
         }
 
+        // The shipped rules play to 21; a harness game plays to 11 so a run
+        // stays a few minutes instead of six. Same session-only override the
+        // title settings use.
+        if (ScoringManager.Instance != null)
+        {
+            ScoringManager.Instance.OverrideWinScore(11);
+            Mark("win total overridden to 11 for the run");
+        }
+
         while (moves < MoveCap)
         {
             if (gm.GetCurrentPhase() == GameManager.GamePhase.GameOver)

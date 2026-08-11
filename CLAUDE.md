@@ -80,8 +80,9 @@ already been fixed.) When rules and prose disagree, the engine + `Tests~/` win.
   transferring ownership, rather than creating a second raisable build of the same value.
 - An **opponent's** single build is sweep material and may be combined with table cards (a steal);
   owners may never combine their own build.
-- Win at 11 (configurable per preset). If both cross in the same hand the higher score wins;
-  a tie plays on.
+- Win at 21 (configurable per preset; the title settings can override per session, and the
+  autoplay harness plays to 11 so runs stay short). If both cross in the same hand the
+  higher score wins; a tie plays on.
 - Sweeps score per round and reset each round. Table cards are awarded once, at deck exhaustion,
   to the last capturer.
 
@@ -112,15 +113,17 @@ should cover, it has to land in one of these four (or be added to the `csc` invo
   evaluator doubles as the human's Suggest hint, so changes there change hints too.
 - `ScoreVariables.cs` (ScriptableObject) / `ScoringConfig.cs` / `ScoringManager.cs` with presets in
   `Assets/ScorePresets/`. Presets carry per-category point values, `winScore`, and
-  `tableCardAwardTiming`. Note the C# defaults still say 21; every shipped preset sets 11.
+  `tableCardAwardTiming`. Code defaults and every shipped preset agree on `winScore` 21
+  (the 11 the presets carried through 2026-08-11 was a testing convenience, now the
+  harness's job via `OverrideWinScore`).
 
   `ScoringManager` has three inspector slots — `standardVariant`, `connecticutVariant`,
   `customVariant` — and a `selectedVariant` enum. **The scene ships `selectedVariant: 2`
   (Custom), and the Custom slot holds `RicksNewEnglandVariant`.** So the live ruleset is
   Rick's New England, despite "Custom" being the selection; the enum name is a slot, not a
   ruleset. Rick's New England pays exactly 11 points per deck (1 cards + 1 spades + 3 Big
-  Casino + 2 Little Casino + 4 aces, sweeps worth 0), matching `winScore`, so a single deck
-  can win outright.
+  Casino + 2 Little Casino + 4 aces, sweeps worth 0), so at `winScore` 21 a game is
+  usually two decks; the autoplay harness overrides to 11 so one deck can still win.
 
 **UI:**
 `UIManager.cs` (~3500 lines) is the only UI path and owns the *entire* layout in code:
@@ -185,8 +188,8 @@ title for ~1.3s then fades; a click skips it. It is a child of the title overlay
 
 The title carries a **Settings** toggle whose panel starts closed. Two settings so far:
 the win total, a stepper wired to `ScoringManager.OverrideWinScore` (session-only override;
-`ScoringConfig`'s code default is the classic 21, while every shipped preset sets 11 so a
-test game can end in one deck), and the AI difficulty, one button cycling
+presets and code default both say 21 now, and the autoplay harness overrides its own runs
+to 11), and the AI difficulty, one button cycling
 Easy/Medium/Hard through `GameManager.SetAIDifficulty` (both seats, live AIs included).
 `title-probe.flag` runs `CasinoTitleProbe`, which walks it all unattended: splash, closed
 panel, opened, both settings changed and reverted, dismissed.
