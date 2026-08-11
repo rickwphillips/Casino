@@ -880,7 +880,7 @@ public class UIManager : MonoBehaviour
         keep.Add(Place(tableCardsContainer, L.Table));
 
         EnsureRowLayout(dealerHandContainer);
-        EnsureRowLayout(tableCardsContainer);
+        StripRowLayout(tableCardsContainer);
         // Not the human hand: it fans, and a HorizontalLayoutGroup would
         // overwrite every position and rotation ApplyHandFan sets.
         StripRowLayout(nonDealerHandContainer);
@@ -1509,8 +1509,15 @@ public class UIManager : MonoBehaviour
         var zone = host.GetComponent<RectTransform>().rect;
         Vector2 size = CardSize(CapturedCardScale);
         float travel = Mathf.Max(0f, zone.height - size.y);
-        float step = cards.Count > 1
-            ? Mathf.Clamp(travel / (cards.Count - 1), MinPipOffset, MaxPipOffset)
+
+        // Once even the minimum pip offset would run the stack out of its
+        // zone, it wraps into a second column instead, growing leftward into
+        // open felt (both stacks hang off the right edge in every profile).
+        int perColumn = Mathf.Max(1, 1 + Mathf.FloorToInt(travel / MinPipOffset));
+        int columns = Mathf.CeilToInt(cards.Count / (float)perColumn);
+        perColumn = Mathf.CeilToInt(cards.Count / (float)columns);
+        float step = perColumn > 1
+            ? Mathf.Clamp(travel / (perColumn - 1), MinPipOffset, MaxPipOffset)
             : 0f;
 
         for (int i = 0; i < cards.Count; i++)
@@ -1522,7 +1529,8 @@ public class UIManager : MonoBehaviour
             r.anchorMin = r.anchorMax = new Vector2(0.5f, 1);
             r.pivot = new Vector2(0.5f, 1);
             r.sizeDelta = size;
-            r.anchoredPosition = new Vector2(0, -i * step);
+            r.anchoredPosition = new Vector2(
+                -(i / perColumn) * (size.x + 6f), -(i % perColumn) * step);
             // Later cards sit in front, covering the body of the one above and
             // leaving its corner showing.
             mini.transform.SetAsLastSibling();
@@ -2475,6 +2483,59 @@ public class UIManager : MonoBehaviour
             GameObject buildObj = CreateBuildUI(build);
             buildObj.transform.SetParent(tableCardsContainer, false);
             buildUIs.Add(buildObj);
+        }
+
+        ApplyTableWrap();
+    }
+
+    // The table was a HorizontalLayoutGroup, which cannot wrap: a crowded row
+    // simply grew past its zone into whatever lived beside it, which in
+    // portrait is the score plaque. Like the hand fan, the table owns its own
+    // arrangement: centred rows, wrapped at the zone's width, each child at
+    // its natural width so multi-card builds keep their footprint.
+    private void ApplyTableWrap()
+    {
+        var container = tableCardsContainer as RectTransform;
+        if (container == null) return;
+
+        var kids = tableCardUIs.Where(c => c != null).Select(c => (RectTransform)c.transform)
+            .Concat(buildUIs.Where(b => b != null).Select(b => (RectTransform)b.transform))
+            .ToList();
+        if (kids.Count == 0) return;
+
+        float gap = CasinoLayout.Active.RowSpacing;
+        float zoneWidth = container.rect.width;
+
+        var rows = new List<List<RectTransform>>();
+        var rowWidths = new List<float>();
+        var row = new List<RectTransform>();
+        float width = 0f;
+        foreach (var kid in kids)
+        {
+            float w = kid.sizeDelta.x;
+            float grown = row.Count == 0 ? w : width + gap + w;
+            if (row.Count > 0 && grown > zoneWidth)
+            {
+                rows.Add(row); rowWidths.Add(width);
+                row = new List<RectTransform>(); grown = w;
+            }
+            row.Add(kid); width = grown;
+        }
+        rows.Add(row); rowWidths.Add(width);
+
+        float rowHeight = CasinoLayout.Active.CardSize.y + gap;
+        float totalHeight = rows.Count * rowHeight - gap;
+        for (int ri = 0; ri < rows.Count; ri++)
+        {
+            float x = -rowWidths[ri] / 2f;
+            float y = totalHeight / 2f - rowHeight * ri - CasinoLayout.Active.CardSize.y / 2f;
+            foreach (var kid in rows[ri])
+            {
+                kid.anchorMin = kid.anchorMax = new Vector2(0.5f, 0.5f);
+                kid.pivot = new Vector2(0.5f, 0.5f);
+                kid.anchoredPosition = new Vector2(x + kid.sizeDelta.x / 2f, y);
+                x += kid.sizeDelta.x + gap;
+            }
         }
     }
 

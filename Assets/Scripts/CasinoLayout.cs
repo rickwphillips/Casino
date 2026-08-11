@@ -225,11 +225,10 @@ public static class CasinoLayout
 
         // The taller header pushes the whole upper stack down, so the table
         // drops with it. The space below the table belongs to the action stack
-        // over the selected card. The row is nudged left of centre so a
-        // five-card-and-build row clears the plaque on the right; the row is a
-        // single non-wrapping HorizontalLayoutGroup, so a truly crowded table
-        // will still reach under it.
-        Table      = new Zone(0.5f, 0.5f, -70, 20, 684, 300),
+        // over the selected card. The zone stops short of the plaque on the
+        // right; ApplyTableWrap folds a crowded row into a second one at the
+        // zone's width instead of letting it grow under the plaque.
+        Table      = new Zone(0.5f, 0.5f, -70, 20, 460, 300),
 
         ActionCenter = new Vector2(0, 396),
         ActionHeight = 52, ActionGap = 10,
@@ -238,19 +237,21 @@ public static class CasinoLayout
         LogButton = new Zone(0f, 0f, 72, 34, 48, 48),
         LogPanel  = new Zone(0f, 0f, 14, 92, 480, 400),
 
-        // No right rail here, so the takes sit at the outer ends of the two
-        // hand rows rather than in a column of their own.
+        // The right edge reads top to bottom as the AI's take, its coins, the
+        // plaque, the human's coins, the human's take: one player per side of
+        // the scoreboard.
         AiCaptured     = new Zone(1f, 1f, -8, -292, 76, 120),
         PlayerCaptured = new Zone(1f, 0f, -8, 230, 76, 120),
         PileViewer = new Zone(0.5f, 0.5f, 0, 0, 660, 560),
-        PlayerAces = new Zone(1f, 0f, -92, 96, 200, 60),
-        AiAces     = new Zone(0f, 1f, 14, -420, 200, 56),
+        PlayerAces = new Zone(1f, 0f, -14, 364, 200, 60),
+        AiAces     = new Zone(1f, 1f, -14, -424, 200, 56),
 
         // Portrait keeps the hand fully on screen: there is no spare height
         // below it to clip into, only the action stack and the thumb rail.
         PlayerHand = new Zone(0.5f, 0f, 0, 230, 684, 150),
         HandGlow   = new Zone(0.5f, 0f, 0, 170, 720, 280),
-        DrawPileAi    = new Zone(0f, 1f, 20, -440, 76, 104),
+        // Level with the AI hand row, not adrift in the middle of the felt.
+        DrawPileAi    = new Zone(0f, 1f, 20, -300, 76, 104),
         DrawPileHuman = new Zone(0f, 0f, 20, 118, 76, 104),
         Version    = new Zone(1f, 0f, -10, 6, 120, 18),
         GameOver   = new Zone(0.5f, 0.5f, 0, 0, 640, 300),
