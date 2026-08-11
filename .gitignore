@@ -76,8 +76,12 @@ Thumbs.db
 /autoplay.flag
 /autoplay-log.txt
 /rank-preview.flag
-/interaction-probe.txt
 /scenario-preview.flag
+/interaction-probe.flag
+/interaction-probe.txt
+# Not consumed: keeps the title screen out of unattended verify runs.
+/skip-title.flag
+/title-probe.flag
 /build/
 /build-log.txt
 /compile.txt
