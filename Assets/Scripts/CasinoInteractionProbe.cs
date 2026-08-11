@@ -1,5 +1,6 @@
 using System.Collections;
 using System.IO;
+using System.Linq;
 using UnityEngine;
 
 // Drives the UI the way a player does, and writes down what it said.
@@ -91,6 +92,54 @@ public class CasinoInteractionProbe : MonoBehaviour
         Mark($"press Build -> pressed={ui.PressBuild()}");
         yield return Settle();
         Shot("probe-4-build-attempt", ui);
+
+        // 5. Deselecting the hand card must clear the table selection
+        //    (ClearTableSelection out of OnCardSelected). A table card left
+        //    highlighted with nothing in hand to spend it on is a lie the
+        //    player acts on. Step 4 may have played a move, so wait for the
+        //    turn to come back before driving cards again.
+        for (float waited = 0f; !gm.IsWaitingForHumanInput() && waited < 12f; waited += 0.5f)
+            yield return new WaitForSecondsRealtime(0.5f);
+        if (!gm.IsWaitingForHumanInput())
+        {
+            Mark("5: turn never came back; skipping deselect check");
+        }
+        else
+        {
+            // An arbitrary pairing will not do: a face hand card refuses any
+            // table card of another rank up front, and the check would pass
+            // with nothing selected. A numeric hand card and a numeric table
+            // card always stick (an invalid sweep is still a valid selection),
+            // so pick those; only a hand or table of all face cards defeats it.
+            hand = ui.HumanHandCardUIs;
+            table = ui.TableCardUIs;
+            var numericHand = hand?.FirstOrDefault(c => c?.Card != null && c.Card.rank < PlayingCard.Rank.Jack);
+            var numericTable = table?.FirstOrDefault(c => c?.Card != null && c.Card.rank < PlayingCard.Rank.Jack);
+            if (numericHand == null || numericTable == null)
+            {
+                Mark("5: no numeric hand/table pair this deal; deselect check inconclusive");
+            }
+            else
+            {
+                if (!numericHand.IsSelected)
+                    Mark($"click hand card {Describe(numericHand)} -> {numericHand.SimulateClick()}");
+                yield return Settle();
+                if (!numericTable.IsSelected)
+                    Mark($"click table card {Describe(numericTable)} -> {numericTable.SimulateClick()}");
+                yield return Settle();
+                int before = table.Count(c => c != null && c.IsSelected);
+                Mark($"table selected before deselect: {before}");
+                Mark($"click hand card again (deselect) -> {numericHand.SimulateClick()}");
+                yield return Settle();
+                int still = table.Count(c => c != null && c.IsSelected);
+                Mark(before > 0 && still == 0
+                    ? $"PASS: deselecting the hand card cleared all {before} selected table card(s)"
+                    : before == 0
+                        ? "INCONCLUSIVE: table selection never took"
+                        : $"FAIL: {still} of {before} table card(s) still selected after hand deselect");
+                Shot("probe-5-deselect-cleared", ui);
+            }
+        }
 
         Mark("done");
     }
