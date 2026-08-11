@@ -153,8 +153,10 @@ Layout since the 2026-08-10/11 "Parlor" redesign:
 - **Right rail**: each player's captured cards as a face-up stack (`CapturedHuman`,
   `CapturedAI`), newest in front and lowest so each card underneath keeps its top-corner
   pips visible; the pip offset shrinks as the pile grows, and a stack that outgrows its
-  zone wraps into further columns growing leftward. The trophy-coin shelves sit beside the
-  takes. Clicking a stack opens the full grid centred over the table (`L.PileViewer`).
+  zone wraps into further columns growing leftward. Clicking a stack opens the full grid
+  centred over the table (`L.PileViewer`). The trophy-coin shelves live on the **left edge**
+  (AI's under the toast, human's above the utility buttons; beside the draw piles in
+  Portrait), both rows growing rightward toward the table.
 - **Bottom**: the human hand fans (`ApplyHandFan`) and is sunk below the screen edge so card
   bottoms clip (Portrait deliberately keeps the hand fully on screen instead). Hovering a
   selectable card lifts it (`HoverLift`), stands it upright, tints it `CardHover`, and raises

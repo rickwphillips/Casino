@@ -149,10 +149,10 @@ public static class CasinoLayout
         // Over the table, not down the left edge where the plaque now lives.
         PileViewer = new Zone(0.5f, 0.5f, -52, 0, 460, 420),
 
-        // Ace splashes land inboard of their owner's take, so a shelf grows
-        // toward the table instead of into the stack beside it.
-        PlayerAces = new Zone(1f, 0f, -114, 14, 200, 64),
-        AiAces     = new Zone(1f, 1f, -114, -14, 200, 64),
+        // Coin shelves on the left edge: the AI's under the toast, the
+        // human's above the utility buttons, both growing toward the table.
+        PlayerAces = new Zone(0f, 0f, 14, 64, 200, 64),
+        AiAces     = new Zone(0f, 1f, 14, -80, 200, 64),
 
         // The draw pile rides with the dealer: at the AI's elbow up top when it
         // deals (clear of the opponent hand, which starts at x 358), at yours
@@ -191,8 +191,8 @@ public static class CasinoLayout
         AiCaptured     = new Zone(1f, 1f, -12, -12, 94, 200),
         PlayerCaptured = new Zone(1f, 0f, -12, 12, 94, 200),
         PileViewer = new Zone(0.5f, 0.5f, -48, 0, 420, 400),
-        PlayerAces = new Zone(1f, 0f, -104, 12, 180, 60),
-        AiAces     = new Zone(1f, 1f, -104, -12, 180, 60),
+        PlayerAces = new Zone(0f, 0f, 12, 58, 180, 60),
+        AiAces     = new Zone(0f, 1f, 12, -72, 180, 60),
 
         DrawPileAi    = new Zone(0f, 1f, 200, -12, 88, 120),
         DrawPileHuman = new Zone(0f, 0f, 186, 12, 84, 114),
@@ -244,8 +244,9 @@ public static class CasinoLayout
         AiCaptured     = new Zone(1f, 1f, -8, -292, 76, 120),
         PlayerCaptured = new Zone(1f, 0f, -8, 230, 76, 120),
         PileViewer = new Zone(0.5f, 0.5f, 0, 0, 660, 560),
-        PlayerAces = new Zone(1f, 0f, -14, 364, 200, 60),
-        AiAces     = new Zone(1f, 1f, -14, -424, 200, 56),
+        // Coin shelves ride beside each seat's draw pile on the left.
+        PlayerAces = new Zone(0f, 0f, 104, 118, 200, 60),
+        AiAces     = new Zone(0f, 1f, 104, -300, 200, 56),
 
         // Portrait keeps the hand fully on screen: there is no spare height
         // below it to clip into, only the action stack and the thumb rail.

@@ -2302,7 +2302,9 @@ public class UIManager : MonoBehaviour
 
     private void UpdateAceRows(GamePlayer human, GamePlayer ai)
     {
-        SyncTrophyRow(humanAcesRow, humanTrophies, human, rightAligned: true);
+        // Both shelves live on the left edge now, so both rows grow rightward
+        // from it, toward the table.
+        SyncTrophyRow(humanAcesRow, humanTrophies, human, rightAligned: false);
         SyncTrophyRow(aiAcesRow, aiTrophies, ai, rightAligned: false);
     }
 
