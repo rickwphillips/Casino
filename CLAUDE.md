@@ -123,17 +123,63 @@ should cover, it has to land in one of these four (or be added to the `csc` invo
   can win outright.
 
 **UI:**
-`UIManager.cs` (~2000 lines) is the only UI path and owns the *entire* layout in code:
-`EnforceLayout()` sets a 1280x720 reference canvas (`matchWidthOrHeight = 1`, match height)
-and hides leftover scene objects. Every color it draws comes from `CasinoTheme.cs`; there
-are no raw `new Color(...)` literals left in `UIManager`, and new ones should not be added.
-**Do not hand-edit scene UI positions** — runtime code will override them. `RefreshUI`,
-`OnCardSelected` (table-first selection with hand highlighting), `AnimateDeal` /
-`AnimateCapture` / `AnimateTrail` ghost-card animations, `ShowMove` banner pacing,
-`ShowRoundSummary`, pile viewer, draw pile.
+`UIManager.cs` (~3500 lines) is the only UI path and owns the *entire* layout in code:
+`EnforceLayout()` sets a 1280x720 reference canvas (`matchWidthOrHeight = 1`, match height),
+applies the zones from `CasinoLayout.cs` (three Profiles — Wide / Compact / Portrait; each
+zone is anchor+pos+size with pivot == anchor), and hides leftover scene objects. Every color
+it draws comes from `CasinoTheme.cs`; there are no raw `new Color(...)` literals left in
+`UIManager`, and new ones should not be added — `CasinoTheme.WithAlpha` is private, so tinted
+colors are defined inside `CasinoTheme`, not built at call sites. **Do not hand-edit scene UI
+positions** — runtime code will override them. `ReAnchor` also resets `localScale` to one
+(the scene shipped a 0.75 scale on both hand containers for years; scale is part of the
+arrangement now).
+
+Layout since the 2026-08-10/11 "Parlor" redesign:
+
+- **Top-left**: the score plaque (`Scoreboard`) — one plaque for both players, leader struck
+  in `ScoreLeader` (ivory), trailer in `ScoreTrailing` (brass), a tie brightens both. Below
+  it the ephemeral message toast (`Message`), which is the object `UIManager.hintText` points
+  at: call sites still just assign `hintText.text`, and `TickMessage()` in `Update()` watches
+  the string for changes and drives the fade (hold 3.4s, fade 0.9s).
+- **Move log**: `logPanel`, a `ScrollRect` + `RectMask2D` + one TMP with a `ContentSizeFitter`,
+  appended by `ShowMove` — there is no centre banner any more. Toggled by the circled "≡"
+  next to the "?" Suggest button in the bottom-left corner; the panel opens upward
+  (`UIManager.ToggleMoveLog()` is the harness hook).
+- **Right rail**: each player's captured cards as a face-up stack (`CapturedHuman`,
+  `CapturedAI`), newest in front and lowest so each card underneath keeps its top-corner
+  pips visible; the pip offset shrinks as the pile grows. Clicking a stack opens the full
+  grid centred over the table (`L.PileViewer`).
+- **Bottom**: the human hand fans (`ApplyHandFan`) and is sunk below the screen edge so card
+  bottoms clip (Portrait deliberately keeps the hand fully on screen instead). Hovering a
+  selectable card lifts it (`HoverLift`), stands it upright, tints it `CardHover`, and raises
+  its sibling index. A gold pool (`HandGlow`) lights the felt while the turn is the human's,
+  scaled by `SizeHandGlow` from full at 4 cards down to `GlowFloor` at one.
+- **Gone, do not reintroduce**: the mid-table gold hint line, the centre `MoveBanner`, the
+  bottom-left pile-count boxes, and the `Current Turn:` / `Playing...` lines.
+
+Interaction and animation core: `RefreshUI`, `OnCardSelected` (table-first selection with
+hand highlighting; deselecting the hand card clears the table selection via
+`ClearTableSelection`), `AnimateDeal` / `AnimateCapture` / `AnimateTrail` ghost-card
+animations (capture ghosts intentionally shrink toward 0.5 scale in flight),
+`ShowRoundSummary`, draw pile. `GameManager.aiLeadInDelay` (3.2s, vs `aiMoveDelay` 1.5s)
+paces the AI when it leads a freshly dealt hand.
 
 The scene wires buttons in code, not through UnityEvents — `Scene.unity` contains zero
 `m_MethodName` entries, so searching the scene for a handler name will never find anything.
+
+**The title screen** is a full-canvas overlay built in `CreateTitleScreen()`, not a second
+scene. `GameManager` still deals on `Start` exactly as it always has and the overlay simply
+covers the result: deferring `InitializeGame` would leave `deck`/`dealer`/`nonDealer` null
+while `RefreshUI` runs. The only thing lost behind the title is the deal animation, so
+`AnimateDeal` stashes its arguments in `pendingDeal` while `TitleIsUp` and `DismissTitle`
+replays them; that animation is pure ghost cards over an already-dealt board, so replaying
+it changes no game state. `Update()` re-raises the overlay every frame because cards, ghosts
+and builds are all created *after* it and paint order is sibling order.
+
+Two ways to skip it: `UIManager.SkipTitle` (set by `CasinoAutoPlay`, `CasinoInteractionProbe`
+and `CasinoStatePreview` in their `Install()` methods), or dropping `skip-title.flag` in the
+repo root. Unlike the other flags that one is **not consumed**, because an unattended verify
+loop wants the board in every run rather than only the first.
 
 ## Workflow gotchas
 
@@ -153,6 +199,20 @@ The scene wires buttons in code, not through UnityEvents — `Scene.unity` conta
   log at all, and the symptoms look like the editor hanging or ignoring code
   changes. This wasted more time today than any actual bug. To bring a running
   editor forward use `open -a <path to Unity.app>`, never the binary directly.
+- **Focusing the editor does not reliably trigger a recompile.** It usually does, and then
+  it stops: on 2026-08-07 two edits compiled on focus and the third did not, through a
+  stopped-and-focused editor, for six minutes and four `open -a` calls. Meanwhile
+  `auto-verify.flag` kept restarting Play against the *old* assembly and writing screenshots
+  that looked like the new code had no effect. Force it instead:
+
+  ```bash
+  osascript -e 'tell application "System Events" to tell process "Unity" \
+    to click menu item "Refresh" of menu "Assets" of menu bar 1'
+  ```
+
+  Stop Play first if it is running. Unlike clicking in the Game view, menu-bar clicks
+  through the accessibility layer work fine. Always confirm with the assembly mtime below
+  before believing a screenshot.
 - **To check whether code compiled, look at the assembly, not the screen.**
   `stat -f %m Library/ScriptAssemblies/Assembly-CSharp.dll` against the source
   file's mtime says definitively whether the editor picked up an edit. Screenshots
@@ -172,9 +232,9 @@ The scene wires buttons in code, not through UnityEvents — `Scene.unity` conta
 - **Two harnesses, and they test different layers.** `autoplay.flag` runs
   `CasinoAutoPlay`, which plays a full game by calling `GameManager` directly: that
   proves the rules and the board survive captures, sweeps, round ends and game over,
-  but it never touches selection, highlighting, or the hint line.
+  but it never touches selection, highlighting, or the message toast.
   `interaction-probe.flag` runs `CasinoInteractionProbe`, which clicks like a player
-  and writes the hint text back to `interaction-probe.txt` after each step. Drive
+  and writes the toast text back to `interaction-probe.txt` after each step. Drive
   cards with `CardUI.SimulateClick()`, never `UIManager.OnCardSelected` alone: a
   click is `SetSelected` *then* `OnCardSelected`, and calling only the second leaves
   `isSelected` stale so the whole UI behaves as though nothing was picked up. A
@@ -186,10 +246,13 @@ The scene wires buttons in code, not through UnityEvents — `Scene.unity` conta
   the transcript never grows again. Two sessions were lost to diagnosing it as an
   infinite loop in the AI evaluator. If a harness must survive losing focus, flip
   the setting rather than assuming the code is at fault.
-- **Pin the Game view before trusting a screenshot.** `Editor/GameViewSizePin.cs` forces a fixed
-  1280x720 on editor load (menu: **Casino > Pin Game View to 1280x720**), which makes canvas
-  units equal screen pixels. On Free Aspect the canvas width floats with the window (observed
-  1350 and 1182 on consecutive runs) and no two screenshots are comparable.
+- **Pin the Game view before trusting a screenshot.** `Editor/GameViewSizePin.cs` pins a fixed
+  size on editor load, one per `CasinoLayout` profile (menu: **Casino > Game View** — Wide
+  1280x720, Compact 1024x768, Portrait 720x1280), which makes canvas units equal screen
+  pixels. Tooling switches profile unattended by dropping `gameview.txt` containing `WxH`
+  (e.g. `720x1280`) in the repo root before a reload. On Free Aspect the canvas width floats
+  with the window (observed 1350 and 1182 on consecutive runs) and no two screenshots are
+  comparable.
 - **All `.meta` files are tracked.** The original `.gitignore` excluded them and broke fresh clones
   for nine months (fixed 2026-08-03). Keep it that way; `Packages/manifest.json` +
   `packages-lock.json` and `ProjectVersion.txt` are committed for the same reason.
