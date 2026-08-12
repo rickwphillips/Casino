@@ -5,6 +5,30 @@ The app version lives in `ProjectSettings/ProjectSettings.asset` (`bundleVersion
 and renders in the bottom-right corner of the game UI (`v{Application.version}`),
 so every screenshot identifies its build. Each release gets a `v<version>` git tag.
 
+## [1.3.0] - 2026-08-12
+
+The game goes public: a Web build live on the portfolio, and the polish that
+came from actually watching it played there.
+
+### Web
+- WebGL build target (`Casino > Build Web`, or batch `-buildTarget WebGL
+  -executeMethod WebBuild.Build`): Gzip with the decompression fallback, ~15MB,
+  no server configuration required
+- Live at rickwphillips.com/app/projects/casino/, deployed by
+  `deploy-casino.sh`; listed on the portfolio Projects page
+- Gzip + fallback are committed player settings, so the build is reproducible
+
+### Table
+- The trophy-coin shelves move to the left rail: AI's under the toast, the
+  human's above the utility buttons (beside the draw piles in Portrait), both
+  rows growing toward the table. The right rail keeps the takes and the plaque
+
+### Opening
+- The splash signs its maker: "A FREDDY RHETORICK CARD GAME"
+- The AI waits to be watched: the game deals behind the title, so when the AI
+  led, its lead-in clock expired before the board was visible and the first
+  move looked instant. The AI's turn now holds until the title is dismissed
+
 ## [1.2.0] - 2026-08-11
 
 The parlor gets finished furniture and a front door: one scoreboard plaque in
