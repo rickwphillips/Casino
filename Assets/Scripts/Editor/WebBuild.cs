@@ -12,6 +12,9 @@ public static class WebBuild
     {
         PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
         PlayerSettings.WebGL.decompressionFallback = true;
+        // Assets/WebGLTemplates/Casino: the default template plus a dark/light
+        // page theme (footer toggle, localStorage, system-preference default).
+        PlayerSettings.WebGL.template = "PROJECT:Casino";
 
         var report = BuildPipeline.BuildPlayer(
             new[] { "Assets/Scenes/Scene.unity" },
