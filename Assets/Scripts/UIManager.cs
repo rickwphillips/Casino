@@ -761,12 +761,24 @@ public class UIManager : MonoBehaviour
     }
 
     // Settings live behind a toggle and start closed: the title stays one quiet
-    // screen, and the panel is there for the player who goes looking. First
-    // (and so far only) setting: the win total. The stepper starts from the
-    // active preset's value (the shipped presets say 11, so a test game ends
-    // in one deck); ScoringConfig's code default is the classic 21.
+    // screen, and the panel is there for the player who goes looking.
+    //
+    // Choices survive relaunch: every change writes PlayerPrefs (IndexedDB on
+    // the web) and the saved values re-apply when the title is built. Harness
+    // runs skip the title, so their explicit overrides stay deterministic.
+    private const string PrefWinTotal = "SettingWinTotal";
+    private const string PrefAiDifficulty = "SettingAiDifficulty";
+
     private void CreateTitleSettings()
     {
+        var sm = ScoringManager.Instance;
+        var gm = GameManager.Instance;
+        if (sm != null && PlayerPrefs.HasKey(PrefWinTotal))
+            sm.OverrideWinScore(PlayerPrefs.GetInt(PrefWinTotal));
+        if (gm != null && PlayerPrefs.HasKey(PrefAiDifficulty))
+            gm.SetAIDifficulty((AIPlayer.Difficulty)PlayerPrefs.GetInt(PrefAiDifficulty));
+        if (titleRulesetLine != null) titleRulesetLine.text = RulesetLine();
+
         var toggle = new GameObject("SettingsButton");
         toggle.transform.SetParent(titleScreen.transform, false);
         toggle.AddComponent<RectTransform>();
@@ -847,6 +859,8 @@ public class UIManager : MonoBehaviour
             _ => AIPlayer.Difficulty.Easy,
         };
         gm.SetAIDifficulty(next);
+        PlayerPrefs.SetInt(PrefAiDifficulty, (int)next);
+        PlayerPrefs.Save();
         if (titleAiDifficulty != null) titleAiDifficulty.text = next.ToString();
     }
 
@@ -873,6 +887,8 @@ public class UIManager : MonoBehaviour
         if (sm == null) return;
         int next = Mathf.Clamp(sm.WinScore + delta, 5, 99);
         sm.OverrideWinScore(next);
+        PlayerPrefs.SetInt(PrefWinTotal, next);
+        PlayerPrefs.Save();
         if (titleWinValue != null) titleWinValue.text = next.ToString();
         if (titleRulesetLine != null) titleRulesetLine.text = RulesetLine();
     }

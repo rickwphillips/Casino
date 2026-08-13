@@ -5,6 +5,17 @@ The app version lives in `ProjectSettings/ProjectSettings.asset` (`bundleVersion
 and renders in the bottom-right corner of the game UI (`v{Application.version}`),
 so every screenshot identifies its build. Each release gets a `v<version>` git tag.
 
+## [1.4.0] - 2026-08-13
+
+### Settings that stay set
+- The title panel's choices (win total, AI difficulty) persist across
+  launches via PlayerPrefs (IndexedDB on the web build): change them once,
+  and every later visit opens with them applied
+- Harness runs skip the title, so their explicit overrides stay deterministic
+- `CasinoTitleProbe` verifies persistence across two sessions: one run arms
+  23/Hard and leaves it saved, the next must open with it applied, then
+  reverts to 21/Medium
+
 ## [1.3.0] - 2026-08-12
 
 The game goes public: a Web build live on the portfolio, and the polish that

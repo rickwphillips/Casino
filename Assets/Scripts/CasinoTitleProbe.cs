@@ -45,19 +45,33 @@ public class CasinoTitleProbe : MonoBehaviour
         yield return new WaitForSecondsRealtime(0.6f);
         ScreenshotCapture.Capture("title-settings-open");
 
-        ui.StepTitleWinScore(+1);
-        ui.StepTitleWinScore(+1);
-        ui.CycleTitleAiDifficulty();
-        yield return new WaitForSecondsRealtime(0.6f);
-        ScreenshotCapture.Capture("title-settings-changed");
-
-        // Put both settings back where they started (the difficulty cycle is
-        // three long, so two more steps close the loop).
-        ui.StepTitleWinScore(-1);
-        ui.StepTitleWinScore(-1);
-        ui.CycleTitleAiDifficulty();
-        ui.CycleTitleAiDifficulty();
-        yield return new WaitForSecondsRealtime(0.3f);
+        // Persistence check, in two consecutive runs. A run that finds the
+        // defaults arms the next one: it changes both settings and leaves
+        // them saved. A run that finds 23/Hard proves the save survived a
+        // whole play session, and puts the defaults back.
+        int win = ScoringManager.Instance != null ? ScoringManager.Instance.WinScore : -1;
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.AIDifficulty : AIPlayer.Difficulty.Easy;
+        if (win == 23 && diff == AIPlayer.Difficulty.Hard)
+        {
+            Debug.Log("CasinoTitleProbe: PASS - settings persisted across sessions (23/Hard); reverting");
+            ui.StepTitleWinScore(-1);
+            ui.StepTitleWinScore(-1);
+            ui.CycleTitleAiDifficulty();
+            ui.CycleTitleAiDifficulty();
+            yield return new WaitForSecondsRealtime(0.6f);
+            ScreenshotCapture.Capture("title-settings-reverted");
+        }
+        else
+        {
+            Debug.Log($"CasinoTitleProbe: found {win}/{diff}; arming persistence check (23/Hard)");
+            ui.StepTitleWinScore(23 - win);
+            for (int i = 0; i < 3 && GameManager.Instance != null
+                 && GameManager.Instance.AIDifficulty != AIPlayer.Difficulty.Hard; i++)
+                ui.CycleTitleAiDifficulty();
+            yield return new WaitForSecondsRealtime(0.6f);
+            ScreenshotCapture.Capture("title-settings-changed");
+        }
 
         ui.DismissTitle();
         yield return new WaitForSecondsRealtime(1.2f);
